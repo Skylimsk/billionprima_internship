@@ -120,6 +120,8 @@ private:
     cv::Mat prepareImageForLineDetection(uint16_t brightThreshold, uint16_t darkThreshold);
     uint16_t interpolateValue(int x, int y, int margin = 5);
 
+    int calculateLineThickness(const std::vector<std::pair<int, int>>& linePixels,
+                               int minX, int maxX, int minY, int maxY);
 
 
 };
