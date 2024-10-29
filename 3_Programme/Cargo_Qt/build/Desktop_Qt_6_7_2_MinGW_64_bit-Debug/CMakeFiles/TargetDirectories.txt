@@ -1,0 +1,9 @@
+C:/MinGW/Internship/Cargo_2/build/Desktop_Qt_6_7_2_MinGW_64_bit-Debug/CMakeFiles/Cargo_2.dir
+C:/MinGW/Internship/Cargo_2/build/Desktop_Qt_6_7_2_MinGW_64_bit-Debug/CMakeFiles/edit_cache.dir
+C:/MinGW/Internship/Cargo_2/build/Desktop_Qt_6_7_2_MinGW_64_bit-Debug/CMakeFiles/rebuild_cache.dir
+C:/MinGW/Internship/Cargo_2/build/Desktop_Qt_6_7_2_MinGW_64_bit-Debug/CMakeFiles/list_install_components.dir
+C:/MinGW/Internship/Cargo_2/build/Desktop_Qt_6_7_2_MinGW_64_bit-Debug/CMakeFiles/install.dir
+C:/MinGW/Internship/Cargo_2/build/Desktop_Qt_6_7_2_MinGW_64_bit-Debug/CMakeFiles/install/local.dir
+C:/MinGW/Internship/Cargo_2/build/Desktop_Qt_6_7_2_MinGW_64_bit-Debug/CMakeFiles/install/strip.dir
+C:/MinGW/Internship/Cargo_2/build/Desktop_Qt_6_7_2_MinGW_64_bit-Debug/CMakeFiles/Cargo_2_autogen_timestamp_deps.dir
+C:/MinGW/Internship/Cargo_2/build/Desktop_Qt_6_7_2_MinGW_64_bit-Debug/CMakeFiles/Cargo_2_autogen.dir
