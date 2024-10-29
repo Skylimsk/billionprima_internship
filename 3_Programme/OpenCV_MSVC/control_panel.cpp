@@ -617,97 +617,105 @@ void ControlPanel::updateImageDisplay()
 }
 
 void ControlPanel::setupDarkLineDetection() {
-    createGroupBox("Dark Line Detection", {
-                                              {"Detect Any Lines", [this]() {
-                                                   auto [brightThreshold, brightOk] = showInputDialog("Line Detection",
-                                                                                                      "Enter brightness threshold (40000-65000):", 60000, 40000, 65000);
-                                                   if (!brightOk) return;
+    createGroupBox("Line Detection", {
+                                         {"Detect Single Lines", [this]() {
+                                              auto [brightThreshold, brightOk] = showInputDialog("Single Line Detection",
+                                                                                                 "Enter brightness threshold (40000-65000):", 60000, 40000, 65000);
+                                              if (!brightOk) return;
 
-                                                   auto [darkThreshold, darkOk] = showInputDialog("Line Detection",
-                                                                                                  "Enter darkness threshold (0-10000):", 0, 0, 10000);
-                                                   if (!darkOk) return;
+                                              auto [darkThreshold, darkOk] = showInputDialog("Single Line Detection",
+                                                                                             "Enter darkness threshold (0-10000):", 0, 0, 10000);
+                                              if (!darkOk) return;
 
-                                                   auto [minLength, lengthOk] = showInputDialog("Line Detection",
-                                                                                                "Enter minimum line length:", 20, 0.1, 1000);
-                                                   if (!lengthOk) return;
+                                              auto [minLength, lengthOk] = showInputDialog("Single Line Detection",
+                                                                                           "Enter minimum line length:", 20, 0.1, 1000);
+                                              if (!lengthOk) return;
 
-                                                   // Add clustering distance parameter
-                                                   auto [clusterDistance, distanceOk] = showInputDialog("Line Detection",
-                                                                                                        "Enter cluster distance (1-20):", 5, 1, 20);
-                                                   if (!distanceOk) return;
+                                              m_detectedLines = m_imageProcessor.detectDarkLines(
+                                                  static_cast<uint16_t>(brightThreshold),
+                                                  static_cast<uint16_t>(darkThreshold),
+                                                  static_cast<int>(minLength));
 
-                                                   m_detectedLines = m_imageProcessor.detectAllLines(
-                                                       static_cast<uint16_t>(brightThreshold),
-                                                       static_cast<uint16_t>(darkThreshold),
-                                                       static_cast<int>(minLength),
-                                                       static_cast<int>(clusterDistance));
+                                              // Visualize the detected single lines
+                                              if (m_detectedLines.empty()) {
+                                                  QMessageBox::information(this, "Single Line Detection", "No single lines found.");
+                                                  return;
+                                              }
 
-                                                   visualizeDarkLines(m_detectedLines);
+                                              const QPixmap& currentPixmap = m_imageLabel->pixmap();
+                                              if (currentPixmap.isNull()) {
+                                                  QMessageBox::warning(this, "Error", "No image loaded.");
+                                                  return;
+                                              }
 
-                                                   QString params = QString("Bright: %1, Dark: %2, MinLen: %3, Cluster: %4")
-                                                                        .arg(brightThreshold)
-                                                                        .arg(darkThreshold)
-                                                                        .arg(minLength)
-                                                                        .arg(clusterDistance);
+                                              QImage image = currentPixmap.toImage();
+                                              QPainter painter(&image);
+                                              painter.setRenderHint(QPainter::Antialiasing);
 
-                                                   updateLastAction("Detect Any Lines", params);
-                                               }},
-                                              {"Detect Single Lines", [this]() {
-                                                   auto [brightThreshold, brightOk] = showInputDialog("Dark Line Detection",
-                                                                                                      "Enter brightness threshold (40000-65000):", 60000, 40000, 65000);
-                                                   if (!brightOk) return;
+                                              QPen pen(Qt::blue);  // Use blue for single lines
+                                              pen.setWidth(2);
+                                              painter.setPen(pen);
 
-                                                   auto [darkThreshold, darkOk] = showInputDialog("Dark Line Detection",
-                                                                                                  "Enter darkness threshold (0-10000):", 0, 0, 10000);
-                                                   if (!darkOk) return;
+                                              QString detailText = QString("Found %1 single lines:\n\n").arg(m_detectedLines.size());
 
-                                                   auto [minLength, lengthOk] = showInputDialog("Dark Line Detection",
-                                                                                                "Enter minimum line length:", 20, 0.1, 1000);
-                                                   if (!lengthOk) return;
+                                              for (size_t i = 0; i < m_detectedLines.size(); ++i) {
+                                                  const auto& line = m_detectedLines[i];
+                                                  painter.drawLine(line.start.x, line.start.y, line.end.x, line.end.y);
+                                                  QPoint midPoint((line.start.x + line.end.x) / 2, (line.start.y + line.end.y) / 2);
+                                                  painter.drawText(midPoint.x() + 5, midPoint.y() + 5, QString::number(i + 1));
 
-                                                   m_detectedLines = m_imageProcessor.detectDarkLines(
-                                                       static_cast<uint16_t>(brightThreshold),
-                                                       static_cast<uint16_t>(darkThreshold),
-                                                       static_cast<int>(minLength));
+                                                  detailText += QString("Single Line %1: (%2,%3) to (%4,%5)\n")
+                                                                    .arg(i + 1)
+                                                                    .arg(line.start.x)
+                                                                    .arg(line.start.y)
+                                                                    .arg(line.end.x)
+                                                                    .arg(line.end.y);
+                                              }
 
-                                                   visualizeDarkLines(m_detectedLines);
+                                              m_imageLabel->setPixmap(QPixmap::fromImage(image));
 
-                                                   QString params = QString("Bright: %1, Dark: %2, MinLen: %3")
-                                                                        .arg(brightThreshold)
-                                                                        .arg(darkThreshold)
-                                                                        .arg(minLength);
+                                              QMessageBox msgBox(this);
+                                              msgBox.setWindowTitle("Single Line Detection Results");
+                                              msgBox.setText(detailText);
+                                              msgBox.setIcon(QMessageBox::Information);
+                                              msgBox.exec();
 
-                                                   updateLastAction("Detect Single Lines", params);
-                                               }},
-                                              {"Remove Dark Lines", [this]() {
-                                                   if (m_detectedLines.empty()) {
-                                                       QMessageBox::information(this, "Remove Dark Lines",
-                                                                                "Please detect lines first.");
-                                                       return;
-                                                   }
+                                              QString params = QString("Bright: %1, Dark: %2, MinLen: %3")
+                                                                   .arg(brightThreshold)
+                                                                   .arg(darkThreshold)
+                                                                   .arg(minLength);
 
-                                                   m_imageProcessor.removeDarkLines(m_detectedLines);
-                                                   updateImageDisplay();
-                                                   updateLastAction("Remove Dark Lines",
-                                                                    QString("Removed %1 lines").arg(m_detectedLines.size()));
+                                              updateLastAction("Detect Single Lines", params);
+                                          }},
+                                         {"Remove Dark Lines", [this]() {
+                                              if (m_detectedLines.empty()) {
+                                                  QMessageBox::information(this, "Remove Dark Lines",
+                                                                           "Please detect lines first.");
+                                                  return;
+                                              }
 
-                                                   m_detectedLines.clear();
-                                               }},
-                                              {"Remove from (0,y)", [this]() {
-                                                   if (m_detectedLines.empty()) {
-                                                       QMessageBox::information(this, "Remove Lines from X=0",
-                                                                                "Please detect lines first.");
-                                                       return;
-                                                   }
+                                              m_imageProcessor.removeDarkLines(m_detectedLines);
+                                              updateImageDisplay();
+                                              updateLastAction("Remove Dark Lines",
+                                                               QString("Removed %1 lines").arg(m_detectedLines.size()));
 
-                                                   m_imageProcessor.removeFromZeroX(m_detectedLines);
-                                                   updateImageDisplay();
-                                                   updateLastAction("Remove Lines from X=0",
-                                                                    QString("Removed lines starting from x=0"));
+                                              m_detectedLines.clear();
+                                          }},
+                                         {"Remove from (0,y)", [this]() {
+                                              if (m_detectedLines.empty()) {
+                                                  QMessageBox::information(this, "Remove Lines from X=0",
+                                                                           "Please detect lines first.");
+                                                  return;
+                                              }
 
-                                                   m_detectedLines.clear();
-                                               }}
-                                          });
+                                              m_imageProcessor.removeFromZeroX(m_detectedLines);
+                                              updateImageDisplay();
+                                              updateLastAction("Remove Lines from X=0",
+                                                               QString("Removed lines starting from x=0"));
+
+                                              m_detectedLines.clear();
+                                          }}
+                                     });
 }
 
 void ControlPanel::visualizeDarkLines(const std::vector<ImageProcessor::DarkLine>& lines) {
@@ -716,15 +724,16 @@ void ControlPanel::visualizeDarkLines(const std::vector<ImageProcessor::DarkLine
         return;
     }
 
-    const QPixmap* currentPixmap = m_imageLabel->pixmap();
-    if (!currentPixmap) {
+    const QPixmap& currentPixmap = m_imageLabel->pixmap();
+    if (currentPixmap.isNull()) {
         QMessageBox::warning(this, "Error", "No image loaded.");
         return;
     }
 
-    QImage image = currentPixmap->toImage();
+    QImage image = currentPixmap.toImage();
     QPainter painter(&image);
     painter.setRenderHint(QPainter::Antialiasing);
+
 
     // 为每条线使用红色
     QPen pen(Qt::red);

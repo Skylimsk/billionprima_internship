@@ -433,228 +433,87 @@ std::vector<ImageProcessor::DarkLine> ImageProcessor::detectDarkLines(
     int height = finalImage.size();
     int width = finalImage[0].size();
 
-    // Step 1: Find bright regions
+    // Step 1: Find bright regions with improved detection
     auto brightRegions = findBrightRegions(brightThreshold);
 
-    // Step 2: Create intensity profile analysis
+    // Step 2: Create a binary mask for dark pixels
     std::vector<std::vector<bool>> darkPixels(height, std::vector<bool>(width, false));
     std::vector<std::vector<bool>> visited(height, std::vector<bool>(width, false));
 
-    // Detect dark pixels with intensity profile analysis
-    for (int y = 1; y < height - 1; ++y) {
-        for (int x = 1; x < width - 1; ++x) {
-            if (!brightRegions[y][x]) continue;
-
-            // Analyze vertical and horizontal profiles
-            std::vector<uint16_t> verticalProfile;
-            std::vector<uint16_t> horizontalProfile;
-
-            // Get vertical profile (7 pixels)
-            for (int dy = -3; dy <= 3; ++dy) {
-                if (y + dy >= 0 && y + dy < height) {
-                    verticalProfile.push_back(finalImage[y + dy][x]);
-                }
+    // Improved dark pixel detection with consideration for thicker lines
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (brightRegions[y][x] && finalImage[y][x] <= darkThreshold) {
+                darkPixels[y][x] = true;
             }
-
-            // Get horizontal profile (7 pixels)
-            for (int dx = -3; dx <= 3; ++dx) {
-                if (x + dx >= 0 && x + dx < width) {
-                    horizontalProfile.push_back(finalImage[y][x + dx]);
-                }
-            }
-
-            // Analyze profiles for multiple line patterns
-            bool isDarkPixel = false;
-
-            // Check for local minima in profiles
-            if (finalImage[y][x] <= darkThreshold) {
-                bool isVerticalMinimum = true;
-                bool isHorizontalMinimum = true;
-
-                // Check if it's a local minimum in vertical profile
-                for (size_t i = 1; i < verticalProfile.size() - 1; ++i) {
-                    if (verticalProfile[i] > verticalProfile[i-1] ||
-                        verticalProfile[i] > verticalProfile[i+1]) {
-                        isVerticalMinimum = false;
-                        break;
-                    }
-                }
-
-                // Check if it's a local minimum in horizontal profile
-                for (size_t i = 1; i < horizontalProfile.size() - 1; ++i) {
-                    if (horizontalProfile[i] > horizontalProfile[i-1] ||
-                        horizontalProfile[i] > horizontalProfile[i+1]) {
-                        isHorizontalMinimum = false;
-                        break;
-                    }
-                }
-
-                isDarkPixel = isVerticalMinimum || isHorizontalMinimum;
-            }
-
-            darkPixels[y][x] = isDarkPixel;
         }
     }
 
-    // Step 3: Cluster Analysis for Multiple Lines
+    // Direction vectors for 8-connected neighborhood
+    const int dx[] = {-1, 1, 0, 0, -1, -1, 1, 1};
+    const int dy[] = {0, 0, -1, 1, -1, 1, -1, 1};
+
+    // Step 3: Enhanced line detection algorithm
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
-            if (!darkPixels[y][x] || visited[y][x]) continue;
+            if (!darkPixels[y][x] || visited[y][x]) {
+                continue;
+            }
 
-            std::vector<std::pair<int, int>> clusterPixels;
+            // Initialize line properties
+            std::vector<std::pair<int, int>> linePixels;
             std::queue<std::pair<int, int>> pixelQueue;
 
             pixelQueue.push({x, y});
             visited[y][x] = true;
-            clusterPixels.push_back({x, y});
+            linePixels.push_back({x, y});
 
-            // Gather connected dark pixels
+            // Breadth-first search for connected dark pixels
             while (!pixelQueue.empty()) {
                 auto [curX, curY] = pixelQueue.front();
                 pixelQueue.pop();
 
-                // Check 8-connected neighbors
-                for (int dy = -1; dy <= 1; ++dy) {
-                    for (int dx = -1; dx <= 1; ++dx) {
-                        if (dx == 0 && dy == 0) continue;
+                for (int dir = 0; dir < 8; ++dir) {
+                    int newX = curX + dx[dir];
+                    int newY = curY + dy[dir];
 
-                        int newX = curX + dx;
-                        int newY = curY + dy;
-
-                        if (newX >= 0 && newX < width && newY >= 0 && newY < height &&
-                            !visited[newY][newX] && darkPixels[newY][newX]) {
-                            visited[newY][newX] = true;
-                            pixelQueue.push({newX, newY});
-                            clusterPixels.push_back({newX, newY});
-                        }
+                    if (newX >= 0 && newX < width && newY >= 0 && newY < height &&
+                        !visited[newY][newX] && darkPixels[newY][newX]) {
+                        visited[newY][newX] = true;
+                        pixelQueue.push({newX, newY});
+                        linePixels.push_back({newX, newY});
                     }
                 }
             }
 
-            // Process cluster if it's large enough
-            if (clusterPixels.size() >= static_cast<size_t>(minLineLength)) {
-                // Find cluster boundaries
+            // Process detected line segment if it meets minimum length requirement
+            if (linePixels.size() >= static_cast<size_t>(std::max(1, minLineLength))) {
+                // Find bounding box of the line
                 int minX = width, minY = height, maxX = 0, maxY = 0;
-                for (const auto& pixel : clusterPixels) {
+                for (const auto& pixel : linePixels) {
                     minX = std::min(minX, pixel.first);
                     maxX = std::max(maxX, pixel.first);
                     minY = std::min(minY, pixel.second);
                     maxY = std::max(maxY, pixel.second);
                 }
 
-                // Analyze cluster for multiple lines
-                std::vector<DarkLine> clusterLines = separateClusterIntoLines(
-                    clusterPixels, minX, maxX, minY, maxY, minLineLength);
+                // Calculate line thickness using improved method
+                int thickness = calculateLineThickness(linePixels, minX, maxX, minY, maxY);
 
-                // Add detected lines from this cluster
-                detectedLines.insert(detectedLines.end(),
-                                     clusterLines.begin(),
-                                     clusterLines.end());
+                // Create line segment
+                detectedLines.push_back({
+                    cv::Point(minX, minY),
+                    cv::Point(maxX, maxY),
+                    thickness
+                });
             }
         }
     }
+
+    // Refine and merge detected lines
+    refineDarkLineDetection(detectedLines);
 
     return detectedLines;
-}
-
-// Helper function to separate clusters into individual lines
-std::vector<ImageProcessor::DarkLine> ImageProcessor::separateClusterIntoLines(
-    const std::vector<std::pair<int, int>>& clusterPixels,
-    int minX, int maxX, int minY, int maxY,
-    int minLineLength) {
-
-    std::vector<DarkLine> separatedLines;
-
-    // Calculate cluster orientation
-    int dx = maxX - minX;
-    int dy = maxY - minY;
-    bool isMoreHorizontal = dx > dy;
-
-    if (isMoreHorizontal) {
-        // Analyze horizontal cluster
-        std::vector<std::vector<int>> verticalProfiles(maxX - minX + 1);
-
-        // Build vertical profiles
-        for (const auto& pixel : clusterPixels) {
-            int x = pixel.first - minX;
-            verticalProfiles[x].push_back(pixel.second - minY);
-        }
-
-        // Find local minima in profiles
-        std::vector<std::vector<int>> linePoints(maxY - minY + 1);
-
-        for (size_t x = 0; x < verticalProfiles.size(); ++x) {
-            if (verticalProfiles[x].empty()) continue;
-
-            // Sort vertical positions
-            std::sort(verticalProfiles[x].begin(), verticalProfiles[x].end());
-
-            // Find gaps between points to separate lines
-            for (size_t i = 0; i < verticalProfiles[x].size(); ++i) {
-                if (i == 0 || verticalProfiles[x][i] - verticalProfiles[x][i-1] > 2) {
-                    // Start of new line or significant gap
-                    linePoints[verticalProfiles[x][i]].push_back(x + minX);
-                }
-            }
-        }
-
-        // Create lines from point groups
-        for (int y = 0; y < maxY - minY + 1; ++y) {
-            if (linePoints[y].size() >= static_cast<size_t>(minLineLength)) {
-                int startX = *std::min_element(linePoints[y].begin(), linePoints[y].end());
-                int endX = *std::max_element(linePoints[y].begin(), linePoints[y].end());
-
-                separatedLines.push_back({
-                    cv::Point(startX, y + minY),
-                    cv::Point(endX, y + minY),
-                    1  // Base thickness
-                });
-            }
-        }
-    } else {
-        // Analyze vertical cluster
-        std::vector<std::vector<int>> horizontalProfiles(maxY - minY + 1);
-
-        // Build horizontal profiles
-        for (const auto& pixel : clusterPixels) {
-            int y = pixel.second - minY;
-            horizontalProfiles[y].push_back(pixel.first - minX);
-        }
-
-        // Find local minima in profiles
-        std::vector<std::vector<int>> linePoints(maxX - minX + 1);
-
-        for (size_t y = 0; y < horizontalProfiles.size(); ++y) {
-            if (horizontalProfiles[y].empty()) continue;
-
-            // Sort horizontal positions
-            std::sort(horizontalProfiles[y].begin(), horizontalProfiles[y].end());
-
-            // Find gaps between points to separate lines
-            for (size_t i = 0; i < horizontalProfiles[y].size(); ++i) {
-                if (i == 0 || horizontalProfiles[y][i] - horizontalProfiles[y][i-1] > 2) {
-                    // Start of new line or significant gap
-                    linePoints[horizontalProfiles[y][i]].push_back(y + minY);
-                }
-            }
-        }
-
-        // Create lines from point groups
-        for (int x = 0; x < maxX - minX + 1; ++x) {
-            if (linePoints[x].size() >= static_cast<size_t>(minLineLength)) {
-                int startY = *std::min_element(linePoints[x].begin(), linePoints[x].end());
-                int endY = *std::max_element(linePoints[x].begin(), linePoints[x].end());
-
-                separatedLines.push_back({
-                    cv::Point(x + minX, startY),
-                    cv::Point(x + minX, endY),
-                    1  // Base thickness
-                });
-            }
-        }
-    }
-
-    return separatedLines;
 }
 
 int ImageProcessor::calculateLineThickness(

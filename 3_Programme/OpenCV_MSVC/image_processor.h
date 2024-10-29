@@ -88,12 +88,6 @@ public:
     void removeDarkLines(const std::vector<DarkLine>& lines);
     void removeFromZeroX(const std::vector<DarkLine>& lines);
 
-    std::vector<DarkLine> detectAllLines(
-        uint16_t brightThreshold,
-        uint16_t darkThreshold,
-        int minLineLength,
-        int clusterDistance);
-
 private:
     std::vector<std::vector<uint16_t>> imgData;
     std::vector<std::vector<uint16_t>> originalImg;
@@ -126,13 +120,7 @@ private:
     cv::Mat prepareImageForLineDetection(uint16_t brightThreshold, uint16_t darkThreshold);
     uint16_t interpolateValue(int x, int y, int margin = 5);
 
-    int calculateLineThickness(const std::vector<std::pair<int, int>>& linePixels,
-                               int minX, int maxX, int minY, int maxY);
 
-    std::vector<DarkLine> separateClusterIntoLines(
-        const std::vector<std::pair<int, int>>& clusterPixels,
-        int minX, int maxX, int minY, int maxY,
-        int minLineLength);
 
 };
 
