@@ -13,7 +13,7 @@
 #include "image_processing_params.h"
 #include "CLAHE.h"
 #include "dark_line.h"
-#include "adjustments.h" // Add this new include
+#include "adjustments.h"
 
 class ImageProcessor {
 public:
@@ -36,6 +36,17 @@ public:
         std::vector<DarkLine> detectedLines;
     };
 
+    enum class SplitMode {
+        ALL_PARTS,
+        LEFT_MOST,    // First two quarters (LeftLeft & LeftRight)
+        RIGHT_MOST    // Last two quarters (RightLeft & RightRight)
+    };
+
+    enum class MergeMethod {
+        WEIGHTED_AVERAGE,
+        MINIMUM_VALUE
+    };
+
     ImageProcessor(QLabel* imageLabel);
 
     void loadTxtImage(const std::string& txtFilePath);
@@ -44,7 +55,7 @@ public:
 
     void processImage();
     void processYXAxis(std::vector<std::vector<uint16_t>>& image, int linesToAvgY, int linesToAvgX);
-    void processAndMergeImageParts();
+    void processAndMergeImageParts(SplitMode splitMode, MergeMethod mergeMethod);
     void applyMedianFilter(std::vector<std::vector<uint16_t>>& image, int filterKernelSize);
     void applyHighPassFilter(std::vector<std::vector<uint16_t>>& image);
 
@@ -80,8 +91,8 @@ public:
     }
 
     std::vector<std::vector<uint16_t>> rotateImage(const std::vector<std::vector<uint16_t>>& image, int angle);
-    void stretchImageY(std::vector<std::vector<uint16_t>>& img, float yStretchFactor);
-    void stretchImageX(std::vector<std::vector<uint16_t>>& img, float xStretchFactor);
+    void stretchImageY(std::vector<std::vector<uint16_t>>& img, float stretchFactor);
+    void stretchImageX(std::vector<std::vector<uint16_t>>& img, float stretchFactor);
     std::vector<std::vector<uint16_t>> distortImage(const std::vector<std::vector<uint16_t>>& image, float distortionFactor, const std::string& direction);
     std::vector<std::vector<uint16_t>> addPadding(const std::vector<std::vector<uint16_t>>& image, int paddingSize);
 
@@ -140,6 +151,12 @@ private:
     bool hasCLAHEBeenApplied;
 
     std::vector<DarkLine> m_detectedLines;
+
+    // Helper methods for merging
+    std::vector<std::vector<uint16_t>> mergeWithMinimum(
+        const std::vector<std::vector<std::vector<uint16_t>>>& parts);
+    std::vector<std::vector<uint16_t>> mergeWithWeightedAverage(
+        const std::vector<std::vector<std::vector<uint16_t>>>& parts);
 };
 
 #endif // IMAGE_PROCESSOR_H

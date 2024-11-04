@@ -256,8 +256,7 @@ void ImageProcessor::processYXAxis(std::vector<std::vector<uint16_t>>& image, in
     }
 }
 
-void ImageProcessor::processAndMergeImageParts() {
-
+void ImageProcessor::processAndMergeImageParts(SplitMode splitMode, MergeMethod mergeMethod) {
     saveCurrentState();
 
     int height = originalImg.size();
@@ -270,6 +269,7 @@ void ImageProcessor::processAndMergeImageParts() {
     std::vector<std::vector<uint16_t>> rightLeft(height, std::vector<uint16_t>(quarterWidth));
     std::vector<std::vector<uint16_t>> rightRight(height, std::vector<uint16_t>(quarterWidth));
 
+    // Copy the parts
     for (int y = 0; y < height; ++y) {
         std::copy(originalImg[y].begin(), originalImg[y].begin() + quarterWidth, leftLeft[y].begin());
         std::copy(originalImg[y].begin() + quarterWidth, originalImg[y].begin() + 2 * quarterWidth, leftRight[y].begin());
@@ -277,49 +277,108 @@ void ImageProcessor::processAndMergeImageParts() {
         std::copy(originalImg[y].begin() + 3 * quarterWidth, originalImg[y].end(), rightRight[y].begin());
     }
 
-
-
     // Process each part for noise detection and removal
-    auto processPart = [&](std::vector<std::vector<uint16_t>>& part, const std::vector<std::vector<uint16_t>>& ) {
-        // Apply stretch based on rotation state
+    auto processPart = [&](std::vector<std::vector<uint16_t>>& part) {
         if (rotationState == 1 || rotationState == 3) {
-            stretchImageX(part, params.yStretchFactor);  // Stretch along X-axis for 90 or 270-degree rotations
+            stretchImageX(part, params.yStretchFactor);
         } else {
-            stretchImageY(part, params.yStretchFactor);  // Stretch along Y-axis otherwise
+            stretchImageY(part, params.yStretchFactor);
         }
     };
 
-    // Process the split parts using neighbouring parts
-    processPart(leftLeft, leftRight);
-    processPart(leftRight, rightLeft);
-    processPart(rightLeft, rightRight);
-    processPart(rightRight, leftLeft);
+    // Process based on split mode
+    switch (splitMode) {
+    case SplitMode::ALL_PARTS:
+        processPart(leftLeft);
+        processPart(leftRight);
+        processPart(rightLeft);
+        processPart(rightRight);
+        break;
+    case SplitMode::LEFT_MOST:
+        processPart(leftLeft);
+        processPart(leftRight);
+        break;
+    case SplitMode::RIGHT_MOST:
+        processPart(rightLeft);
+        processPart(rightRight);
+        break;
+    }
 
-    // Combine parts using a weighted average to preserve details
-    auto weightedAverageImages = [](const std::vector<std::vector<uint16_t>>& img1,
-                                    const std::vector<std::vector<uint16_t>>& img2,
-                                    const std::vector<std::vector<uint16_t>>& img3,
-                                    const std::vector<std::vector<uint16_t>>& img4) {
-        int height = img1.size();
-        int width = img1[0].size();
-        std::vector<std::vector<uint16_t>> result(height, std::vector<uint16_t>(width));
+    // Create result based on split mode
+    std::vector<std::vector<uint16_t>> result;
 
-        for (int y = 0; y < height; ++y) {
-            for (int x = 0; x < width; ++x) {
-                result[y][x] = static_cast<uint16_t>((
-                                                         static_cast<uint32_t>(img1[y][x]) +
-                                                         static_cast<uint32_t>(img2[y][x]) +
-                                                         static_cast<uint32_t>(img3[y][x]) +
-                                                         static_cast<uint32_t>(img4[y][x])) / 4);  // Weighted average of all four parts
+    if (mergeMethod == MergeMethod::MINIMUM_VALUE) {
+        switch (splitMode) {
+        case SplitMode::ALL_PARTS:
+            result = mergeWithMinimum({leftLeft, leftRight, rightLeft, rightRight});
+            break;
+        case SplitMode::LEFT_MOST:
+            result = mergeWithMinimum({leftLeft, leftRight});
+            break;
+        case SplitMode::RIGHT_MOST:
+            result = mergeWithMinimum({rightLeft, rightRight});
+            break;
+        }
+    } else { // WEIGHTED_AVERAGE
+        switch (splitMode) {
+        case SplitMode::ALL_PARTS:
+            result = mergeWithWeightedAverage({leftLeft, leftRight, rightLeft, rightRight});
+            break;
+        case SplitMode::LEFT_MOST:
+            result = mergeWithWeightedAverage({leftLeft, leftRight});
+            break;
+        case SplitMode::RIGHT_MOST:
+            result = mergeWithWeightedAverage({rightLeft, rightRight});
+            break;
+        }
+    }
+
+    // Replace original image with merged result
+    finalImage = result;
+}
+
+// Add these helper methods to ImageProcessor class:
+
+std::vector<std::vector<uint16_t>> ImageProcessor::mergeWithMinimum(
+    const std::vector<std::vector<std::vector<uint16_t>>>& parts) {
+
+    if (parts.empty()) return std::vector<std::vector<uint16_t>>();
+
+    int height = parts[0].size();
+    int width = parts[0][0].size();
+    std::vector<std::vector<uint16_t>> result(height, std::vector<uint16_t>(width, 65535));
+
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            uint16_t minVal = 65535;
+            for (const auto& part : parts) {
+                minVal = std::min(minVal, part[y][x]);
             }
+            result[y][x] = minVal;
         }
+    }
+    return result;
+}
 
-        return result;
-    };
+std::vector<std::vector<uint16_t>> ImageProcessor::mergeWithWeightedAverage(
+    const std::vector<std::vector<std::vector<uint16_t>>>& parts) {
 
-    // Merge the processed parts into the final image
-    finalImage = weightedAverageImages(leftLeft, leftRight, rightLeft, rightRight);
+    if (parts.empty()) return std::vector<std::vector<uint16_t>>();
 
+    int height = parts[0].size();
+    int width = parts[0][0].size();
+    std::vector<std::vector<uint16_t>> result(height, std::vector<uint16_t>(width));
+
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            uint32_t sum = 0;
+            for (const auto& part : parts) {
+                sum += part[y][x];
+            }
+            result[y][x] = static_cast<uint16_t>(sum / parts.size());
+        }
+    }
+    return result;
 }
 
 void ImageProcessor::applyMedianFilter(std::vector<std::vector<uint16_t>>& image, int filterKernelSize) {
@@ -478,7 +537,8 @@ void ImageProcessor::stretchImageY(std::vector<std::vector<uint16_t>>& img, floa
         float weight = srcY - yLow;
 
         for (int x = 0; x < width; ++x) {
-            stretchedImg[y][x] = static_cast<uint16_t>((1 - weight) * img[yLow][x] + weight * img[yHigh][x]);
+            stretchedImg[y][x] = static_cast<uint16_t>(
+                (1 - weight) * img[yLow][x] + weight * img[yHigh][x]);
         }
     }
 
@@ -502,7 +562,8 @@ void ImageProcessor::stretchImageX(std::vector<std::vector<uint16_t>>& img, floa
             int xHigh = std::min(xLow + 1, origWidth - 1);
             float weight = srcX - xLow;
 
-            stretchedImg[y][x] = static_cast<uint16_t>((1 - weight) * img[y][xLow] + weight * img[y][xHigh]);
+            stretchedImg[y][x] = static_cast<uint16_t>(
+                (1 - weight) * img[y][xLow] + weight * img[y][xHigh]);
         }
     }
 

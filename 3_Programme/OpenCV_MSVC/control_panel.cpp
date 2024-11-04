@@ -289,13 +289,83 @@ void ControlPanel::setupBasicOperations()
                                                     updateLastAction("Calibration", QString("Y: %1, X: %2").arg(linesToProcessY).arg(linesToProcessX));
                                                 }
                                             }},
-                                           {"Split & Merge", [this]() {
+                                        {"Split & Merge", [this]() {
                                              resetDetectedLines();
-                                                m_imageProcessor.processAndMergeImageParts();
-                                                m_imageLabel->clearSelection();
-                                                updateImageDisplay();
-                                                updateLastAction("Split & Merge");
-                                            }}
+
+                                             // Create dialog for options
+                                             QDialog dialog(this);
+                                             dialog.setWindowTitle("Split & Merge Options");
+                                             QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+                                             // Split mode selection
+                                             QGroupBox* splitBox = new QGroupBox("Split Mode");
+                                             QVBoxLayout* splitLayout = new QVBoxLayout(splitBox);
+                                             QRadioButton* allPartsRadio = new QRadioButton("All Parts");
+                                             QRadioButton* leftMostRadio = new QRadioButton("Left Most (Parts 1-2)");
+                                             QRadioButton* rightMostRadio = new QRadioButton("Right Most (Parts 3-4)");
+                                             allPartsRadio->setChecked(true);
+                                             splitLayout->addWidget(allPartsRadio);
+                                             splitLayout->addWidget(leftMostRadio);
+                                             splitLayout->addWidget(rightMostRadio);
+                                             layout->addWidget(splitBox);
+
+                                             // Merge method selection
+                                             QGroupBox* mergeBox = new QGroupBox("Merge Method");
+                                             QVBoxLayout* mergeLayout = new QVBoxLayout(mergeBox);
+                                             QRadioButton* weightedAvgRadio = new QRadioButton("Weighted Average");
+                                             QRadioButton* minValueRadio = new QRadioButton("Minimum Value");
+                                             weightedAvgRadio->setChecked(true);
+                                             mergeLayout->addWidget(weightedAvgRadio);
+                                             mergeLayout->addWidget(minValueRadio);
+                                             layout->addWidget(mergeBox);
+
+                                             // Add OK and Cancel buttons
+                                             QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                                                 QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+                                                 Qt::Horizontal, &dialog);
+                                             layout->addWidget(buttonBox);
+
+                                             connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                                             connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+                                             if (dialog.exec() == QDialog::Accepted) {
+                                                 ImageProcessor::SplitMode splitMode;
+                                                 if (leftMostRadio->isChecked()) {
+                                                     splitMode = ImageProcessor::SplitMode::LEFT_MOST;
+                                                 } else if (rightMostRadio->isChecked()) {
+                                                     splitMode = ImageProcessor::SplitMode::RIGHT_MOST;
+                                                 } else {
+                                                     splitMode = ImageProcessor::SplitMode::ALL_PARTS;
+                                                 }
+
+                                                 ImageProcessor::MergeMethod mergeMethod = minValueRadio->isChecked() ?
+                                                                                               ImageProcessor::MergeMethod::MINIMUM_VALUE :
+                                                                                               ImageProcessor::MergeMethod::WEIGHTED_AVERAGE;
+
+                                                 m_imageProcessor.processAndMergeImageParts(splitMode, mergeMethod);
+                                                 m_imageLabel->clearSelection();
+                                                 updateImageDisplay();
+
+                                                 // Update last action with the selected options
+                                                 QString modeStr;
+                                                 switch (splitMode) {
+                                                 case ImageProcessor::SplitMode::LEFT_MOST:
+                                                     modeStr = "Left Most (Parts 1-2)";
+                                                     break;
+                                                 case ImageProcessor::SplitMode::RIGHT_MOST:
+                                                     modeStr = "Right Most (Parts 3-4)";
+                                                     break;
+                                                 default:
+                                                     modeStr = "All Parts";
+                                                 }
+
+                                                 QString methodStr = mergeMethod == ImageProcessor::MergeMethod::MINIMUM_VALUE ?
+                                                                         "Minimum Value" : "Weighted Average";
+
+                                                 updateLastAction("Split & Merge",
+                                                                  QString("Mode: %1, Method: %2").arg(modeStr).arg(methodStr));
+                                             }
+                                         }}
                                        });
 }
 
@@ -327,16 +397,64 @@ void ControlPanel::setupFilteringOperations() {
 void ControlPanel::setupAdvancedOperations()
 {
     createGroupBox("Advanced Operations", {
-                                              {"Stretch", [this]() {
+                                           {"Stretch", [this]() {
                                                 resetDetectedLines();
-                                                   auto [stretchFactor, ok] = showInputDialog("Stretch Factor", "Enter stretch factor:", 1.5, 0.1, 10.0);
-                                                   if (ok) {
-                                                       m_imageProcessor.stretchImageY(const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()), stretchFactor);
-                                                       m_imageLabel->clearSelection();
-                                                       updateImageDisplay();
-                                                       updateLastAction("Stretch", QString::number(stretchFactor, 'f', 2));
-                                                   }
-                                               }},
+
+                                                // Create dialog for stretch options
+                                                QDialog dialog(this);
+                                                dialog.setWindowTitle("Stretch Options");
+                                                QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+                                                // Direction selection
+                                                QGroupBox* directionBox = new QGroupBox("Stretch Direction");
+                                                QVBoxLayout* directionLayout = new QVBoxLayout(directionBox);
+                                                QRadioButton* verticalRadio = new QRadioButton("Vertical");
+                                                QRadioButton* horizontalRadio = new QRadioButton("Horizontal");
+                                                verticalRadio->setChecked(true);
+                                                directionLayout->addWidget(verticalRadio);
+                                                directionLayout->addWidget(horizontalRadio);
+                                                layout->addWidget(directionBox);
+
+                                                // Stretch factor input
+                                                QLabel* factorLabel = new QLabel("Stretch Factor:");
+                                                QDoubleSpinBox* factorSpinBox = new QDoubleSpinBox();
+                                                factorSpinBox->setRange(0.1, 10.0);
+                                                factorSpinBox->setValue(1.5);
+                                                factorSpinBox->setSingleStep(0.1);
+                                                layout->addWidget(factorLabel);
+                                                layout->addWidget(factorSpinBox);
+
+                                                // Add OK and Cancel buttons
+                                                QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                                                    QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+                                                    Qt::Horizontal, &dialog);
+                                                layout->addWidget(buttonBox);
+
+                                                connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                                                connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+                                                if (dialog.exec() == QDialog::Accepted) {
+                                                    float stretchFactor = factorSpinBox->value();
+                                                    bool isVertical = verticalRadio->isChecked();
+
+                                                    if (isVertical) {
+                                                        m_imageProcessor.stretchImageY(
+                                                            const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()),
+                                                            stretchFactor);
+                                                    } else {
+                                                        m_imageProcessor.stretchImageX(
+                                                            const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()),
+                                                            stretchFactor);
+                                                    }
+
+                                                    m_imageLabel->clearSelection();
+                                                    updateImageDisplay();
+                                                    updateLastAction("Stretch",
+                                                                     QString("%1 - Factor: %2")
+                                                                         .arg(isVertical ? "Vertical" : "Horizontal")
+                                                                         .arg(stretchFactor, 0, 'f', 2));
+                                                }
+                                            }},
                                               {"Padding", [this]() {
                                                 resetDetectedLines();
                                                    auto [paddingSize, ok] = showInputDialog("Padding Size", "Enter padding size:", 10, 1, 1000);

@@ -12,31 +12,36 @@ msvc {
     QMAKE_CXXFLAGS_WARN_ON -= -W3
     QMAKE_CXXFLAGS_WARN_ON -= -W4
 
-    QMAKE_CXXFLAGS += /wd4100  # unreferenced formal parameter
-    QMAKE_CXXFLAGS += /wd4702  # unreachable code
-    QMAKE_CXXFLAGS += /wd4389  # signed/unsigned mismatch comparison
-
     # Add our desired warning level and disable specific warnings
-    QMAKE_CXXFLAGS += /W4         # Use W4 consistently
-    QMAKE_CXXFLAGS += /wd4819     # Character encoding warning
-    QMAKE_CXXFLAGS += /wd4251     # DLL interface warning
-    QMAKE_CXXFLAGS += /wd4127     # Conditional expression is constant
-    QMAKE_CXXFLAGS += /wd4100     # Unreferenced formal parameter
-    QMAKE_CXXFLAGS += /wd4458     # Declaration hides class member
-    QMAKE_CXXFLAGS += /wd4267     # Conversion from size_t to int
-    QMAKE_CXXFLAGS += /wd4244     # Conversion from double to float
-    QMAKE_CXXFLAGS += /wd4005     # Macro redefinition
-    QMAKE_CXXFLAGS += /wd4042     # Object specified more than once
+    QMAKE_CXXFLAGS += /W4                  # Use W4 consistently
+    QMAKE_CXXFLAGS += /wd4100             # unreferenced formal parameter
+    QMAKE_CXXFLAGS += /wd4189             # local variable is initialized but not referenced
+    QMAKE_CXXFLAGS += /wd4456             # declaration hides previous local declaration
+    QMAKE_CXXFLAGS += /wd4458             # declaration hides class member
+    QMAKE_CXXFLAGS += /wd4996             # deprecated functions and types (includes STL4043)
+    QMAKE_CXXFLAGS += /wd4819             # Character encoding warning
+    QMAKE_CXXFLAGS += /wd4251             # DLL interface warning
+    QMAKE_CXXFLAGS += /wd4127             # Conditional expression is constant
+    QMAKE_CXXFLAGS += /wd4267             # Conversion from size_t to int
+    QMAKE_CXXFLAGS += /wd4244             # Conversion from double to float
+    QMAKE_CXXFLAGS += /wd4005             # Macro redefinition
+    QMAKE_CXXFLAGS += /wd4042             # Object specified more than once
+    QMAKE_CXXFLAGS += /wd4101             # unreferenced local variable
+
+    # STL specific warnings suppression
+    DEFINES += _SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING    # Suppress array iterator deprecation
+    DEFINES += _SILENCE_ALL_MS_EXT_DEPRECATION_WARNINGS         # Suppress all MS extension deprecation warnings
 
     # Optimization and other flags
-    QMAKE_CXXFLAGS += /MP
-    QMAKE_CXXFLAGS += /permissive-
-    QMAKE_CXXFLAGS += /Zc:wchar_t
+    QMAKE_CXXFLAGS += /MP                 # Multi-processor compilation
+    QMAKE_CXXFLAGS += /permissive-        # Standards conformance
+    QMAKE_CXXFLAGS += /Zc:wchar_t         # wchar_t is native type
 
-    QMAKE_CXXFLAGS_RELEASE += /O2
-    QMAKE_CXXFLAGS_RELEASE += /Oi
-    QMAKE_CXXFLAGS_RELEASE += /GL
-    QMAKE_LFLAGS_RELEASE += /LTCG
+    # Release configuration
+    QMAKE_CXXFLAGS_RELEASE += /O2         # Maximum optimization
+    QMAKE_CXXFLAGS_RELEASE += /Oi         # Enable intrinsic functions
+    QMAKE_CXXFLAGS_RELEASE += /GL         # Whole program optimization
+    QMAKE_LFLAGS_RELEASE += /LTCG         # Link-time code generation
 
     # Definitions
     DEFINES += _CRT_SECURE_NO_WARNINGS
@@ -79,7 +84,7 @@ CONFIG(debug, debug|release) {
 # QCustomPlot configuration
 INCLUDEPATH += $$PWD/third_party/qcustomplot
 
-# Remove duplicate entries
+# Sources and Headers
 SOURCES = \
     ThreadLogger.cpp \
     adjustments.cpp \
