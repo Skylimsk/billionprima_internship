@@ -711,3 +711,4 @@ QSize ImageProcessor::getZoomedImageDimensions() const {
     return QSize(static_cast<int>(width * currentZoomLevel),
                  static_cast<int>(height * currentZoomLevel));
 }
+

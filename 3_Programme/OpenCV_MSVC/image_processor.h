@@ -46,7 +46,6 @@ public:
         WEIGHTED_AVERAGE,
         MINIMUM_VALUE
     };
-
     ImageProcessor(QLabel* imageLabel);
 
     void loadTxtImage(const std::string& txtFilePath);
