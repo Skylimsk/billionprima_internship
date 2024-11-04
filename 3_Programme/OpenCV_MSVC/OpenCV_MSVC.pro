@@ -81,6 +81,8 @@ INCLUDEPATH += $$PWD/third_party/qcustomplot
 
 # Remove duplicate entries
 SOURCES = \
+    ThreadLogger.cpp \
+    adjustments.cpp \
     dark_line.cpp \
     main.cpp \
     control_panel.cpp \
@@ -91,6 +93,8 @@ SOURCES = \
     third_party/qcustomplot/qcustomplot.cpp
 
 HEADERS = \
+    ThreadLogger.h \
+    adjustments.h \
     control_panel.h \
     dark_line.h \
     image_label.h \

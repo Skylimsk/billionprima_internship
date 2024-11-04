@@ -1,4 +1,5 @@
 #include "control_panel.h"
+#include "adjustments.h"
 #include <QPushButton>
 #include <QGroupBox>
 #include <QInputDialog>
@@ -21,8 +22,9 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
     m_imageLabel(imageLabel),
     m_lastGpuTime(-1),
     m_lastCpuTime(-1),
-    m_hasGpuClaheTime(false),
-    m_hasCpuClaheTime(false)
+    m_hasCpuClaheTime(false),
+    m_hasGpuClaheTime(false)
+
 {
     m_mainLayout = new QVBoxLayout(this);
 
@@ -40,7 +42,7 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
     setupFilteringOperations();
     setupAdvancedOperations();
     setupCLAHEOperations();
-    setupDarkLineDetection();
+    setupBlackLineDetection();
     setupGlobalAdjustments();
     setupRegionalAdjustments();
 
@@ -129,15 +131,15 @@ void ControlPanel::setupPixelInfoLabel()
 void ControlPanel::updateLastAction(const QString& action, const QString& parameters)
 {
     m_lastActionLabel->setText("Last Action: " + action);
-
     if (parameters.isEmpty()) {
         m_lastActionParamsLabel->clear();
         m_lastActionParamsLabel->setVisible(false);
     } else {
         QString prefix;
-        // Check if the action is Load Image or Save Image
         if (action == "Load Image" || action == "Save Image") {
             prefix = "File Name: ";
+        } else if (action == "Detect Black Lines" || action == "Remove Black Lines") {
+            prefix = "Line Info: ";
         } else {
             prefix = "Parameters: ";
         }
@@ -187,6 +189,7 @@ void ControlPanel::setupFileOperations()
                                                QString fileName = QFileDialog::getOpenFileName(this, "Open Text File", "", "Text Files (*.txt)");
                                                if (!fileName.isEmpty()) {
                                                    try {
+                                                       resetDetectedLines();
                                                        m_imageProcessor.loadTxtImage(fileName.toStdString());
                                                        m_imageLabel->clearSelection();
                                                        updateImageDisplay();
@@ -241,6 +244,7 @@ void ControlPanel::setupBasicOperations()
 {
     createGroupBox("Basic Operations", {
                                            {"Crop", [this]() {
+                                             resetDetectedLines();
                                                 if (m_imageLabel->isRegionSelected()) {
                                                     QRect selectedRegion = m_imageLabel->getSelectedRegion();
                                                     QRect normalizedRegion = selectedRegion.normalized();
@@ -257,6 +261,7 @@ void ControlPanel::setupBasicOperations()
                                                 }
                                             }},
                                            {"Rotate CW", [this]() {
+                                             resetDetectedLines();
                                                 auto rotatedImage = m_imageProcessor.rotateImage(m_imageProcessor.getFinalImage(), 90);
                                                 m_imageProcessor.updateAndSaveFinalImage(rotatedImage);
                                                 m_imageLabel->clearSelection();
@@ -264,6 +269,7 @@ void ControlPanel::setupBasicOperations()
                                                 updateLastAction("Rotate Clockwise");
                                             }},
                                            {"Rotate CCW", [this]() {
+                                             resetDetectedLines();
                                                 auto rotatedImage = m_imageProcessor.rotateImage(m_imageProcessor.getFinalImage(), 270);
                                                 m_imageProcessor.updateAndSaveFinalImage(rotatedImage);
                                                 m_imageLabel->clearSelection();
@@ -271,6 +277,7 @@ void ControlPanel::setupBasicOperations()
                                                 updateLastAction("Rotate CCW");
                                             }},
                                            {"Calibration", [this]() {
+                                             resetDetectedLines();
                                                 auto [linesToProcessY, yOk] = showInputDialog("Calibration", "Enter lines to process for Y-axis:", 10, 1, 1000);
                                                 if (!yOk) return;
 
@@ -283,6 +290,7 @@ void ControlPanel::setupBasicOperations()
                                                 }
                                             }},
                                            {"Split & Merge", [this]() {
+                                             resetDetectedLines();
                                                 m_imageProcessor.processAndMergeImageParts();
                                                 m_imageLabel->clearSelection();
                                                 updateImageDisplay();
@@ -294,6 +302,7 @@ void ControlPanel::setupBasicOperations()
 void ControlPanel::setupFilteringOperations() {
     createGroupBox("Filtering Operations", {
                                                {"Median Filter", [this]() {
+                                                 resetDetectedLines();
                                                     auto [filterKernelSize, ok] = showInputDialog("Median Filter", "Enter kernel size:", 3, 1, 21);
                                                     if (ok) {
                                                         m_imageProcessor.applyMedianFilter(
@@ -306,6 +315,7 @@ void ControlPanel::setupFilteringOperations() {
                                                     }
                                                 }},
                                                {"High-Pass Filter", [this]() {
+                                                 resetDetectedLines();
                                                     m_imageProcessor.applyHighPassFilter(const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()));
                                                     m_imageLabel->clearSelection();
                                                     updateImageDisplay();
@@ -318,6 +328,7 @@ void ControlPanel::setupAdvancedOperations()
 {
     createGroupBox("Advanced Operations", {
                                               {"Stretch", [this]() {
+                                                resetDetectedLines();
                                                    auto [stretchFactor, ok] = showInputDialog("Stretch Factor", "Enter stretch factor:", 1.5, 0.1, 10.0);
                                                    if (ok) {
                                                        m_imageProcessor.stretchImageY(const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()), stretchFactor);
@@ -327,6 +338,7 @@ void ControlPanel::setupAdvancedOperations()
                                                    }
                                                }},
                                               {"Padding", [this]() {
+                                                resetDetectedLines();
                                                    auto [paddingSize, ok] = showInputDialog("Padding Size", "Enter padding size:", 10, 1, 1000);
                                                    if (ok) {
                                                        auto paddedImage = m_imageProcessor.addPadding(m_imageProcessor.getFinalImage(), paddingSize);
@@ -337,6 +349,7 @@ void ControlPanel::setupAdvancedOperations()
                                                    }
                                                }},
                                               {"Apply Distortion", [this]() {
+                                                resetDetectedLines();
                                                    QStringList directions = {"Left", "Right", "Top", "Bottom"};
                                                    bool ok;
                                                    QString selectedDirection = QInputDialog::getItem(this, "Distortion Direction", "Select direction:", directions, 0, false, &ok);
@@ -357,6 +370,7 @@ void ControlPanel::setupAdvancedOperations()
 void ControlPanel::setupCLAHEOperations() {
     createGroupBox("CLAHE Operations", {
                                            {"CLAHE (GPU)", [this]() {
+                                             resetDetectedLines();
                                                 auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 100.0);
                                                 if (!clipOk) return;
 
@@ -383,6 +397,7 @@ void ControlPanel::setupCLAHEOperations() {
                                             }},
 
                                            {"CLAHE (CPU)", [this]() {
+                                             resetDetectedLines();
                                                 auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 100.0);
                                                 if (!clipOk) return;
 
@@ -409,6 +424,7 @@ void ControlPanel::setupCLAHEOperations() {
                                             }},
 
                                            {"Threshold CLAHE (GPU)", [this]() {
+                                             resetDetectedLines();
                                                 auto [threshold, thresholdOk] = showInputDialog("Threshold", "Enter threshold value:", 5000, 0, 65535);
                                                 if (!thresholdOk) return;
 
@@ -440,6 +456,7 @@ void ControlPanel::setupCLAHEOperations() {
                                             }},
 
                                            {"Threshold CLAHE (CPU)", [this]() {
+                                             resetDetectedLines();
                                                 auto [threshold, thresholdOk] = showInputDialog("Threshold", "Enter threshold value:", 5000, 0, 65535);
                                                 if (!thresholdOk) return;
 
@@ -476,27 +493,30 @@ void ControlPanel::setupGlobalAdjustments()
 {
     createGroupBox("Global Adjustments", {
                                              {"Overall Gamma", [this]() {
+                                                  resetDetectedLines();
                                                   auto [gammaValue, ok] = showInputDialog("Overall Gamma", "Enter gamma value:", 1.0, 0.1, 10.0);
                                                   if (ok) {
-                                                      m_imageProcessor.adjustGammaOverall(const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()), gammaValue);
+                                                      m_imageProcessor.adjustGammaOverall(gammaValue);  // Use the new wrapper method
                                                       m_imageLabel->clearSelection();
                                                       updateImageDisplay();
                                                       updateLastAction("Overall Gamma", QString::number(gammaValue, 'f', 2));
                                                   }
                                               }},
                                              {"Overall Sharpen", [this]() {
+                                                  resetDetectedLines();
                                                   auto [sharpenStrength, ok] = showInputDialog("Overall Sharpen", "Enter sharpen strength:", 1.0, 0.1, 10.0);
                                                   if (ok) {
-                                                      m_imageProcessor.sharpenImage(const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()), sharpenStrength);
+                                                      m_imageProcessor.sharpenImage(sharpenStrength);  // Use the new wrapper method
                                                       m_imageLabel->clearSelection();
                                                       updateImageDisplay();
                                                       updateLastAction("Overall Sharpen", QString::number(sharpenStrength, 'f', 2));
                                                   }
                                               }},
                                              {"Overall Contrast", [this]() {
+                                                  resetDetectedLines();
                                                   auto [contrastFactor, ok] = showInputDialog("Overall Contrast", "Enter contrast factor:", 1.0, 0.1, 10.0);
                                                   if (ok) {
-                                                      m_imageProcessor.adjustContrast(const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()), contrastFactor);
+                                                      m_imageProcessor.adjustContrast(contrastFactor);  // Use the new wrapper method
                                                       m_imageLabel->clearSelection();
                                                       updateImageDisplay();
                                                       updateLastAction("Overall Contrast", QString::number(contrastFactor, 'f', 2));
@@ -509,11 +529,12 @@ void ControlPanel::setupRegionalAdjustments()
 {
     createGroupBox("Regional Adjustments", {
                                                {"Region Gamma", [this]() {
+                                                    resetDetectedLines();
                                                     if (m_imageLabel->isRegionSelected()) {
                                                         auto [gamma, ok] = showInputDialog("Region Gamma", "Enter gamma value:", 1.0, 0.1, 10.0);
                                                         if (ok) {
                                                             QRect selectedRegion = m_imageLabel->getSelectedRegion();
-                                                            m_imageProcessor.adjustGammaForSelectedRegion(gamma, selectedRegion);
+                                                            m_imageProcessor.adjustGammaForSelectedRegion(gamma, selectedRegion);  // Use the new wrapper method
                                                             m_imageLabel->clearSelection();
                                                             updateImageDisplay();
                                                             updateLastAction("Region Gamma", QString::number(gamma, 'f', 2));
@@ -523,11 +544,12 @@ void ControlPanel::setupRegionalAdjustments()
                                                     }
                                                 }},
                                                {"Region Sharpen", [this]() {
+                                                    resetDetectedLines();
                                                     if (m_imageLabel->isRegionSelected()) {
                                                         auto [sharpenStrength, ok] = showInputDialog("Region Sharpen", "Enter sharpen strength:", 0.5, 0.1, 5.0);
                                                         if (ok) {
                                                             QRect selectedRegion = m_imageLabel->getSelectedRegion();
-                                                            m_imageProcessor.applySharpenToRegion(sharpenStrength, selectedRegion);
+                                                            m_imageProcessor.applySharpenToRegion(sharpenStrength, selectedRegion);  // Use the new wrapper method
                                                             m_imageLabel->clearSelection();
                                                             updateImageDisplay();
                                                             updateLastAction("Region Sharpen", QString::number(sharpenStrength, 'f', 2));
@@ -537,11 +559,12 @@ void ControlPanel::setupRegionalAdjustments()
                                                     }
                                                 }},
                                                {"Region Contrast", [this]() {
+                                                    resetDetectedLines();
                                                     if (m_imageLabel->isRegionSelected()) {
                                                         auto [contrastFactor, ok] = showInputDialog("Region Contrast", "Enter contrast factor:", 1.5, 0.1, 5.0);
                                                         if (ok) {
                                                             QRect selectedRegion = m_imageLabel->getSelectedRegion();
-                                                            m_imageProcessor.applyContrastToRegion(contrastFactor, selectedRegion);
+                                                            m_imageProcessor.applyContrastToRegion(contrastFactor, selectedRegion);  // Use the new wrapper method
                                                             m_imageLabel->clearSelection();
                                                             updateImageDisplay();
                                                             updateLastAction("Region Contrast", QString::number(contrastFactor, 'f', 2));
@@ -549,7 +572,7 @@ void ControlPanel::setupRegionalAdjustments()
                                                     } else {
                                                         QMessageBox::information(this, "Region Contrast", "Please select a region first.");
                                                     }
-                                                }},
+                                                }}
                                            });
 }
 
@@ -587,13 +610,61 @@ void ControlPanel::createGroupBox(const QString& title, const std::vector<std::p
     m_scrollLayout->addWidget(groupBox);
 }
 
-void ControlPanel::updateImageDisplay()
-{
+void ControlPanel::setupBlackLineDetection() {
+    createGroupBox("Dark Line Detection", {  // Renamed from "Black Line Detection"
+                                           {"Detect Black Lines", [this]() {
+                                                m_imageProcessor.saveCurrentState();
+                                                m_detectedLines = m_imageProcessor.detectDarkLines();
+                                                updateImageDisplay();
+
+                                                // Format coordinates and weights info
+                                                QStringList lineInfo;
+                                                for (const auto& line : m_detectedLines) {
+                                                    if (line.isVertical) {
+                                                        lineInfo << QString("(%1,0) - Line Weight: %2").arg(line.x).arg(line.width);
+                                                    } else {
+                                                        lineInfo << QString("(0,%1) - Line Weight: %2").arg(line.y).arg(line.width);
+                                                    }
+                                                }
+
+                                                // Update labels
+                                                updateLastAction("Detect Black Lines", lineInfo.join(", "));
+                                            }},
+
+                                           {"Remove Black Lines", [this]() {
+                                                if (m_detectedLines.empty()) {
+                                                    QMessageBox::information(this, "Remove Black Lines",
+                                                                             "Please detect black lines first.");
+                                                    return;
+                                                }
+
+                                                // Store line info before removal
+                                                QStringList removedLines;
+                                                for (const auto& line : m_detectedLines) {
+                                                    if (line.isVertical) {
+                                                        removedLines << QString("(%1,0) - Line Weight: %2").arg(line.x).arg(line.width);
+                                                    } else {
+                                                        removedLines << QString("(0,%1) - Line Weight: %2").arg(line.y).arg(line.width);
+                                                    }
+                                                }
+
+                                                m_imageProcessor.removeDarkLines(m_detectedLines);
+                                                m_detectedLines.clear();
+                                                updateImageDisplay();
+
+                                                // Update labels with removed line information
+                                                updateLastAction("Remove Black Lines", removedLines.join(", "));
+                                            }}
+                                          });
+}
+
+void ControlPanel::updateImageDisplay() {
     const auto& finalImage = m_imageProcessor.getFinalImage();
     if (!finalImage.empty()) {
         int height = finalImage.size();
         int width = finalImage[0].size();
         QImage image(width, height, QImage::Format_Grayscale16);
+        // Copy image data
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 uint16_t pixelValue = finalImage[y][x];
@@ -601,174 +672,41 @@ void ControlPanel::updateImageDisplay()
             }
         }
         QPixmap pixmap = QPixmap::fromImage(image);
-
+        QPainter painter(&pixmap);
+        painter.setRenderHint(QPainter::Antialiasing);
+        // Draw detected black lines with different colors based on context
+        const auto& detectedLines = m_imageProcessor.getDetectedLines();
+        if (!detectedLines.empty()) {
+            for (const auto& line : detectedLines) {
+                // 根据线条类型选择颜色：黄色表示物体内的线条，红色表示孤立线条
+                QColor lineColor = line.inObject ? Qt::blue : Qt::red;
+                painter.setPen(QPen(lineColor, 2, Qt::SolidLine));
+                if (line.isVertical) {
+                    QRect lineRect(line.x, 0, line.width, height - 1);
+                    painter.drawRect(lineRect);
+                } else {
+                    QRect lineRect(0, line.y, width - 1, line.width);
+                    painter.drawRect(lineRect);
+                }
+            }
+        }
+        // Draw selection rectangle if exists
         if (m_imageLabel->isRegionSelected()) {
-            QPainter painter(&pixmap);
-            painter.setPen(QPen(Qt::red, 2));
+            painter.setPen(QPen(Qt::blue, 2));  // Changed to blue to distinguish from line markers
             painter.drawRect(m_imageLabel->getSelectedRegion());
         }
-
+        painter.end();
         m_imageLabel->setPixmap(pixmap);
         m_imageLabel->setFixedSize(pixmap.size());
-
-        // Update histogram with new image data
-        m_histogram->updateHistogram(finalImage);
+        // Update histogram if visible
+        if (m_histogram->isVisible()) {
+            m_histogram->updateHistogram(finalImage);
+        }
     }
 }
 
-void ControlPanel::setupDarkLineDetection() {
-    createGroupBox("Line Detection", {
-                                         {"Detect Single Lines", [this]() {
-                                              auto [brightThreshold, brightOk] = showInputDialog("Single Line Detection",
-                                                                                                 "Enter brightness threshold (40000-65000):", 60000, 40000, 65000);
-                                              if (!brightOk) return;
-
-                                              auto [darkThreshold, darkOk] = showInputDialog("Single Line Detection",
-                                                                                             "Enter darkness threshold (0-10000):", 0, 0, 10000);
-                                              if (!darkOk) return;
-
-                                              auto [minLength, lengthOk] = showInputDialog("Single Line Detection",
-                                                                                           "Enter minimum line length:", 20, 0.1, 1000);
-                                              if (!lengthOk) return;
-
-                                              m_detectedLines = m_imageProcessor.detectDarkLines(
-                                                  static_cast<uint16_t>(brightThreshold),
-                                                  static_cast<uint16_t>(darkThreshold),
-                                                  static_cast<int>(minLength));
-
-                                              // Visualize the detected single lines
-                                              if (m_detectedLines.empty()) {
-                                                  QMessageBox::information(this, "Single Line Detection", "No single lines found.");
-                                                  return;
-                                              }
-
-                                              const QPixmap& currentPixmap = m_imageLabel->pixmap();
-                                              if (currentPixmap.isNull()) {
-                                                  QMessageBox::warning(this, "Error", "No image loaded.");
-                                                  return;
-                                              }
-
-                                              QImage image = currentPixmap.toImage();
-                                              QPainter painter(&image);
-                                              painter.setRenderHint(QPainter::Antialiasing);
-
-                                              QPen pen(Qt::blue);  // Use blue for single lines
-                                              pen.setWidth(2);
-                                              painter.setPen(pen);
-
-                                              QString detailText = QString("Found %1 single lines:\n\n").arg(m_detectedLines.size());
-
-                                              for (size_t i = 0; i < m_detectedLines.size(); ++i) {
-                                                  const auto& line = m_detectedLines[i];
-                                                  painter.drawLine(line.start.x, line.start.y, line.end.x, line.end.y);
-                                                  QPoint midPoint((line.start.x + line.end.x) / 2, (line.start.y + line.end.y) / 2);
-                                                  painter.drawText(midPoint.x() + 5, midPoint.y() + 5, QString::number(i + 1));
-
-                                                  detailText += QString("Single Line %1: (%2,%3) to (%4,%5)\n")
-                                                                    .arg(i + 1)
-                                                                    .arg(line.start.x)
-                                                                    .arg(line.start.y)
-                                                                    .arg(line.end.x)
-                                                                    .arg(line.end.y);
-                                              }
-
-                                              m_imageLabel->setPixmap(QPixmap::fromImage(image));
-
-                                              QMessageBox msgBox(this);
-                                              msgBox.setWindowTitle("Single Line Detection Results");
-                                              msgBox.setText(detailText);
-                                              msgBox.setIcon(QMessageBox::Information);
-                                              msgBox.exec();
-
-                                              QString params = QString("Bright: %1, Dark: %2, MinLen: %3")
-                                                                   .arg(brightThreshold)
-                                                                   .arg(darkThreshold)
-                                                                   .arg(minLength);
-
-                                              updateLastAction("Detect Single Lines", params);
-                                          }},
-                                         {"Remove Dark Lines", [this]() {
-                                              if (m_detectedLines.empty()) {
-                                                  QMessageBox::information(this, "Remove Dark Lines",
-                                                                           "Please detect lines first.");
-                                                  return;
-                                              }
-
-                                              m_imageProcessor.removeDarkLines(m_detectedLines);
-                                              updateImageDisplay();
-                                              updateLastAction("Remove Dark Lines",
-                                                               QString("Removed %1 lines").arg(m_detectedLines.size()));
-
-                                              m_detectedLines.clear();
-                                          }},
-                                         {"Remove from (0,y)", [this]() {
-                                              if (m_detectedLines.empty()) {
-                                                  QMessageBox::information(this, "Remove Lines from X=0",
-                                                                           "Please detect lines first.");
-                                                  return;
-                                              }
-
-                                              m_imageProcessor.removeFromZeroX(m_detectedLines);
-                                              updateImageDisplay();
-                                              updateLastAction("Remove Lines from X=0",
-                                                               QString("Removed lines starting from x=0"));
-
-                                              m_detectedLines.clear();
-                                          }}
-                                     });
-}
-
-void ControlPanel::visualizeDarkLines(const std::vector<ImageProcessor::DarkLine>& lines) {
-    if (lines.empty()) {
-        QMessageBox::information(this, "Dark Line Detection", "No dark lines found.");
-        return;
-    }
-
-    const QPixmap& currentPixmap = m_imageLabel->pixmap();
-    if (currentPixmap.isNull()) {
-        QMessageBox::warning(this, "Error", "No image loaded.");
-        return;
-    }
-
-    QImage image = currentPixmap.toImage();
-    QPainter painter(&image);
-    painter.setRenderHint(QPainter::Antialiasing);
-
-
-    // 为每条线使用红色
-    QPen pen(Qt::red);
-    pen.setWidth(2);
-    painter.setPen(pen);
-
-    // 准备位置信息文本
-    QString detailText = QString("Found %1 dark lines:\n\n").arg(lines.size());
-
-    for (size_t i = 0; i < lines.size(); ++i) {
-        const auto& line = lines[i];
-
-        // 绘制线段
-        painter.drawLine(line.start.x, line.start.y, line.end.x, line.end.y);
-
-        // 在线段旁添加编号
-        QPoint midPoint((line.start.x + line.end.x) / 2, (line.start.y + line.end.y) / 2);
-        painter.drawText(midPoint.x() + 5, midPoint.y() + 5, QString::number(i + 1));
-
-        // 添加线段位置信息
-        detailText += QString("Line %1: (%2,%3) to (%4,%5)\n")
-                          .arg(i + 1)
-                          .arg(line.start.x)
-                          .arg(line.start.y)
-                          .arg(line.end.x)
-                          .arg(line.end.y);
-    }
-
-    // 更新显示
-    m_imageLabel->setPixmap(QPixmap::fromImage(image));
-
-    // 显示位置信息
-    QMessageBox msgBox(this);
-    msgBox.setWindowTitle("Dark Line Detection Results");
-    msgBox.setText(detailText);
-    msgBox.setIcon(QMessageBox::Information);
-    msgBox.exec();
+void ControlPanel::resetDetectedLines() {
+    m_detectedLines.clear();
+    m_imageProcessor.clearDetectedLines();
+    updateImageDisplay();
 }

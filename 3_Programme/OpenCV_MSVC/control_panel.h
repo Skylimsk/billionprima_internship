@@ -31,11 +31,13 @@ private:
     void setupGlobalAdjustments();
     void setupRegionalAdjustments();
     void setupCLAHEOperations();
+    void setupBlackLineDetection();
     void handleRevert();
 
     std::pair<double, bool> showInputDialog(const QString& title, const QString& label, double defaultValue, double min, double max);
     void createGroupBox(const QString& title, const std::vector<std::pair<QString, std::function<void()>>>& buttons);
     void updateImageDisplay();
+    void resetDetectedLines();
 
     QVBoxLayout* m_mainLayout;
     QVBoxLayout* m_scrollLayout;
@@ -54,8 +56,6 @@ private:
 
     Histogram* m_histogram;
 
-    void setupDarkLineDetection();
-    void visualizeDarkLines(const std::vector<ImageProcessor::DarkLine>& lines);
     std::vector<ImageProcessor::DarkLine> m_detectedLines;
 };
 

@@ -6,10 +6,7 @@
 #pragma warning(disable: 4458) // declaration hides class member
 #pragma warning(disable: 4005) // macro redefinition
 #pragma warning(disable: 4127) // conditional expression is constant
-#pragma warning(disable: 4702) // unreachable code
-#pragma warning(disable: 4456) // declaration hides previous local declaration
-#pragma warning(disable: 4389) // signed/unsigned mismatch
-#pragma warning(disable: 4996) // This function or variable may be unsafe
+#pragma warning(disable: 4702)
 #endif
 
 #define _CRT_SECURE_NO_WARNINGS
@@ -24,15 +21,15 @@
 #include <fstream>
 #include <thread>
 #include <algorithm>
+#include <QMessageBox>
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include "image_processor.h"
+#include "adjustments.h"
 
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-#pragma GCC diagnostic ignored "-Wsign-compare"
-#pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 
 #include "stb_image_write.h"
@@ -49,7 +46,10 @@ ImageProcessor::ImageProcessor(QLabel* imageLabel)
 }
 
 void ImageProcessor::saveCurrentState() {
-    imageHistory.push(finalImage);
+    ImageState currentState;
+    currentState.image = finalImage;
+    currentState.detectedLines = m_detectedLines;
+    imageHistory.push(currentState);
 }
 
 QString ImageProcessor::getCurrentAction() const {
@@ -142,13 +142,14 @@ void ImageProcessor::saveImage(const QString& filePath) {
 
 QString ImageProcessor::revertImage() {
     if (!imageHistory.empty() && !actionHistory.empty()) {
-        finalImage = imageHistory.top();
+        ImageState prevState = imageHistory.top();
+        finalImage = prevState.image;
+        m_detectedLines = prevState.detectedLines;  // Updated variable name
         imageHistory.pop();
 
         ActionRecord currentAction = actionHistory.top();
         actionHistory.pop();
 
-        // If there are more actions in history, get the previous one
         if (!actionHistory.empty()) {
             lastAction = actionHistory.top().toString();
             return actionHistory.top().toString();
@@ -424,551 +425,6 @@ CLAHEProcessor::PerformanceMetrics ImageProcessor::getLastPerformanceMetrics() c
     return claheProcessor.getLastPerformanceMetrics();
 }
 
-std::vector<ImageProcessor::DarkLine> ImageProcessor::detectDarkLines(
-    uint16_t brightThreshold, uint16_t darkThreshold, int minLineLength) {
-
-    saveCurrentState();
-    std::vector<DarkLine> detectedLines;
-
-    int height = finalImage.size();
-    int width = finalImage[0].size();
-
-    // Step 1: Find bright regions with improved detection
-    auto brightRegions = findBrightRegions(brightThreshold);
-
-    // Step 2: Create a binary mask for dark pixels
-    std::vector<std::vector<bool>> darkPixels(height, std::vector<bool>(width, false));
-    std::vector<std::vector<bool>> visited(height, std::vector<bool>(width, false));
-
-    // Improved dark pixel detection with consideration for thicker lines
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            if (brightRegions[y][x] && finalImage[y][x] <= darkThreshold) {
-                darkPixels[y][x] = true;
-            }
-        }
-    }
-
-    // Direction vectors for 8-connected neighborhood
-    const int dx[] = {-1, 1, 0, 0, -1, -1, 1, 1};
-    const int dy[] = {0, 0, -1, 1, -1, 1, -1, 1};
-
-    // Step 3: Enhanced line detection algorithm
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            if (!darkPixels[y][x] || visited[y][x]) {
-                continue;
-            }
-
-            // Initialize line properties
-            std::vector<std::pair<int, int>> linePixels;
-            std::queue<std::pair<int, int>> pixelQueue;
-
-            pixelQueue.push({x, y});
-            visited[y][x] = true;
-            linePixels.push_back({x, y});
-
-            // Breadth-first search for connected dark pixels
-            while (!pixelQueue.empty()) {
-                auto [curX, curY] = pixelQueue.front();
-                pixelQueue.pop();
-
-                for (int dir = 0; dir < 8; ++dir) {
-                    int newX = curX + dx[dir];
-                    int newY = curY + dy[dir];
-
-                    if (newX >= 0 && newX < width && newY >= 0 && newY < height &&
-                        !visited[newY][newX] && darkPixels[newY][newX]) {
-                        visited[newY][newX] = true;
-                        pixelQueue.push({newX, newY});
-                        linePixels.push_back({newX, newY});
-                    }
-                }
-            }
-
-            // Process detected line segment if it meets minimum length requirement
-            if (linePixels.size() >= static_cast<size_t>(std::max(1, minLineLength))) {
-                // Find bounding box of the line
-                int minX = width, minY = height, maxX = 0, maxY = 0;
-                for (const auto& pixel : linePixels) {
-                    minX = std::min(minX, pixel.first);
-                    maxX = std::max(maxX, pixel.first);
-                    minY = std::min(minY, pixel.second);
-                    maxY = std::max(maxY, pixel.second);
-                }
-
-                // Calculate line thickness using improved method
-                int thickness = calculateLineThickness(linePixels, minX, maxX, minY, maxY);
-
-                // Create line segment
-                detectedLines.push_back({
-                    cv::Point(minX, minY),
-                    cv::Point(maxX, maxY),
-                    thickness
-                });
-            }
-        }
-    }
-
-    // Refine and merge detected lines
-    refineDarkLineDetection(detectedLines);
-
-    return detectedLines;
-}
-
-int ImageProcessor::calculateLineThickness(
-    const std::vector<std::pair<int, int>>& linePixels,
-    int minX, int maxX, int minY, int maxY) {
-
-    int dx = maxX - minX;
-    int dy = maxY - minY;
-
-    if (dx > dy) {
-        // Primarily horizontal line
-        std::vector<int> heightProfile(dx + 1, 0);
-        for (const auto& pixel : linePixels) {
-            int x = pixel.first - minX;
-            if (x >= 0 && x < heightProfile.size()) {
-                heightProfile[x]++;
-            }
-        }
-        return *std::max_element(heightProfile.begin(), heightProfile.end());
-    } else {
-        // Primarily vertical line
-        std::vector<int> widthProfile(dy + 1, 0);
-        for (const auto& pixel : linePixels) {
-            int y = pixel.second - minY;
-            if (y >= 0 && y < widthProfile.size()) {
-                widthProfile[y]++;
-            }
-        }
-        return *std::max_element(widthProfile.begin(), widthProfile.end());
-    }
-}
-
-bool ImageProcessor::isInBrightRegion(const std::vector<std::vector<uint16_t>>& image,
-                                      int x, int y, uint16_t brightThreshold) {
-    const int windowSize = 5; // 考虑周围区域
-    int brightPixels = 0;
-    int totalPixels = 0;
-
-    for (int dy = -windowSize/2; dy <= windowSize/2; ++dy) {
-        for (int dx = -windowSize/2; dx <= windowSize/2; ++dx) {
-            int newX = x + dx;
-            int newY = y + dy;
-
-            if (newX >= 0 && newX < image[0].size() &&
-                newY >= 0 && newY < image.size()) {
-                if (image[newY][newX] >= brightThreshold) {
-                    brightPixels++;
-                }
-                totalPixels++;
-            }
-        }
-    }
-
-    // 如果周围70%以上的像素都是亮的，则认为在白色区域内
-    return (static_cast<float>(brightPixels) / totalPixels) >= 0.7;
-}
-
-std::vector<std::vector<bool>> ImageProcessor::findBrightRegions(uint16_t brightThreshold) {
-    int height = finalImage.size();
-    int width = finalImage[0].size();
-    std::vector<std::vector<bool>> brightRegions(height, std::vector<bool>(width, false));
-
-    // 使用多线程处理
-    const int numThreads = std::thread::hardware_concurrency();
-    std::vector<std::thread> threads;
-    int rowsPerThread = height / numThreads;
-
-    for (int i = 0; i < numThreads; ++i) {
-        int startY = i * rowsPerThread;
-        int endY = (i == numThreads - 1) ? height : startY + rowsPerThread;
-
-        threads.emplace_back([this, &brightRegions, startY, endY, width, brightThreshold]() {
-            for (int y = startY; y < endY; ++y) {
-                for (int x = 0; x < width; ++x) {
-                    brightRegions[y][x] = isInBrightRegion(finalImage, x, y, brightThreshold);
-                }
-            }
-        });
-    }
-
-    for (auto& thread : threads) {
-        thread.join();
-    }
-
-    return brightRegions;
-}
-
-void ImageProcessor::refineDarkLineDetection(std::vector<DarkLine>& lines) {
-    if (lines.empty()) return;
-
-    std::vector<DarkLine> mergedLines;
-    std::vector<bool> merged(lines.size(), false);
-
-    // Sort lines by position for more consistent merging
-    std::sort(lines.begin(), lines.end(), [](const DarkLine& a, const DarkLine& b) {
-        return a.start.x < b.start.x || (a.start.x == b.start.x && a.start.y < b.start.y);
-    });
-
-    // Enhanced merging criteria
-    auto shouldMergeLines = [](const DarkLine& line1, const DarkLine& line2, int maxGap) {
-        // Calculate endpoints distance
-        double startDist = std::sqrt(std::pow(line1.start.x - line2.start.x, 2) +
-                                     std::pow(line1.start.y - line2.start.y, 2));
-        double endDist = std::sqrt(std::pow(line1.end.x - line2.end.x, 2) +
-                                   std::pow(line1.end.y - line2.end.y, 2));
-
-        // Calculate line angles
-        double angle1 = std::atan2(line1.end.y - line1.start.y, line1.end.x - line1.start.x);
-        double angle2 = std::atan2(line2.end.y - line2.start.y, line2.end.x - line2.start.x);
-        double angleDiff = std::abs(angle1 - angle2);
-
-        // Normalize angle difference to [0, π/2]
-        angleDiff = std::min(angleDiff, M_PI - angleDiff);
-
-        // Maximum allowed angle difference (30 degrees in radians)
-        const double MAX_ANGLE_DIFF = M_PI / 6;
-
-        return (startDist < maxGap || endDist < maxGap) && angleDiff < MAX_ANGLE_DIFF;
-    };
-
-    for (size_t i = 0; i < lines.size(); ++i) {
-        if (merged[i]) continue;
-
-        DarkLine currentLine = lines[i];
-        bool hasMerged;
-
-        do {
-            hasMerged = false;
-            for (size_t j = i + 1; j < lines.size(); ++j) {
-                if (merged[j]) continue;
-
-                int maxGap = std::max(currentLine.thickness, lines[j].thickness) * 2;
-                if (shouldMergeLines(currentLine, lines[j], maxGap)) {
-                    // Merge lines
-                    currentLine.start.x = std::min(currentLine.start.x, lines[j].start.x);
-                    currentLine.start.y = std::min(currentLine.start.y, lines[j].start.y);
-                    currentLine.end.x = std::max(currentLine.end.x, lines[j].end.x);
-                    currentLine.end.y = std::max(currentLine.end.y, lines[j].end.y);
-                    currentLine.thickness = std::max(currentLine.thickness, lines[j].thickness);
-
-                    merged[j] = true;
-                    hasMerged = true;
-                }
-            }
-        } while (hasMerged);
-
-        mergedLines.push_back(currentLine);
-    }
-
-    lines = mergedLines;
-}
-
-void ImageProcessor::removeDarkLines(const std::vector<DarkLine>& lines) {
-    saveCurrentState();
-
-    for (const auto& line : lines) {
-        // Calculate the line vector
-        double dx = line.end.x - line.start.x;
-        double dy = line.end.y - line.start.y;
-        double length = std::sqrt(dx * dx + dy * dy);
-
-        // Normalize direction vector
-        double dirX = dx / length;
-        double dirY = dy / length;
-
-        // Calculate perpendicular vector
-        double perpX = -dirY;
-        double perpY = dirX;
-
-        // Increased sampling density for better interpolation
-        double step = 0.2;  // Smaller step size for more precise removal
-
-        for (double t = 0; t <= length; t += step) {
-            int x = static_cast<int>(line.start.x + t * dirX);
-            int y = static_cast<int>(line.start.y + t * dirY);
-
-            // Extend removal width based on line thickness
-            int removalWidth = line.thickness * 1.5;  // Slightly wider than detected thickness
-
-            for (int offset = -removalWidth; offset <= removalWidth; ++offset) {
-                int px = static_cast<int>(x + offset * perpX);
-                int py = static_cast<int>(y + offset * perpY);
-
-                if (px >= 0 && px < finalImage[0].size() && py >= 0 && py < finalImage.size()) {
-                    // Use enhanced interpolation for pixel replacement
-                    finalImage[py][px] = interpolateValue(px, py, std::max(5, line.thickness));
-                }
-            }
-        }
-    }
-}
-
-uint16_t ImageProcessor::interpolateValue(int x, int y, int margin) {
-    std::vector<uint16_t> values;
-    int width = finalImage[0].size();
-    int height = finalImage.size();
-
-    // Gather values from a wider area for better interpolation
-    for (int dy = -margin; dy <= margin; ++dy) {
-        for (int dx = -margin; dx <= margin; ++dx) {
-            if (dx == 0 && dy == 0) continue;
-
-            int nx = x + dx;
-            int ny = y + dy;
-
-            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                values.push_back(finalImage[ny][nx]);
-            }
-        }
-    }
-
-    if (values.empty()) {
-        return 65535;  // Default to white if no valid values found
-    }
-
-    // Use weighted median for more robust interpolation
-    std::sort(values.begin(), values.end());
-    return values[values.size() / 2];
-}
-
-void ImageProcessor::removeFromZeroX(const std::vector<DarkLine>& lines) {
-    if (lines.empty()) return;
-
-    saveCurrentState();
-
-    size_t height = finalImage.size();
-    size_t width = finalImage[0].size();
-
-    // Create a mask for pixels to be interpolated
-    std::vector<std::vector<bool>> maskToInterpolate(height, std::vector<bool>(width, false));
-
-    // Only process lines that start from x=0
-    for (const auto& line : lines) {
-        if (line.start.x == 0) {  // Only process lines starting from x=0
-            double vectorX = line.end.x - line.start.x;
-            double vectorY = line.end.y - line.start.y;
-            double length = std::sqrt(vectorX * vectorX + vectorY * vectorY);
-
-            if (length < 1e-6) continue;
-
-            double dirX = vectorX / length;
-            double dirY = vectorY / length;
-            double perpX = -dirY;
-            double perpY = dirX;
-
-            double step = 0.2;  // Small step size for precise removal
-
-            for (double t = 0; t <= length; t += step) {
-                int x = static_cast<int>(line.start.x + t * dirX);
-                int y = static_cast<int>(line.start.y + t * dirY);
-
-                int removalWidth = static_cast<int>(line.thickness * 1.5);
-                for (int offset = -removalWidth; offset <= removalWidth; ++offset) {
-                    int px = static_cast<int>(x + offset * perpX);
-                    int py = static_cast<int>(y + offset * perpY);
-
-                    if (px >= 0 && static_cast<size_t>(px) < width &&
-                        py >= 0 && static_cast<size_t>(py) < height) {
-                        maskToInterpolate[py][px] = true;
-                    }
-                }
-            }
-        }
-    }
-
-    // Perform interpolation for all marked pixels
-    std::vector<std::vector<uint16_t>> tempImage = finalImage;
-    for (size_t y = 0; y < height; ++y) {
-        for (size_t x = 0; x < width; ++x) {
-            if (maskToInterpolate[y][x]) {
-                tempImage[y][x] = interpolateValue(x, y, 7);
-            }
-        }
-    }
-
-    finalImage = std::move(tempImage);
-}
-
-// Function implementations
-void ImageProcessor::adjustGammaForRegion(std::vector<std::vector<uint16_t>>& img, float gamma, int startY, int endY, int startX, int endX) {
-    float invGamma = 1.0f / gamma;
-    for (int y = startY; y < endY; ++y) {
-        for (int x = startX; x < endX; ++x) {
-            float normalized = img[y][x] / 65535.0f; // Normalize the pixel value
-            float corrected = std::pow(normalized, invGamma); // Apply Gamma correction
-            img[y][x] = static_cast<uint16_t>(corrected * 65535.0f); // Convert back to pixel value
-        }
-    }
-}
-
-void ImageProcessor::processContrastChunk(int top, int bottom, int left, int right, float contrastFactor, std::vector<std::vector<uint16_t>>& img) {
-    const float MAX_PIXEL_VALUE = 65535.0f;
-    const float midGray = MAX_PIXEL_VALUE / 2.0f;
-    for (int y = top; y < bottom; ++y) {
-        for (int x = left; x < right; ++x) {
-            float pixel = static_cast<float>(img[y][x]);
-            img[y][x] = static_cast<uint16_t>(std::clamp((pixel - midGray) * contrastFactor + midGray, 0.0f, MAX_PIXEL_VALUE));
-        }
-    }
-}
-
-void ImageProcessor::processSharpenRegionChunk(int startY, int endY, int left, int right, std::vector<std::vector<uint16_t>>& img, float sharpenStrength) {
-    for (int y = startY; y < endY; ++y) {
-        for (int x = left; x < right; ++x) {
-            img[y][x] = std::clamp(static_cast<int>(img[y][x] * sharpenStrength), 0, 65535);
-        }
-    }
-}
-
-void ImageProcessor::processSharpenChunk(int startY, int endY, int width, std::vector<std::vector<uint16_t>>& img, const std::vector<std::vector<uint16_t>>& tempImg, float sharpenStrength) {
-    float kernel[3][3] = {
-        { 0, -1 * sharpenStrength,  0 },
-        { -1 * sharpenStrength, 1 + 4 * sharpenStrength, -1 * sharpenStrength },
-        { 0, -1 * sharpenStrength,  0 }
-    };
-    for (std::vector<std::vector<uint16_t>>::size_type y = startY; y < static_cast<std::vector<std::vector<uint16_t>>::size_type>(endY); ++y) {
-        for (std::vector<uint16_t>::size_type x = 1; x < static_cast<std::vector<uint16_t>::size_type>(width) - 1; ++x) {
-            // Apply convolution only if within bounds
-            if (y > 0 && y < tempImg.size() - 1 && x > 0 && x < tempImg[0].size() - 1) {
-                float newPixelValue = 0;
-                // Apply kernel to neighbours
-                for (int ky = -1; ky <= 1; ++ky) {
-                    for (int kx = -1; kx <= 1; ++kx) {
-                        newPixelValue += kernel[ky + 1][kx + 1] * tempImg[y + ky][x + kx];
-                    }
-                }
-                // Clamp the new value and assign to the output image
-                img[y][x] = static_cast<uint16_t>(std::clamp(newPixelValue, 0.0f, 65535.0f));
-            }
-        }
-    }
-}
-
-void ImageProcessor::adjustContrast(std::vector<std::vector<uint16_t>>& img, float contrastFactor) {
-    saveCurrentState();
-    const float MAX_PIXEL_VALUE = 65535.0f;
-    const float midGray = MAX_PIXEL_VALUE / 2.0f;
-    int height = img.size();
-    int width = img[0].size();
-
-    const int numThreads = std::thread::hardware_concurrency();
-    std::vector<std::thread> threads;
-    int chunkHeight = height / numThreads;
-
-    for (int i = 0; i < numThreads; ++i) {
-        int startY = i * chunkHeight;
-        int endY = (i == numThreads - 1) ? height : startY + chunkHeight;
-
-        threads.emplace_back([=, &img]() {
-            for (int y = startY; y < endY; ++y) {
-                for (int x = 0; x < width; ++x) {
-                    float pixel = static_cast<float>(img[y][x]);
-                    img[y][x] = static_cast<uint16_t>(std::clamp((pixel - midGray) * contrastFactor + midGray, 0.0f, MAX_PIXEL_VALUE));
-                }
-            }
-        });
-    }
-
-    for (auto& thread : threads) {
-        if (thread.joinable()) {
-            thread.join();
-        }
-    }
-}
-
-void ImageProcessor::adjustGammaOverall(std::vector<std::vector<uint16_t>>& img, float gamma) {
-    saveCurrentState();
-    int height = img.size();
-    int width = img[0].size();
-
-    const int numThreads = std::thread::hardware_concurrency();
-    std::vector<std::thread> threads;
-    int blockHeight = height / numThreads;
-
-    for (int i = 0; i < numThreads; ++i) {
-        int startY = i * blockHeight;
-        int endY = (i == numThreads - 1) ? height : startY + blockHeight;
-        threads.emplace_back(adjustGammaForRegion, std::ref(img), gamma, startY, endY, 0, width);
-    }
-
-    for (auto& thread : threads) {
-        thread.join();
-    }
-}
-
-void ImageProcessor::sharpenImage(std::vector<std::vector<uint16_t>>& img, float sharpenStrength) {
-    saveCurrentState();
-    int height = img.size();
-    int width = img[0].size();
-    std::vector<std::vector<uint16_t>> tempImg = img;
-
-    const int numThreads = std::thread::hardware_concurrency();
-    std::vector<std::thread> threads;
-    int chunkHeight = height / numThreads;
-
-    for (int i = 0; i < numThreads; ++i) {
-        int startY = i * chunkHeight;
-        int endY = (i == numThreads - 1) ? height : startY + chunkHeight;
-        threads.emplace_back(processSharpenChunk, startY, endY, width, std::ref(img), std::ref(tempImg), sharpenStrength);
-    }
-
-    for (auto& thread : threads) {
-        if (thread.joinable()) {
-            thread.join();
-        }
-    }
-}
-
-void ImageProcessor::processRegion(const QRect& region, std::function<void(int, int)> operation) {
-    QRect normalizedRegion = region.normalized();
-    int left = std::max(0, normalizedRegion.left());
-    int top = std::max(0, normalizedRegion.top());
-    int right = std::min(static_cast<int>(finalImage[0].size()), normalizedRegion.right() + 1);
-    int bottom = std::min(static_cast<int>(finalImage.size()), normalizedRegion.bottom() + 1);
-
-    for (int y = top; y < bottom; ++y) {
-        for (int x = left; x < right; ++x) {
-            operation(x, y);
-        }
-    }
-}
-
-void ImageProcessor::adjustGammaForSelectedRegion(float gamma, const QRect& region) {
-    saveCurrentState();
-    float invGamma = 1.0f / gamma;
-    processRegion(region, [this, invGamma](int x, int y) {
-        float normalized = finalImage[y][x] / 65535.0f;
-        float corrected = std::pow(normalized, invGamma);
-        finalImage[y][x] = static_cast<uint16_t>(corrected * 65535.0f);
-    });
-}
-
-void ImageProcessor::applySharpenToRegion(float sharpenStrength, const QRect& region) {
-    saveCurrentState();
-    std::vector<std::vector<uint16_t>> tempImage = finalImage;
-    processRegion(region, [this, &tempImage, sharpenStrength](int x, int y) {
-        auto width = static_cast<int>(finalImage[0].size());
-        auto height = static_cast<int>(finalImage.size());
-        if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
-            int sum = 5 * tempImage[y][x] - tempImage[y-1][x] - tempImage[y+1][x] - tempImage[y][x-1] - tempImage[y][x+1];
-            finalImage[y][x] = static_cast<uint16_t>(std::clamp(static_cast<float>(sum) * sharpenStrength + static_cast<float>(tempImage[y][x]), 0.0f, 65535.0f));
-        }
-    });
-}
-
-void ImageProcessor::applyContrastToRegion(float contrastFactor, const QRect& region) {
-    saveCurrentState();
-    float midGray = 32767.5f;
-
-    processRegion(region, [this, contrastFactor, midGray](int x, int y) {
-        float pixel = static_cast<float>(finalImage[y][x]);
-        finalImage[y][x] = static_cast<uint16_t>(std::clamp((pixel - midGray) * contrastFactor + midGray, 0.0f, 65535.0f));
-    });
-}
-
 std::vector<std::vector<uint16_t>> ImageProcessor::rotateImage(const std::vector<std::vector<uint16_t>>& image, int angle) {
     saveCurrentState();
     int height = image.size();
@@ -1153,10 +609,25 @@ const std::vector<std::vector<uint16_t>>& ImageProcessor::getFinalImage() const 
 }
 
 void ImageProcessor::saveImageState() {
-    imageHistory.push(finalImage);
+    ImageState currentState;
+    currentState.image = finalImage;
+    currentState.detectedLines = m_detectedLines;
+    imageHistory.push(currentState);
 }
 
 void ImageProcessor::updateAndSaveFinalImage(const std::vector<std::vector<uint16_t>>& newImage) {
-    saveImageState();
+    saveCurrentState();
     finalImage = newImage;
+}
+
+std::vector<ImageProcessor::DarkLine> ImageProcessor::detectDarkLines() {
+    m_detectedLines = DarkLineProcessor::detectDarkLines(finalImage);
+    return m_detectedLines;
+}
+
+void ImageProcessor::removeDarkLines(const std::vector<DarkLine>& lines) {
+    if (lines.empty()) return;
+    saveCurrentState();
+    DarkLineProcessor::removeDarkLines(finalImage, lines);
+    clearDetectedLines();
 }
