@@ -128,6 +128,14 @@ public:
         return m_detectedLines;
     }
 
+    // New zoom-related methods
+    void setZoomLevel(float level);
+    float getZoomLevel() const { return currentZoomLevel; }
+    void zoomIn() { setZoomLevel(currentZoomLevel * ZOOM_STEP); }
+    void zoomOut() { setZoomLevel(currentZoomLevel / ZOOM_STEP); }
+    void resetZoom() { setZoomLevel(1.0f); }
+    QSize getZoomedImageDimensions() const;
+
 private:
     std::vector<std::vector<uint16_t>> imgData;
     std::vector<std::vector<uint16_t>> originalImg;
@@ -151,6 +159,12 @@ private:
     bool hasCLAHEBeenApplied;
 
     std::vector<DarkLine> m_detectedLines;
+
+    // New zoom-related members
+    float currentZoomLevel;
+    const float MIN_ZOOM_LEVEL = 0.1f;
+    const float MAX_ZOOM_LEVEL = 10.0f;
+    const float ZOOM_STEP = 1.2f;
 
     // Helper methods for merging
     std::vector<std::vector<uint16_t>> mergeWithMinimum(

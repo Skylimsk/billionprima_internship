@@ -34,6 +34,10 @@ private:
     void setupBlackLineDetection();
     void handleRevert();
 
+    // New zoom-related methods
+    void setupZoomControls();
+    void toggleZoomMode(bool active);
+
     std::pair<double, bool> showInputDialog(const QString& title, const QString& label, double defaultValue, double min, double max);
     void createGroupBox(const QString& title, const std::vector<std::pair<QString, std::function<void()>>>& buttons);
     void updateImageDisplay();
@@ -56,7 +60,16 @@ private:
 
     Histogram* m_histogram;
 
+    QGroupBox* m_zoomControlsGroup;
+    float m_preZoomLevel;
+    bool m_zoomModeActive;
+
+    bool checkZoomMode();
+
+    QMessageBox* m_zoomWarningBox;
+
     std::vector<ImageProcessor::DarkLine> m_detectedLines;
 };
+
 
 #endif // CONTROL_PANEL_H

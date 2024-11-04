@@ -23,12 +23,12 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
     m_lastGpuTime(-1),
     m_lastCpuTime(-1),
     m_hasCpuClaheTime(false),
-    m_hasGpuClaheTime(false)
-
+    m_hasGpuClaheTime(false),
+    m_preZoomLevel(1.0f),
+    m_zoomControlsGroup(nullptr),
+    m_zoomModeActive(false)
 {
     m_mainLayout = new QVBoxLayout(this);
-
-    // Set a minimum width for the control panel
     this->setMinimumWidth(280);
 
     setupPixelInfoLabel();
@@ -39,6 +39,7 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
 
     setupFileOperations();
     setupBasicOperations();
+    setupZoomControls();  // Initialize zoom controls (but don't add to layout yet)
     setupFilteringOperations();
     setupAdvancedOperations();
     setupCLAHEOperations();
@@ -53,6 +54,20 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
 
     m_mainLayout->addWidget(m_scrollArea);
     setLayout(m_mainLayout);
+
+    m_zoomWarningBox = new QMessageBox(this);
+    m_zoomWarningBox->setIcon(QMessageBox::Warning);
+    m_zoomWarningBox->setWindowTitle("Zoom Mode Active");
+    m_zoomWarningBox->setText("No functions can be applied while in Zoom Mode.\nPlease exit Zoom Mode first.");
+    m_zoomWarningBox->setStandardButtons(QMessageBox::Ok);
+}
+
+bool ControlPanel::checkZoomMode() {
+    if (m_zoomModeActive) {
+        m_zoomWarningBox->exec();
+        return true;
+    }
+    return false;
 }
 
 void ControlPanel::setupPixelInfoLabel()
@@ -140,6 +155,10 @@ void ControlPanel::updateLastAction(const QString& action, const QString& parame
             prefix = "File Name: ";
         } else if (action == "Detect Black Lines" || action == "Remove Black Lines") {
             prefix = "Line Info: ";
+        } else if (action ==  "Split & Merge"){
+            prefix = "";
+        } else if (action == "Zoom In" || action == "Zoom Out" || action == "Reset Zoom"){
+            prefix = "Zoom Factor: ";
         } else {
             prefix = "Parameters: ";
         }
@@ -179,6 +198,95 @@ void ControlPanel::updatePixelInfo(const QPoint& pos)
         m_pixelInfoLabel->setText(info);
     } else {
         m_pixelInfoLabel->setText("No image loaded");
+    }
+}
+
+void ControlPanel::setupZoomControls() {
+    m_zoomControlsGroup = new QGroupBox("Zoom Controls");
+    QVBoxLayout* zoomLayout = new QVBoxLayout(m_zoomControlsGroup);
+
+    // Create zoom control buttons with consistent styling
+    QPushButton* zoomInBtn = new QPushButton("Zoom In");
+    QPushButton* zoomOutBtn = new QPushButton("Zoom Out");
+    QPushButton* resetZoomBtn = new QPushButton("Reset Zoom");
+
+    // Set fixed height for buttons to match other controls
+    const int buttonHeight = 35;
+    zoomInBtn->setFixedHeight(buttonHeight);
+    zoomOutBtn->setFixedHeight(buttonHeight);
+    resetZoomBtn->setFixedHeight(buttonHeight);
+
+    // Add tooltips
+    zoomInBtn->setToolTip("Increase zoom level by 20%");
+    zoomOutBtn->setToolTip("Decrease zoom level by 20%");
+    resetZoomBtn->setToolTip("Reset to original size (100%)");
+
+    // Add buttons to layout
+    zoomLayout->addWidget(zoomInBtn);
+    zoomLayout->addWidget(zoomOutBtn);
+    zoomLayout->addWidget(resetZoomBtn);
+
+    // Connect zoom buttons
+    connect(zoomInBtn, &QPushButton::clicked, [this]() {
+        m_imageLabel->clearSelection();
+        m_imageProcessor.zoomIn();
+        updateImageDisplay();
+        updateLastAction("Zoom In", QString("%1x").arg(m_imageProcessor.getZoomLevel(), 0, 'f', 2));
+    });
+
+    connect(zoomOutBtn, &QPushButton::clicked, [this]() {
+        m_imageLabel->clearSelection();
+        m_imageProcessor.zoomOut();
+        updateImageDisplay();
+        updateLastAction("Zoom Out", QString("%1x").arg(m_imageProcessor.getZoomLevel(), 0, 'f', 2));
+    });
+
+    connect(resetZoomBtn, &QPushButton::clicked, [this]() {
+        m_imageLabel->clearSelection();
+        m_imageProcessor.resetZoom();
+        updateImageDisplay();
+        updateLastAction("Reset Zoom", "1x");
+    });
+
+    // Initially hide zoom controls
+    m_zoomControlsGroup->hide();
+}
+
+void ControlPanel::toggleZoomMode(bool active) {
+    if (m_zoomModeActive == active) return;  // No change needed
+
+    m_zoomModeActive = active;
+
+    if (active) {
+        // Store current zoom level
+        m_preZoomLevel = m_imageProcessor.getZoomLevel();
+
+        // Find the Basic Operations group and insert zoom controls after it
+        int basicOpIndex = -1;
+        for (int i = 0; i < m_scrollLayout->count(); ++i) {
+            QGroupBox* box = qobject_cast<QGroupBox*>(m_scrollLayout->itemAt(i)->widget());
+            if (box && box->title() == "Basic Operations") {
+                basicOpIndex = i;
+                break;
+            }
+        }
+
+        if (basicOpIndex >= 0) {
+            m_scrollLayout->insertWidget(basicOpIndex + 1, m_zoomControlsGroup);
+        }
+        m_zoomControlsGroup->show();
+
+        updateLastAction("Zoom Mode", "Zoom Activated");
+    } else {
+        // Restore pre-zoom state
+        m_imageProcessor.setZoomLevel(m_preZoomLevel);
+        updateImageDisplay();
+
+        // Hide and remove zoom controls
+        m_zoomControlsGroup->hide();
+        m_scrollLayout->removeWidget(m_zoomControlsGroup);
+
+        updateLastAction("Zoom Mode", "Zoom Deactivated");
     }
 }
 
@@ -243,7 +351,11 @@ void ControlPanel::setupFileOperations()
 void ControlPanel::setupBasicOperations()
 {
     createGroupBox("Basic Operations", {
+                                            {"Zoom", [this]() {
+                                             toggleZoomMode(!m_zoomModeActive);
+                                            }},
                                            {"Crop", [this]() {
+                                             if (checkZoomMode()) return;
                                              resetDetectedLines();
                                                 if (m_imageLabel->isRegionSelected()) {
                                                     QRect selectedRegion = m_imageLabel->getSelectedRegion();
@@ -261,6 +373,7 @@ void ControlPanel::setupBasicOperations()
                                                 }
                                             }},
                                            {"Rotate CW", [this]() {
+                                             if (checkZoomMode()) return;
                                              resetDetectedLines();
                                                 auto rotatedImage = m_imageProcessor.rotateImage(m_imageProcessor.getFinalImage(), 90);
                                                 m_imageProcessor.updateAndSaveFinalImage(rotatedImage);
@@ -269,6 +382,7 @@ void ControlPanel::setupBasicOperations()
                                                 updateLastAction("Rotate Clockwise");
                                             }},
                                            {"Rotate CCW", [this]() {
+                                             if (checkZoomMode()) return;
                                              resetDetectedLines();
                                                 auto rotatedImage = m_imageProcessor.rotateImage(m_imageProcessor.getFinalImage(), 270);
                                                 m_imageProcessor.updateAndSaveFinalImage(rotatedImage);
@@ -277,6 +391,7 @@ void ControlPanel::setupBasicOperations()
                                                 updateLastAction("Rotate CCW");
                                             }},
                                            {"Calibration", [this]() {
+                                             if (checkZoomMode()) return;
                                              resetDetectedLines();
                                                 auto [linesToProcessY, yOk] = showInputDialog("Calibration", "Enter lines to process for Y-axis:", 10, 1, 1000);
                                                 if (!yOk) return;
@@ -290,6 +405,7 @@ void ControlPanel::setupBasicOperations()
                                                 }
                                             }},
                                         {"Split & Merge", [this]() {
+                                             if (checkZoomMode()) return;
                                              resetDetectedLines();
 
                                              // Create dialog for options
@@ -372,6 +488,7 @@ void ControlPanel::setupBasicOperations()
 void ControlPanel::setupFilteringOperations() {
     createGroupBox("Filtering Operations", {
                                                {"Median Filter", [this]() {
+                                                 if (checkZoomMode()) return;
                                                  resetDetectedLines();
                                                     auto [filterKernelSize, ok] = showInputDialog("Median Filter", "Enter kernel size:", 3, 1, 21);
                                                     if (ok) {
@@ -385,6 +502,7 @@ void ControlPanel::setupFilteringOperations() {
                                                     }
                                                 }},
                                                {"High-Pass Filter", [this]() {
+                                                 if (checkZoomMode()) return;
                                                  resetDetectedLines();
                                                     m_imageProcessor.applyHighPassFilter(const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()));
                                                     m_imageLabel->clearSelection();
@@ -398,6 +516,7 @@ void ControlPanel::setupAdvancedOperations()
 {
     createGroupBox("Advanced Operations", {
                                            {"Stretch", [this]() {
+                                                if (checkZoomMode()) return;
                                                 resetDetectedLines();
 
                                                 // Create dialog for stretch options
@@ -456,6 +575,7 @@ void ControlPanel::setupAdvancedOperations()
                                                 }
                                             }},
                                               {"Padding", [this]() {
+                                                if (checkZoomMode()) return;
                                                 resetDetectedLines();
                                                    auto [paddingSize, ok] = showInputDialog("Padding Size", "Enter padding size:", 10, 1, 1000);
                                                    if (ok) {
@@ -467,6 +587,7 @@ void ControlPanel::setupAdvancedOperations()
                                                    }
                                                }},
                                               {"Apply Distortion", [this]() {
+                                                if (checkZoomMode()) return;
                                                 resetDetectedLines();
                                                    QStringList directions = {"Left", "Right", "Top", "Bottom"};
                                                    bool ok;
@@ -488,6 +609,7 @@ void ControlPanel::setupAdvancedOperations()
 void ControlPanel::setupCLAHEOperations() {
     createGroupBox("CLAHE Operations", {
                                            {"CLAHE (GPU)", [this]() {
+                                             if (checkZoomMode()) return;
                                              resetDetectedLines();
                                                 auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 100.0);
                                                 if (!clipOk) return;
@@ -515,6 +637,7 @@ void ControlPanel::setupCLAHEOperations() {
                                             }},
 
                                            {"CLAHE (CPU)", [this]() {
+                                             if (checkZoomMode()) return;
                                              resetDetectedLines();
                                                 auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 100.0);
                                                 if (!clipOk) return;
@@ -542,6 +665,7 @@ void ControlPanel::setupCLAHEOperations() {
                                             }},
 
                                            {"Threshold CLAHE (GPU)", [this]() {
+                                             if (checkZoomMode()) return;
                                              resetDetectedLines();
                                                 auto [threshold, thresholdOk] = showInputDialog("Threshold", "Enter threshold value:", 5000, 0, 65535);
                                                 if (!thresholdOk) return;
@@ -574,6 +698,7 @@ void ControlPanel::setupCLAHEOperations() {
                                             }},
 
                                            {"Threshold CLAHE (CPU)", [this]() {
+                                             if (checkZoomMode()) return;
                                              resetDetectedLines();
                                                 auto [threshold, thresholdOk] = showInputDialog("Threshold", "Enter threshold value:", 5000, 0, 65535);
                                                 if (!thresholdOk) return;
@@ -611,6 +736,7 @@ void ControlPanel::setupGlobalAdjustments()
 {
     createGroupBox("Global Adjustments", {
                                              {"Overall Gamma", [this]() {
+                                               if (checkZoomMode()) return;
                                                   resetDetectedLines();
                                                   auto [gammaValue, ok] = showInputDialog("Overall Gamma", "Enter gamma value:", 1.0, 0.1, 10.0);
                                                   if (ok) {
@@ -621,6 +747,7 @@ void ControlPanel::setupGlobalAdjustments()
                                                   }
                                               }},
                                              {"Overall Sharpen", [this]() {
+                                               if (checkZoomMode()) return;
                                                   resetDetectedLines();
                                                   auto [sharpenStrength, ok] = showInputDialog("Overall Sharpen", "Enter sharpen strength:", 1.0, 0.1, 10.0);
                                                   if (ok) {
@@ -647,6 +774,7 @@ void ControlPanel::setupRegionalAdjustments()
 {
     createGroupBox("Regional Adjustments", {
                                                {"Region Gamma", [this]() {
+                                                 if (checkZoomMode()) return;
                                                     resetDetectedLines();
                                                     if (m_imageLabel->isRegionSelected()) {
                                                         auto [gamma, ok] = showInputDialog("Region Gamma", "Enter gamma value:", 1.0, 0.1, 10.0);
@@ -662,6 +790,7 @@ void ControlPanel::setupRegionalAdjustments()
                                                     }
                                                 }},
                                                {"Region Sharpen", [this]() {
+                                                 if (checkZoomMode()) return;
                                                     resetDetectedLines();
                                                     if (m_imageLabel->isRegionSelected()) {
                                                         auto [sharpenStrength, ok] = showInputDialog("Region Sharpen", "Enter sharpen strength:", 0.5, 0.1, 5.0);
@@ -677,6 +806,7 @@ void ControlPanel::setupRegionalAdjustments()
                                                     }
                                                 }},
                                                {"Region Contrast", [this]() {
+                                                 if (checkZoomMode()) return;
                                                     resetDetectedLines();
                                                     if (m_imageLabel->isRegionSelected()) {
                                                         auto [contrastFactor, ok] = showInputDialog("Region Contrast", "Enter contrast factor:", 1.5, 0.1, 5.0);
@@ -782,6 +912,7 @@ void ControlPanel::updateImageDisplay() {
         int height = finalImage.size();
         int width = finalImage[0].size();
         QImage image(width, height, QImage::Format_Grayscale16);
+
         // Copy image data
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
@@ -789,14 +920,24 @@ void ControlPanel::updateImageDisplay() {
                 image.setPixel(x, y, qRgb(pixelValue >> 8, pixelValue >> 8, pixelValue >> 8));
             }
         }
+
+        // Create base pixmap from image
         QPixmap pixmap = QPixmap::fromImage(image);
+
+        // Apply zoom if in zoom mode
+        if (m_zoomModeActive && m_imageProcessor.getZoomLevel() != 1.0f) {
+            QSize zoomedSize = m_imageProcessor.getZoomedImageDimensions();
+            pixmap = pixmap.scaled(zoomedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        }
+
+        // Start painting on the pixmap
         QPainter painter(&pixmap);
         painter.setRenderHint(QPainter::Antialiasing);
-        // Draw detected black lines with different colors based on context
+
+        // Draw detected black lines
         const auto& detectedLines = m_imageProcessor.getDetectedLines();
         if (!detectedLines.empty()) {
             for (const auto& line : detectedLines) {
-                // 根据线条类型选择颜色：黄色表示物体内的线条，红色表示孤立线条
                 QColor lineColor = line.inObject ? Qt::blue : Qt::red;
                 painter.setPen(QPen(lineColor, 2, Qt::SolidLine));
                 if (line.isVertical) {
@@ -808,14 +949,29 @@ void ControlPanel::updateImageDisplay() {
                 }
             }
         }
+
         // Draw selection rectangle if exists
         if (m_imageLabel->isRegionSelected()) {
-            painter.setPen(QPen(Qt::blue, 2));  // Changed to blue to distinguish from line markers
-            painter.drawRect(m_imageLabel->getSelectedRegion());
+            painter.setPen(QPen(Qt::blue, 2));
+            QRect selectedRegion = m_imageLabel->getSelectedRegion();
+            if (m_zoomModeActive) {
+                // Scale the selection rectangle according to zoom level
+                float zoomLevel = m_imageProcessor.getZoomLevel();
+                selectedRegion = QRect(
+                    selectedRegion.x() * zoomLevel,
+                    selectedRegion.y() * zoomLevel,
+                    selectedRegion.width() * zoomLevel,
+                    selectedRegion.height() * zoomLevel
+                    );
+            }
+            painter.drawRect(selectedRegion);
         }
         painter.end();
+
+        // Update the image label
         m_imageLabel->setPixmap(pixmap);
         m_imageLabel->setFixedSize(pixmap.size());
+
         // Update histogram if visible
         if (m_histogram->isVisible()) {
             m_histogram->updateHistogram(finalImage);
