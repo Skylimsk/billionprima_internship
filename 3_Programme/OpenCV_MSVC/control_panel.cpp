@@ -159,6 +159,8 @@ void ControlPanel::updateLastAction(const QString& action, const QString& parame
             prefix = "";
         } else if (action == "Zoom In" || action == "Zoom Out" || action == "Reset Zoom"){
             prefix = "Zoom Factor: ";
+        } else if (action == "Zoom Mode"){
+            prefix = "Status: ";
         } else {
             prefix = "Parameters: ";
         }
@@ -611,10 +613,10 @@ void ControlPanel::setupCLAHEOperations() {
                                            {"CLAHE (GPU)", [this]() {
                                              if (checkZoomMode()) return;
                                              resetDetectedLines();
-                                                auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 100.0);
+                                                auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 1000);
                                                 if (!clipOk) return;
 
-                                                auto [tileSize, tileOk] = showInputDialog("CLAHE", "Enter tile size:", 8, 2, 100);
+                                                auto [tileSize, tileOk] = showInputDialog("CLAHE", "Enter tile size:", 8, 2, 1000);
                                                 if (!tileOk) return;
 
                                                 try {
@@ -639,10 +641,10 @@ void ControlPanel::setupCLAHEOperations() {
                                            {"CLAHE (CPU)", [this]() {
                                              if (checkZoomMode()) return;
                                              resetDetectedLines();
-                                                auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 100.0);
+                                                auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 1000);
                                                 if (!clipOk) return;
 
-                                                auto [tileSize, tileOk] = showInputDialog("CLAHE", "Enter tile size:", 8, 2, 100);
+                                                auto [tileSize, tileOk] = showInputDialog("CLAHE", "Enter tile size:", 8, 2, 1000);
                                                 if (!tileOk) return;
 
                                                 try {
@@ -670,10 +672,10 @@ void ControlPanel::setupCLAHEOperations() {
                                                 auto [threshold, thresholdOk] = showInputDialog("Threshold", "Enter threshold value:", 5000, 0, 65535);
                                                 if (!thresholdOk) return;
 
-                                                auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 100.0);
+                                                auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 1000);
                                                 if (!clipOk) return;
 
-                                                auto [tileSize, tileOk] = showInputDialog("CLAHE", "Enter tile size:", 8, 2, 100);
+                                                auto [tileSize, tileOk] = showInputDialog("CLAHE", "Enter tile size:", 8, 2, 1000);
                                                 if (!tileOk) return;
 
                                                 try {
@@ -937,6 +939,7 @@ void ControlPanel::updateImageDisplay() {
         // Draw detected black lines
         const auto& detectedLines = m_imageProcessor.getDetectedLines();
         if (!detectedLines.empty()) {
+            // First draw the lines
             for (const auto& line : detectedLines) {
                 QColor lineColor = line.inObject ? Qt::blue : Qt::red;
                 painter.setPen(QPen(lineColor, 2, Qt::SolidLine));
@@ -947,6 +950,29 @@ void ControlPanel::updateImageDisplay() {
                     QRect lineRect(0, line.y, width - 1, line.width);
                     painter.drawRect(lineRect);
                 }
+            }
+
+            // Then draw the status indicators
+            int statusHeight = 20;
+            int statusWidth = 80;
+            int statusMargin = 5;
+            int currentY = 10;
+
+            painter.setFont(QFont("Arial", 8, QFont::Bold));
+
+            for (const auto& line : detectedLines) {
+                QRect statusRect(statusMargin, currentY, statusWidth, statusHeight);
+                QColor bgColor = line.inObject ? QColor(0, 0, 255) : QColor(255, 0, 0);
+
+                // Draw status box background
+                painter.fillRect(statusRect, bgColor);
+
+                // Draw status text
+                painter.setPen(Qt::white);
+                QString statusText = line.inObject ? "In Object" : "Isolated";
+                painter.drawText(statusRect, Qt::AlignCenter, statusText);
+
+                currentY += statusHeight + statusMargin;
             }
         }
 
@@ -966,6 +992,7 @@ void ControlPanel::updateImageDisplay() {
             }
             painter.drawRect(selectedRegion);
         }
+
         painter.end();
 
         // Update the image label

@@ -44,7 +44,7 @@ ImageProcessor::ImageProcessor(QLabel* imageLabel)
     rotationState(0),
     kernelSize(0),
     currentZoomLevel(1.0f),
-    hasCLAHEBeenApplied(false){
+    hasCLAHEBeenApplied(false) {
 }
 
 void ImageProcessor::saveCurrentState() {
@@ -448,37 +448,51 @@ void ImageProcessor::applyHighPassFilter(std::vector<std::vector<uint16_t>>& ima
 
 cv::Mat ImageProcessor::applyCLAHE(const cv::Mat& inputImage, double clipLimit, const cv::Size& tileSize) {
     saveCurrentState();
-    preProcessedImage = finalImage; // Save the state before applying CLAHE
+    preProcessedImage = finalImage;  // 保存当前图像状态，而不是输入图像
     hasCLAHEBeenApplied = true;
-    return claheProcessor.applyCLAHE(inputImage, clipLimit, tileSize);
+    cv::Mat result = claheProcessor.applyCLAHE(inputImage, clipLimit, tileSize);
+    finalImage = matToVector(result);  // 更新 finalImage 为 CLAHE 处理后的结果
+    return result;
 }
 
 cv::Mat ImageProcessor::applyCLAHE_CPU(const cv::Mat& inputImage, double clipLimit, const cv::Size& tileSize) {
     saveCurrentState();
-    preProcessedImage = finalImage; // Save the state before applying CLAHE
+    preProcessedImage = finalImage;  // 保存当前图像状态，而不是输入图像
     hasCLAHEBeenApplied = true;
-    return claheProcessor.applyCLAHE_CPU(inputImage, clipLimit, tileSize);
+    cv::Mat result = claheProcessor.applyCLAHE_CPU(inputImage, clipLimit, tileSize);
+    finalImage = matToVector(result);  // 更新 finalImage 为 CLAHE 处理后的结果
+    return result;
 }
 
 void ImageProcessor::applyThresholdCLAHE_GPU(uint16_t threshold, double clipLimit, const cv::Size& tileSize) {
     saveCurrentState();
     if (hasCLAHEBeenApplied) {
-        claheProcessor.applyThresholdCLAHE_GPU(preProcessedImage, threshold, clipLimit, tileSize);
+        // 使用更强的 clipLimit 来增强效果
+        double enhancedClipLimit = clipLimit * 2.0;  // 增加 clipLimit 使效果更明显
+        std::vector<std::vector<uint16_t>> processImage = finalImage;
+        claheProcessor.applyThresholdCLAHE_GPU(processImage, threshold, enhancedClipLimit, tileSize);
+        finalImage = processImage;
     } else {
-        claheProcessor.applyThresholdCLAHE_GPU(finalImage, threshold, clipLimit, tileSize);
+        // 直接应用增强的参数
+        double enhancedClipLimit = clipLimit * 2.0;
+        claheProcessor.applyThresholdCLAHE_GPU(finalImage, threshold, enhancedClipLimit, tileSize);
     }
-    finalImage = matToVector(vectorToMat(finalImage));
     hasCLAHEBeenApplied = false;
 }
 
 void ImageProcessor::applyThresholdCLAHE_CPU(uint16_t threshold, double clipLimit, const cv::Size& tileSize) {
     saveCurrentState();
     if (hasCLAHEBeenApplied) {
-        claheProcessor.applyThresholdCLAHE_CPU(preProcessedImage, threshold, clipLimit, tileSize);
+        // 使用更强的 clipLimit 来增强效果
+        double enhancedClipLimit = clipLimit * 2.0;
+        std::vector<std::vector<uint16_t>> processImage = finalImage;
+        claheProcessor.applyThresholdCLAHE_CPU(processImage, threshold, enhancedClipLimit, tileSize);
+        finalImage = processImage;
     } else {
-        claheProcessor.applyThresholdCLAHE_CPU(finalImage, threshold, clipLimit, tileSize);
+        // 直接应用增强的参数
+        double enhancedClipLimit = clipLimit * 2.0;
+        claheProcessor.applyThresholdCLAHE_CPU(finalImage, threshold, enhancedClipLimit, tileSize);
     }
-    finalImage = claheProcessor.matToVector(claheProcessor.vectorToMat(finalImage));
     hasCLAHEBeenApplied = false;
 }
 

@@ -154,7 +154,7 @@ private:
     ImageProcessingParams params;
     CLAHEProcessor claheProcessor;
 
-    std::vector<std::vector<uint16_t>> preProcessedImage;
+    std::vector<std::vector<uint16_t>> preProcessedImage;  // Store pre-processed image
     bool hasCLAHEBeenApplied;
 
     std::vector<DarkLine> m_detectedLines;
