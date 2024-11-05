@@ -25,6 +25,7 @@ public:
 private:
     void setupPixelInfoLabel();
     void setupFileOperations();
+    void setupPreProcessingOperations();
     void setupBasicOperations();
     void setupFilteringOperations();
     void setupAdvancedOperations();
@@ -41,7 +42,6 @@ private:
     std::pair<double, bool> showInputDialog(const QString& title, const QString& label, double defaultValue, double min, double max);
     void createGroupBox(const QString& title, const std::vector<std::pair<QString, std::function<void()>>>& buttons);
     void updateImageDisplay();
-    void resetDetectedLines();
 
     QVBoxLayout* m_mainLayout;
     QVBoxLayout* m_scrollLayout;
@@ -68,7 +68,16 @@ private:
 
     QMessageBox* m_zoomWarningBox;
 
+    using DarkLine = ImageProcessor::DarkLine;  // Add this type alias
+    QString formatWidthSummary(const std::map<int, std::vector<DarkLine>>& linesByWidth);
+
+    void updateLineInfo(const QString& info);
+    void adjustDarkLineInfoHeight(const QString& text);
+    void resetDetectedLines();
+    QString formatLineInfo(const ImageProcessor::DarkLine& line, int index);
+
     std::vector<ImageProcessor::DarkLine> m_detectedLines;
+    QLabel* m_darkLineInfoLabel;
 };
 
 

@@ -24,6 +24,11 @@ public:
     static std::vector<DarkLine> detectDarkLines(const std::vector<std::vector<uint16_t>>& image);
     static void removeDarkLines(std::vector<std::vector<uint16_t>>& image, const std::vector<DarkLine>& lines);
 
+    static void removeDarkLinesSelective(std::vector<std::vector<uint16_t>>& image,
+                                         const std::vector<DarkLine>& lines,
+                                         bool removeInObject,
+                                         bool removeIsolated);
+
 private:
     // Constants for detection and removal
     static constexpr uint16_t BLACK_THRESHOLD = 1000;

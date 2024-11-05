@@ -37,9 +37,64 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
     QWidget* scrollWidget = new QWidget(m_scrollArea);
     m_scrollLayout = new QVBoxLayout(scrollWidget);
 
+    m_darkLineInfoLabel = new QLabel("");
+    m_darkLineInfoLabel->setMinimumHeight(30);  // Minimum height for single line
+    m_darkLineInfoLabel->setStyleSheet(
+        "QLabel {"
+        "    color: black;"
+        "    font-family: monospace;"
+        "    font-size: 11px;"
+        "    background-color: #f8f8f8;"
+        "    border: 1px solid #ddd;"
+        "    border-radius: 4px;"
+        "    padding: 8px;"
+        "    margin: 4px 0px;"
+        "}"
+        );
+    m_darkLineInfoLabel->setTextFormat(Qt::PlainText);
+    m_darkLineInfoLabel->setWordWrap(true);
+    m_darkLineInfoLabel->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    m_darkLineInfoLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+    m_darkLineInfoLabel->setVisible(false);
+
+    // Create and setup the scroll area for the dark line info
+    QScrollArea* darkLineScrollArea = new QScrollArea;
+    darkLineScrollArea->setWidget(m_darkLineInfoLabel);
+    darkLineScrollArea->setWidgetResizable(true);
+    darkLineScrollArea->setMaximumHeight(300);  // Maximum height for scroll area
+    darkLineScrollArea->setMinimumHeight(30);   // Minimum height for scroll area
+    darkLineScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    darkLineScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    darkLineScrollArea->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+    darkLineScrollArea->setStyleSheet(
+        "QScrollArea {"
+        "    border: none;"
+        "    background: transparent;"
+        "}"
+        "QScrollBar:vertical {"
+        "    width: 10px;"
+        "    background: transparent;"
+        "}"
+        "QScrollBar::handle:vertical {"
+        "    background: #CCCCCC;"
+        "    border-radius: 5px;"
+        "}"
+        "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {"
+        "    height: 0px;"
+        "}"
+        );
+    darkLineScrollArea->setVisible(false);
+
+    // Add the scroll area to the layout
+    QVBoxLayout* infoLayout = qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout());
+    infoLayout->insertWidget(3, darkLineScrollArea);
+    infoLayout->insertWidget(3, darkLineScrollArea);
+
+    // Setup other components
     setupFileOperations();
+    setupPreProcessingOperations();
     setupBasicOperations();
-    setupZoomControls();  // Initialize zoom controls (but don't add to layout yet)
+    setupZoomControls();
     setupFilteringOperations();
     setupAdvancedOperations();
     setupCLAHEOperations();
@@ -55,6 +110,7 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
     m_mainLayout->addWidget(m_scrollArea);
     setLayout(m_mainLayout);
 
+    // Setup zoom warning box
     m_zoomWarningBox = new QMessageBox(this);
     m_zoomWarningBox->setIcon(QMessageBox::Warning);
     m_zoomWarningBox->setWindowTitle("Zoom Mode Active");
@@ -87,6 +143,28 @@ void ControlPanel::setupPixelInfoLabel()
     m_lastActionParamsLabel->setStyleSheet("color: black;");
     m_lastActionParamsLabel->setWordWrap(true);
     infoLayout->addWidget(m_lastActionParamsLabel);
+
+    // Dark line info label setup
+    m_darkLineInfoLabel = new QLabel("");
+    m_darkLineInfoLabel->setMinimumHeight(15);
+    m_darkLineInfoLabel->setMaximumHeight(30);
+    m_darkLineInfoLabel->setStyleSheet(
+        "QLabel {"
+        "    color: black;"
+        "    font-family: Arial;"
+        "    font-size: 11px;"
+        "    background-color: #f8f8f8;"
+        "    border: 1px solid #ddd;"
+        "    border-radius: 4px;"
+        "    padding: 8px;"
+        "    margin: 4px 0px;"
+        "}"
+        );
+    m_darkLineInfoLabel->setTextFormat(Qt::PlainText);
+    m_darkLineInfoLabel->setWordWrap(true);
+    m_darkLineInfoLabel->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+     m_darkLineInfoLabel->setVisible(false);  // Initially hidden
+    infoLayout->addWidget(m_darkLineInfoLabel);
 
     m_gpuTimingLabel = new QLabel("");
     m_gpuTimingLabel->setFixedHeight(30);
@@ -300,6 +378,7 @@ void ControlPanel::setupFileOperations()
                                                if (!fileName.isEmpty()) {
                                                    try {
                                                        resetDetectedLines();
+                                                       m_darkLineInfoLabel->hide();
                                                        m_imageProcessor.loadTxtImage(fileName.toStdString());
                                                        m_imageLabel->clearSelection();
                                                        updateImageDisplay();
@@ -325,6 +404,7 @@ void ControlPanel::setupFileOperations()
                                           {"Revert", [this]() {
                                                QString revertedAction = m_imageProcessor.revertImage();
                                                if (!revertedAction.isEmpty()) {
+                                                   m_darkLineInfoLabel->hide();
                                                    updateImageDisplay();
                                                    handleRevert();
 
@@ -353,12 +433,13 @@ void ControlPanel::setupFileOperations()
 void ControlPanel::setupBasicOperations()
 {
     createGroupBox("Basic Operations", {
-                                            {"Zoom", [this]() {
-                                             toggleZoomMode(!m_zoomModeActive);
+                                           {"Zoom", [this]() {
+                                                toggleZoomMode(!m_zoomModeActive);
                                             }},
                                            {"Crop", [this]() {
-                                             if (checkZoomMode()) return;
-                                             resetDetectedLines();
+                                                if (checkZoomMode()) return;
+                                                m_darkLineInfoLabel->hide();
+                                                resetDetectedLines();
                                                 if (m_imageLabel->isRegionSelected()) {
                                                     QRect selectedRegion = m_imageLabel->getSelectedRegion();
                                                     QRect normalizedRegion = selectedRegion.normalized();
@@ -375,8 +456,9 @@ void ControlPanel::setupBasicOperations()
                                                 }
                                             }},
                                            {"Rotate CW", [this]() {
-                                             if (checkZoomMode()) return;
-                                             resetDetectedLines();
+                                                if (checkZoomMode()) return;
+                                                m_darkLineInfoLabel->hide();
+                                                resetDetectedLines();
                                                 auto rotatedImage = m_imageProcessor.rotateImage(m_imageProcessor.getFinalImage(), 90);
                                                 m_imageProcessor.updateAndSaveFinalImage(rotatedImage);
                                                 m_imageLabel->clearSelection();
@@ -384,113 +466,124 @@ void ControlPanel::setupBasicOperations()
                                                 updateLastAction("Rotate Clockwise");
                                             }},
                                            {"Rotate CCW", [this]() {
-                                             if (checkZoomMode()) return;
-                                             resetDetectedLines();
+                                                if (checkZoomMode()) return;
+                                                m_darkLineInfoLabel->hide();
+                                                resetDetectedLines();
                                                 auto rotatedImage = m_imageProcessor.rotateImage(m_imageProcessor.getFinalImage(), 270);
                                                 m_imageProcessor.updateAndSaveFinalImage(rotatedImage);
                                                 m_imageLabel->clearSelection();
                                                 updateImageDisplay();
                                                 updateLastAction("Rotate CCW");
-                                            }},
-                                           {"Calibration", [this]() {
-                                             if (checkZoomMode()) return;
-                                             resetDetectedLines();
-                                                auto [linesToProcessY, yOk] = showInputDialog("Calibration", "Enter lines to process for Y-axis:", 10, 1, 1000);
-                                                if (!yOk) return;
-
-                                                auto [linesToProcessX, xOk] = showInputDialog("Calibration", "Enter lines to process for X-axis:", 10, 1, 1000);
-                                                if (xOk) {
-                                                    m_imageProcessor.processYXAxis(const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()), linesToProcessY, linesToProcessX);
-                                                    m_imageLabel->clearSelection();
-                                                    updateImageDisplay();
-                                                    updateLastAction("Calibration", QString("Y: %1, X: %2").arg(linesToProcessY).arg(linesToProcessX));
-                                                }
-                                            }},
-                                        {"Split & Merge", [this]() {
-                                             if (checkZoomMode()) return;
-                                             resetDetectedLines();
-
-                                             // Create dialog for options
-                                             QDialog dialog(this);
-                                             dialog.setWindowTitle("Split & Merge Options");
-                                             QVBoxLayout* layout = new QVBoxLayout(&dialog);
-
-                                             // Split mode selection
-                                             QGroupBox* splitBox = new QGroupBox("Split Mode");
-                                             QVBoxLayout* splitLayout = new QVBoxLayout(splitBox);
-                                             QRadioButton* allPartsRadio = new QRadioButton("All Parts");
-                                             QRadioButton* leftMostRadio = new QRadioButton("Left Most (Parts 1-2)");
-                                             QRadioButton* rightMostRadio = new QRadioButton("Right Most (Parts 3-4)");
-                                             allPartsRadio->setChecked(true);
-                                             splitLayout->addWidget(allPartsRadio);
-                                             splitLayout->addWidget(leftMostRadio);
-                                             splitLayout->addWidget(rightMostRadio);
-                                             layout->addWidget(splitBox);
-
-                                             // Merge method selection
-                                             QGroupBox* mergeBox = new QGroupBox("Merge Method");
-                                             QVBoxLayout* mergeLayout = new QVBoxLayout(mergeBox);
-                                             QRadioButton* weightedAvgRadio = new QRadioButton("Weighted Average");
-                                             QRadioButton* minValueRadio = new QRadioButton("Minimum Value");
-                                             weightedAvgRadio->setChecked(true);
-                                             mergeLayout->addWidget(weightedAvgRadio);
-                                             mergeLayout->addWidget(minValueRadio);
-                                             layout->addWidget(mergeBox);
-
-                                             // Add OK and Cancel buttons
-                                             QDialogButtonBox* buttonBox = new QDialogButtonBox(
-                                                 QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
-                                                 Qt::Horizontal, &dialog);
-                                             layout->addWidget(buttonBox);
-
-                                             connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-                                             connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-
-                                             if (dialog.exec() == QDialog::Accepted) {
-                                                 ImageProcessor::SplitMode splitMode;
-                                                 if (leftMostRadio->isChecked()) {
-                                                     splitMode = ImageProcessor::SplitMode::LEFT_MOST;
-                                                 } else if (rightMostRadio->isChecked()) {
-                                                     splitMode = ImageProcessor::SplitMode::RIGHT_MOST;
-                                                 } else {
-                                                     splitMode = ImageProcessor::SplitMode::ALL_PARTS;
-                                                 }
-
-                                                 ImageProcessor::MergeMethod mergeMethod = minValueRadio->isChecked() ?
-                                                                                               ImageProcessor::MergeMethod::MINIMUM_VALUE :
-                                                                                               ImageProcessor::MergeMethod::WEIGHTED_AVERAGE;
-
-                                                 m_imageProcessor.processAndMergeImageParts(splitMode, mergeMethod);
-                                                 m_imageLabel->clearSelection();
-                                                 updateImageDisplay();
-
-                                                 // Update last action with the selected options
-                                                 QString modeStr;
-                                                 switch (splitMode) {
-                                                 case ImageProcessor::SplitMode::LEFT_MOST:
-                                                     modeStr = "Left Most (Parts 1-2)";
-                                                     break;
-                                                 case ImageProcessor::SplitMode::RIGHT_MOST:
-                                                     modeStr = "Right Most (Parts 3-4)";
-                                                     break;
-                                                 default:
-                                                     modeStr = "All Parts";
-                                                 }
-
-                                                 QString methodStr = mergeMethod == ImageProcessor::MergeMethod::MINIMUM_VALUE ?
-                                                                         "Minimum Value" : "Weighted Average";
-
-                                                 updateLastAction("Split & Merge",
-                                                                  QString("Mode: %1, Method: %2").arg(modeStr).arg(methodStr));
-                                             }
-                                         }}
+                                            }}
                                        });
+}
+
+void ControlPanel::setupPreProcessingOperations()
+{
+    createGroupBox("Pre-Processing Operations", {
+                                                    {"Calibration", [this]() {
+                                                         if (checkZoomMode()) return;
+                                                         m_darkLineInfoLabel->hide();
+                                                         resetDetectedLines();
+                                                         auto [linesToProcessY, yOk] = showInputDialog("Calibration", "Enter lines to process for Y-axis:", 10, 1, 1000);
+                                                         if (!yOk) return;
+
+                                                         auto [linesToProcessX, xOk] = showInputDialog("Calibration", "Enter lines to process for X-axis:", 10, 1, 1000);
+                                                         if (xOk) {
+                                                             m_imageProcessor.processYXAxis(const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()),
+                                                                                            linesToProcessY, linesToProcessX);
+                                                             m_imageLabel->clearSelection();
+                                                             updateImageDisplay();
+                                                             updateLastAction("Calibration", QString("Y: %1, X: %2").arg(linesToProcessY).arg(linesToProcessX));
+                                                         }
+                                                     }},
+                                                    {"Split & Merge", [this]() {
+                                                         if (checkZoomMode()) return;
+                                                         m_darkLineInfoLabel->hide();
+                                                         resetDetectedLines();
+
+                                                         // Create dialog for options
+                                                         QDialog dialog(this);
+                                                         dialog.setWindowTitle("Split & Merge Options");
+                                                         QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+                                                         // Split mode selection
+                                                         QGroupBox* splitBox = new QGroupBox("Split Mode");
+                                                         QVBoxLayout* splitLayout = new QVBoxLayout(splitBox);
+                                                         QRadioButton* allPartsRadio = new QRadioButton("All Parts");
+                                                         QRadioButton* leftMostRadio = new QRadioButton("Left Most (Parts 1-2)");
+                                                         QRadioButton* rightMostRadio = new QRadioButton("Right Most (Parts 3-4)");
+                                                         allPartsRadio->setChecked(true);
+                                                         splitLayout->addWidget(allPartsRadio);
+                                                         splitLayout->addWidget(leftMostRadio);
+                                                         splitLayout->addWidget(rightMostRadio);
+                                                         layout->addWidget(splitBox);
+
+                                                         // Merge method selection
+                                                         QGroupBox* mergeBox = new QGroupBox("Merge Method");
+                                                         QVBoxLayout* mergeLayout = new QVBoxLayout(mergeBox);
+                                                         QRadioButton* weightedAvgRadio = new QRadioButton("Weighted Average");
+                                                         QRadioButton* minValueRadio = new QRadioButton("Minimum Value");
+                                                         weightedAvgRadio->setChecked(true);
+                                                         mergeLayout->addWidget(weightedAvgRadio);
+                                                         mergeLayout->addWidget(minValueRadio);
+                                                         layout->addWidget(mergeBox);
+
+                                                         // Add OK and Cancel buttons
+                                                         QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                                                             QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+                                                             Qt::Horizontal, &dialog);
+                                                         layout->addWidget(buttonBox);
+
+                                                         connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                                                         connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+                                                         if (dialog.exec() == QDialog::Accepted) {
+                                                             ImageProcessor::SplitMode splitMode;
+                                                             if (leftMostRadio->isChecked()) {
+                                                                 splitMode = ImageProcessor::SplitMode::LEFT_MOST;
+                                                             } else if (rightMostRadio->isChecked()) {
+                                                                 splitMode = ImageProcessor::SplitMode::RIGHT_MOST;
+                                                             } else {
+                                                                 splitMode = ImageProcessor::SplitMode::ALL_PARTS;
+                                                             }
+
+                                                             ImageProcessor::MergeMethod mergeMethod = minValueRadio->isChecked() ?
+                                                                                                           ImageProcessor::MergeMethod::MINIMUM_VALUE :
+                                                                                                           ImageProcessor::MergeMethod::WEIGHTED_AVERAGE;
+
+                                                             m_imageProcessor.processAndMergeImageParts(splitMode, mergeMethod);
+                                                             m_imageLabel->clearSelection();
+                                                             updateImageDisplay();
+
+                                                             // Update last action with the selected options
+                                                             QString modeStr;
+                                                             switch (splitMode) {
+                                                             case ImageProcessor::SplitMode::LEFT_MOST:
+                                                                 modeStr = "Left Most (Parts 1-2)";
+                                                                 break;
+                                                             case ImageProcessor::SplitMode::RIGHT_MOST:
+                                                                 modeStr = "Right Most (Parts 3-4)";
+                                                                 break;
+                                                             default:
+                                                                 modeStr = "All Parts";
+                                                             }
+
+                                                             QString methodStr = mergeMethod == ImageProcessor::MergeMethod::MINIMUM_VALUE ?
+                                                                                     "Minimum Value" : "Weighted Average";
+
+                                                             updateLastAction("Split & Merge",
+                                                                              QString("Mode: %1, Method: %2").arg(modeStr).arg(methodStr));
+                                                         }
+                                                     }}
+                                                });
 }
 
 void ControlPanel::setupFilteringOperations() {
     createGroupBox("Filtering Operations", {
                                                {"Median Filter", [this]() {
                                                  if (checkZoomMode()) return;
+                                                 m_darkLineInfoLabel->hide();
                                                  resetDetectedLines();
                                                     auto [filterKernelSize, ok] = showInputDialog("Median Filter", "Enter kernel size:", 3, 1, 21);
                                                     if (ok) {
@@ -505,6 +598,7 @@ void ControlPanel::setupFilteringOperations() {
                                                 }},
                                                {"High-Pass Filter", [this]() {
                                                  if (checkZoomMode()) return;
+                                                 m_darkLineInfoLabel->hide();
                                                  resetDetectedLines();
                                                     m_imageProcessor.applyHighPassFilter(const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()));
                                                     m_imageLabel->clearSelection();
@@ -519,6 +613,7 @@ void ControlPanel::setupAdvancedOperations()
     createGroupBox("Advanced Operations", {
                                            {"Stretch", [this]() {
                                                 if (checkZoomMode()) return;
+                                                m_darkLineInfoLabel->hide();
                                                 resetDetectedLines();
 
                                                 // Create dialog for stretch options
@@ -578,6 +673,7 @@ void ControlPanel::setupAdvancedOperations()
                                             }},
                                               {"Padding", [this]() {
                                                 if (checkZoomMode()) return;
+                                                m_darkLineInfoLabel->hide();
                                                 resetDetectedLines();
                                                    auto [paddingSize, ok] = showInputDialog("Padding Size", "Enter padding size:", 10, 1, 1000);
                                                    if (ok) {
@@ -590,6 +686,7 @@ void ControlPanel::setupAdvancedOperations()
                                                }},
                                               {"Apply Distortion", [this]() {
                                                 if (checkZoomMode()) return;
+                                                m_darkLineInfoLabel->hide();
                                                 resetDetectedLines();
                                                    QStringList directions = {"Left", "Right", "Top", "Bottom"};
                                                    bool ok;
@@ -612,6 +709,7 @@ void ControlPanel::setupCLAHEOperations() {
     createGroupBox("CLAHE Operations", {
                                            {"CLAHE (GPU)", [this]() {
                                              if (checkZoomMode()) return;
+                                             m_darkLineInfoLabel->hide();
                                              resetDetectedLines();
                                                 auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 1000);
                                                 if (!clipOk) return;
@@ -640,6 +738,7 @@ void ControlPanel::setupCLAHEOperations() {
 
                                            {"CLAHE (CPU)", [this]() {
                                              if (checkZoomMode()) return;
+                                             m_darkLineInfoLabel->hide();
                                              resetDetectedLines();
                                                 auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 1000);
                                                 if (!clipOk) return;
@@ -668,6 +767,7 @@ void ControlPanel::setupCLAHEOperations() {
 
                                            {"Threshold CLAHE (GPU)", [this]() {
                                              if (checkZoomMode()) return;
+                                             m_darkLineInfoLabel->hide();
                                              resetDetectedLines();
                                                 auto [threshold, thresholdOk] = showInputDialog("Threshold", "Enter threshold value:", 5000, 0, 65535);
                                                 if (!thresholdOk) return;
@@ -701,6 +801,7 @@ void ControlPanel::setupCLAHEOperations() {
 
                                            {"Threshold CLAHE (CPU)", [this]() {
                                              if (checkZoomMode()) return;
+                                             m_darkLineInfoLabel->hide();
                                              resetDetectedLines();
                                                 auto [threshold, thresholdOk] = showInputDialog("Threshold", "Enter threshold value:", 5000, 0, 65535);
                                                 if (!thresholdOk) return;
@@ -739,6 +840,7 @@ void ControlPanel::setupGlobalAdjustments()
     createGroupBox("Global Adjustments", {
                                              {"Overall Gamma", [this]() {
                                                if (checkZoomMode()) return;
+                                                  m_darkLineInfoLabel->hide();
                                                   resetDetectedLines();
                                                   auto [gammaValue, ok] = showInputDialog("Overall Gamma", "Enter gamma value:", 1.0, 0.1, 10.0);
                                                   if (ok) {
@@ -750,6 +852,7 @@ void ControlPanel::setupGlobalAdjustments()
                                               }},
                                              {"Overall Sharpen", [this]() {
                                                if (checkZoomMode()) return;
+                                               m_darkLineInfoLabel->hide();
                                                   resetDetectedLines();
                                                   auto [sharpenStrength, ok] = showInputDialog("Overall Sharpen", "Enter sharpen strength:", 1.0, 0.1, 10.0);
                                                   if (ok) {
@@ -760,6 +863,7 @@ void ControlPanel::setupGlobalAdjustments()
                                                   }
                                               }},
                                              {"Overall Contrast", [this]() {
+                                               m_darkLineInfoLabel->hide();
                                                   resetDetectedLines();
                                                   auto [contrastFactor, ok] = showInputDialog("Overall Contrast", "Enter contrast factor:", 1.0, 0.1, 10.0);
                                                   if (ok) {
@@ -777,6 +881,7 @@ void ControlPanel::setupRegionalAdjustments()
     createGroupBox("Regional Adjustments", {
                                                {"Region Gamma", [this]() {
                                                  if (checkZoomMode()) return;
+                                                 m_darkLineInfoLabel->hide();
                                                     resetDetectedLines();
                                                     if (m_imageLabel->isRegionSelected()) {
                                                         auto [gamma, ok] = showInputDialog("Region Gamma", "Enter gamma value:", 1.0, 0.1, 10.0);
@@ -793,6 +898,7 @@ void ControlPanel::setupRegionalAdjustments()
                                                 }},
                                                {"Region Sharpen", [this]() {
                                                  if (checkZoomMode()) return;
+                                                 m_darkLineInfoLabel->hide();
                                                     resetDetectedLines();
                                                     if (m_imageLabel->isRegionSelected()) {
                                                         auto [sharpenStrength, ok] = showInputDialog("Region Sharpen", "Enter sharpen strength:", 0.5, 0.1, 5.0);
@@ -809,6 +915,7 @@ void ControlPanel::setupRegionalAdjustments()
                                                 }},
                                                {"Region Contrast", [this]() {
                                                  if (checkZoomMode()) return;
+                                                 m_darkLineInfoLabel->hide();
                                                     resetDetectedLines();
                                                     if (m_imageLabel->isRegionSelected()) {
                                                         auto [contrastFactor, ok] = showInputDialog("Region Contrast", "Enter contrast factor:", 1.5, 0.1, 5.0);
@@ -861,50 +968,95 @@ void ControlPanel::createGroupBox(const QString& title, const std::vector<std::p
 }
 
 void ControlPanel::setupBlackLineDetection() {
-    createGroupBox("Dark Line Detection", {  // Renamed from "Black Line Detection"
-                                           {"Detect Black Lines", [this]() {
-                                                m_imageProcessor.saveCurrentState();
-                                                m_detectedLines = m_imageProcessor.detectDarkLines();
-                                                updateImageDisplay();
+    createGroupBox("Dark Line Detection", {
+                                              {"Detect Black Lines", [this]() {
+                                                   if (checkZoomMode()) return;
 
-                                                // Format coordinates and weights info
-                                                QStringList lineInfo;
-                                                for (const auto& line : m_detectedLines) {
-                                                    if (line.isVertical) {
-                                                        lineInfo << QString("(%1,0) - Line Weight: %2").arg(line.x).arg(line.width);
-                                                    } else {
-                                                        lineInfo << QString("(0,%1) - Line Weight: %2").arg(line.y).arg(line.width);
-                                                    }
-                                                }
+                                                   QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
+                                                       qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
+                                                       );
 
-                                                // Update labels
-                                                updateLastAction("Detect Black Lines", lineInfo.join(", "));
-                                            }},
+                                                   m_darkLineInfoLabel->clear();
+                                                   m_imageProcessor.saveCurrentState();
+                                                   m_detectedLines = m_imageProcessor.detectDarkLines();
 
-                                           {"Remove Black Lines", [this]() {
-                                                if (m_detectedLines.empty()) {
-                                                    QMessageBox::information(this, "Remove Black Lines",
-                                                                             "Please detect black lines first.");
-                                                    return;
-                                                }
+                                                   // Create detection info summary
+                                                   QString detectionInfo = "Detected Lines:\n";
+                                                   for (size_t i = 0; i < m_detectedLines.size(); ++i) {
+                                                       detectionInfo += formatLineInfo(m_detectedLines[i], i + 1);
+                                                   }
 
-                                                // Store line info before removal
-                                                QStringList removedLines;
-                                                for (const auto& line : m_detectedLines) {
-                                                    if (line.isVertical) {
-                                                        removedLines << QString("(%1,0) - Line Weight: %2").arg(line.x).arg(line.width);
-                                                    } else {
-                                                        removedLines << QString("(0,%1) - Line Weight: %2").arg(line.y).arg(line.width);
-                                                    }
-                                                }
+                                                   m_darkLineInfoLabel->setText(detectionInfo);
+                                                   adjustDarkLineInfoHeight(detectionInfo);
+                                                   m_darkLineInfoLabel->setVisible(true);
+                                                   darkLineScrollArea->setVisible(true);
 
-                                                m_imageProcessor.removeDarkLines(m_detectedLines);
-                                                m_detectedLines.clear();
-                                                updateImageDisplay();
+                                                   updateImageDisplay();
+                                                   updateLastAction("Detect Black Lines",
+                                                                    QString("%1 lines").arg(m_detectedLines.size()));
+                                               }},
 
-                                                // Update labels with removed line information
-                                                updateLastAction("Remove Black Lines", removedLines.join(", "));
-                                            }}
+                                              {"Remove Lines", [this]() {
+                                                   if (checkZoomMode()) return;
+
+                                                   if (m_detectedLines.empty()) {
+                                                       QMessageBox::information(this, "Remove Lines", "Please detect black lines first.");
+                                                       return;
+                                                   }
+
+                                                   // Create dialog for removal options
+                                                   QDialog dialog(this);
+                                                   dialog.setWindowTitle("Remove Lines Options");
+                                                   QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+                                                   // Create radio buttons
+                                                   QRadioButton* allLinesRadio = new QRadioButton("Remove All Lines");
+                                                   QRadioButton* inObjectRadio = new QRadioButton("Remove In Object Lines Only");
+                                                   QRadioButton* isolatedRadio = new QRadioButton("Remove Isolated Lines Only");
+                                                   allLinesRadio->setChecked(true);
+
+                                                   layout->addWidget(allLinesRadio);
+                                                   layout->addWidget(inObjectRadio);
+                                                   layout->addWidget(isolatedRadio);
+
+                                                   // Add OK and Cancel buttons
+                                                   QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                                                       QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+                                                       Qt::Horizontal, &dialog);
+                                                   layout->addWidget(buttonBox);
+
+                                                   connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                                                   connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+                                                   if (dialog.exec() == QDialog::Accepted) {
+                                                       bool removeInObject = allLinesRadio->isChecked() || inObjectRadio->isChecked();
+                                                       bool removeIsolated = allLinesRadio->isChecked() || isolatedRadio->isChecked();
+
+                                                       m_imageProcessor.removeDarkLinesSelective(m_detectedLines, removeInObject, removeIsolated);
+
+                                                       // Get the indices of removed lines from ImageProcessor
+                                                       const auto& removedIndices = m_imageProcessor.getLastRemovedLines();
+
+                                                       // Create removal info string
+                                                       QString removalInfo = "Removed Lines:\n";
+                                                       for (size_t index : removedIndices) {
+                                                           removalInfo += QString("Line %1\n").arg(index);
+                                                       }
+
+                                                       // Update dark line info label
+                                                       m_darkLineInfoLabel->setText(removalInfo);
+                                                       adjustDarkLineInfoHeight(removalInfo);
+
+                                                       // Clear detected lines and update display
+                                                       m_detectedLines.clear();
+                                                       updateImageDisplay();
+
+                                                       QString actionType = allLinesRadio->isChecked() ? "All" :
+                                                                                inObjectRadio->isChecked() ? "In Object" : "Isolated";
+                                                       updateLastAction("Remove Lines",
+                                                                        QString("%1 Lines (%2 removed)").arg(actionType).arg(removedIndices.size()));
+                                                   }
+                                               }}
                                           });
 }
 
@@ -937,42 +1089,46 @@ void ControlPanel::updateImageDisplay() {
         painter.setRenderHint(QPainter::Antialiasing);
 
         // Draw detected black lines
-        const auto& detectedLines = m_imageProcessor.getDetectedLines();
+        const auto& detectedLines = m_detectedLines;
         if (!detectedLines.empty()) {
-            // First draw the lines
-            for (const auto& line : detectedLines) {
+            // Draw lines with labels
+            for (size_t i = 0; i < detectedLines.size(); ++i) {
+                const auto& line = detectedLines[i];
+
+                // Set color based on whether line is in object
                 QColor lineColor = line.inObject ? Qt::blue : Qt::red;
                 painter.setPen(QPen(lineColor, 2, Qt::SolidLine));
+
+                QString labelText = QString("Line %1 - %2")
+                                        .arg(i + 1)
+                                        .arg(line.inObject ? "In Object" : "Isolated");
+
                 if (line.isVertical) {
                     QRect lineRect(line.x, 0, line.width, height - 1);
                     painter.drawRect(lineRect);
+
+                    // Draw label with background
+                    int labelY = 10 + i * 25;  // Increased spacing between labels
+                    QFontMetrics fm(painter.font());
+                    int labelWidth = fm.horizontalAdvance(labelText) + 10;
+                    QRect textRect(line.x + line.width + 5, labelY, labelWidth, 20);
+
+                    painter.fillRect(textRect, QColor(255, 255, 255, 230));  // More opaque background
+                    painter.setPen(Qt::black);
+                    painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, " " + labelText);
                 } else {
                     QRect lineRect(0, line.y, width - 1, line.width);
                     painter.drawRect(lineRect);
+
+                    // Draw label with background
+                    QFontMetrics fm(painter.font());
+                    int labelWidth = fm.horizontalAdvance(labelText) + 10;
+                    QRect textRect(10, line.y + line.width + 5, labelWidth, 20);
+
+                    painter.fillRect(textRect, QColor(255, 255, 255, 230));
+                    painter.setPen(Qt::black);
+                    painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, " " + labelText);
                 }
-            }
-
-            // Then draw the status indicators
-            int statusHeight = 20;
-            int statusWidth = 80;
-            int statusMargin = 5;
-            int currentY = 10;
-
-            painter.setFont(QFont("Arial", 8, QFont::Bold));
-
-            for (const auto& line : detectedLines) {
-                QRect statusRect(statusMargin, currentY, statusWidth, statusHeight);
-                QColor bgColor = line.inObject ? QColor(0, 0, 255) : QColor(255, 0, 0);
-
-                // Draw status box background
-                painter.fillRect(statusRect, bgColor);
-
-                // Draw status text
-                painter.setPen(Qt::white);
-                QString statusText = line.inObject ? "In Object" : "Isolated";
-                painter.drawText(statusRect, Qt::AlignCenter, statusText);
-
-                currentY += statusHeight + statusMargin;
             }
         }
 
@@ -981,7 +1137,6 @@ void ControlPanel::updateImageDisplay() {
             painter.setPen(QPen(Qt::blue, 2));
             QRect selectedRegion = m_imageLabel->getSelectedRegion();
             if (m_zoomModeActive) {
-                // Scale the selection rectangle according to zoom level
                 float zoomLevel = m_imageProcessor.getZoomLevel();
                 selectedRegion = QRect(
                     selectedRegion.x() * zoomLevel,
@@ -1006,8 +1161,51 @@ void ControlPanel::updateImageDisplay() {
     }
 }
 
+QString ControlPanel::formatWidthSummary(const std::map<int, std::vector<DarkLine>>& linesByWidth) {
+    QStringList widths;
+    for (const auto& [width, lines] : linesByWidth) {
+        widths << QString::number(width);
+    }
+    return widths.join(", ") + " pixels";
+}
+
+QString ControlPanel::formatLineInfo(const ImageProcessor::DarkLine& line, int index) {
+    QString coordinates;
+    if (line.isVertical) {
+        coordinates = QString("(%1,0)").arg(line.x);
+    } else {
+        coordinates = QString("(0,%1)").arg(line.y);
+    }
+    return QString("Line %1: %2 with width %3 pixels (%4)\n")
+        .arg(index)
+        .arg(coordinates)
+        .arg(line.width)
+        .arg(line.inObject ? "In Object" : "Isolated");
+}
+
+void ControlPanel::adjustDarkLineInfoHeight(const QString& text) {
+    QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
+        qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
+        );
+
+    QFontMetrics fm(m_darkLineInfoLabel->font());
+    int textHeight = fm.lineSpacing() * text.count('\n') + 40; // Add padding
+    int preferredHeight = qMin(textHeight, 300); // Cap at maximum height
+    preferredHeight = qMax(preferredHeight, 30); // Ensure minimum height
+    darkLineScrollArea->setFixedHeight(preferredHeight);
+}
+
 void ControlPanel::resetDetectedLines() {
     m_detectedLines.clear();
     m_imageProcessor.clearDetectedLines();
+
+    QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
+        qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
+        );
+
+    m_darkLineInfoLabel->clear();
+    m_darkLineInfoLabel->setVisible(false);
+    darkLineScrollArea->setVisible(false);
+
     updateImageDisplay();
 }

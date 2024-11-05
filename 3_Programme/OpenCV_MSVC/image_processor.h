@@ -127,6 +127,15 @@ public:
         return m_detectedLines;
     }
 
+    void removeDarkLinesSelective(const std::vector<DarkLine>& lines,
+                                  bool removeInObject,
+                                  bool removeIsolated);
+
+    // Add new getter for removed lines
+    const std::vector<size_t>& getLastRemovedLines() const {
+        return m_lastRemovedLines;
+    }
+
     // New zoom-related methods
     void setZoomLevel(float level);
     float getZoomLevel() const { return currentZoomLevel; }
@@ -157,6 +166,7 @@ private:
     std::vector<std::vector<uint16_t>> preProcessedImage;  // Store pre-processed image
     bool hasCLAHEBeenApplied;
 
+    std::vector<size_t> m_lastRemovedLines; // Track indices of removed lines
     std::vector<DarkLine> m_detectedLines;
 
     // New zoom-related members

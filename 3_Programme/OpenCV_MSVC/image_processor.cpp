@@ -261,8 +261,9 @@ void ImageProcessor::processYXAxis(std::vector<std::vector<uint16_t>>& image, in
 void ImageProcessor::processAndMergeImageParts(SplitMode splitMode, MergeMethod mergeMethod) {
     saveCurrentState();
 
-    int height = originalImg.size();
-    int width = originalImg[0].size();
+    // Use finalImage instead of originalImg to preserve current state
+    int height = finalImage.size();
+    int width = finalImage[0].size();
     int quarterWidth = width / 4;
 
     // Split image into four parts using std::copy for efficiency
@@ -271,15 +272,15 @@ void ImageProcessor::processAndMergeImageParts(SplitMode splitMode, MergeMethod 
     std::vector<std::vector<uint16_t>> rightLeft(height, std::vector<uint16_t>(quarterWidth));
     std::vector<std::vector<uint16_t>> rightRight(height, std::vector<uint16_t>(quarterWidth));
 
-    // Copy the parts
+    // Copy the parts from finalImage instead of originalImg
     for (int y = 0; y < height; ++y) {
-        std::copy(originalImg[y].begin(), originalImg[y].begin() + quarterWidth, leftLeft[y].begin());
-        std::copy(originalImg[y].begin() + quarterWidth, originalImg[y].begin() + 2 * quarterWidth, leftRight[y].begin());
-        std::copy(originalImg[y].begin() + 2 * quarterWidth, originalImg[y].begin() + 3 * quarterWidth, rightLeft[y].begin());
-        std::copy(originalImg[y].begin() + 3 * quarterWidth, originalImg[y].end(), rightRight[y].begin());
+        std::copy(finalImage[y].begin(), finalImage[y].begin() + quarterWidth, leftLeft[y].begin());
+        std::copy(finalImage[y].begin() + quarterWidth, finalImage[y].begin() + 2 * quarterWidth, leftRight[y].begin());
+        std::copy(finalImage[y].begin() + 2 * quarterWidth, finalImage[y].begin() + 3 * quarterWidth, rightLeft[y].begin());
+        std::copy(finalImage[y].begin() + 3 * quarterWidth, finalImage[y].end(), rightRight[y].begin());
     }
 
-    // Process each part for noise detection and removal
+    // Rest of the method remains the same
     auto processPart = [&](std::vector<std::vector<uint16_t>>& part) {
         if (rotationState == 1 || rotationState == 3) {
             stretchImageX(part, params.yStretchFactor);
@@ -335,7 +336,7 @@ void ImageProcessor::processAndMergeImageParts(SplitMode splitMode, MergeMethod 
         }
     }
 
-    // Replace original image with merged result
+    // Replace final image with merged result
     finalImage = result;
 }
 
@@ -464,18 +465,18 @@ cv::Mat ImageProcessor::applyCLAHE_CPU(const cv::Mat& inputImage, double clipLim
     return result;
 }
 
+
 void ImageProcessor::applyThresholdCLAHE_GPU(uint16_t threshold, double clipLimit, const cv::Size& tileSize) {
     saveCurrentState();
     if (hasCLAHEBeenApplied) {
-        // 使用更强的 clipLimit 来增强效果
+
         double enhancedClipLimit = clipLimit * 2.0;  // 增加 clipLimit 使效果更明显
         std::vector<std::vector<uint16_t>> processImage = finalImage;
         claheProcessor.applyThresholdCLAHE_GPU(processImage, threshold, enhancedClipLimit, tileSize);
         finalImage = processImage;
     } else {
-        // 直接应用增强的参数
-        double enhancedClipLimit = clipLimit * 2.0;
-        claheProcessor.applyThresholdCLAHE_GPU(finalImage, threshold, enhancedClipLimit, tileSize);
+
+        claheProcessor.applyThresholdCLAHE_GPU(finalImage, threshold, clipLimit, tileSize);
     }
     hasCLAHEBeenApplied = false;
 }
@@ -483,15 +484,13 @@ void ImageProcessor::applyThresholdCLAHE_GPU(uint16_t threshold, double clipLimi
 void ImageProcessor::applyThresholdCLAHE_CPU(uint16_t threshold, double clipLimit, const cv::Size& tileSize) {
     saveCurrentState();
     if (hasCLAHEBeenApplied) {
-        // 使用更强的 clipLimit 来增强效果
+
         double enhancedClipLimit = clipLimit * 2.0;
         std::vector<std::vector<uint16_t>> processImage = finalImage;
         claheProcessor.applyThresholdCLAHE_CPU(processImage, threshold, enhancedClipLimit, tileSize);
         finalImage = processImage;
     } else {
-        // 直接应用增强的参数
-        double enhancedClipLimit = clipLimit * 2.0;
-        claheProcessor.applyThresholdCLAHE_CPU(finalImage, threshold, enhancedClipLimit, tileSize);
+        claheProcessor.applyThresholdCLAHE_CPU(finalImage, threshold, clipLimit, tileSize);
     }
     hasCLAHEBeenApplied = false;
 }
@@ -698,6 +697,7 @@ void ImageProcessor::updateAndSaveFinalImage(const std::vector<std::vector<uint1
 }
 
 std::vector<ImageProcessor::DarkLine> ImageProcessor::detectDarkLines() {
+    m_lastRemovedLines.clear(); // Clear previous removal history when detecting new lines
     m_detectedLines = DarkLineProcessor::detectDarkLines(finalImage);
     return m_detectedLines;
 }
@@ -726,3 +726,35 @@ QSize ImageProcessor::getZoomedImageDimensions() const {
                  static_cast<int>(height * currentZoomLevel));
 }
 
+void ImageProcessor::removeDarkLinesSelective(const std::vector<DarkLine>& lines,
+                                              bool removeInObject,
+                                              bool removeIsolated) {
+    if (lines.empty()) return;
+
+    // Filter lines based on criteria and track indices
+    std::vector<std::pair<size_t, DarkLine>> linesToRemove;
+    for (size_t i = 0; i < lines.size(); ++i) {
+        const auto& line = lines[i];
+        if ((line.inObject && removeInObject) || (!line.inObject && removeIsolated)) {
+            linesToRemove.push_back({i + 1, line}); // Store 1-based index with line
+        }
+    }
+
+    if (!linesToRemove.empty()) {
+        if (!imageHistory.empty() && imageHistory.top().image == finalImage) {
+            // If we're about to modify the same image state, pop it to avoid duplication
+            imageHistory.pop();
+        }
+        saveCurrentState();
+
+        // Extract just the lines for processing
+        std::vector<DarkLine> processLines;
+        m_lastRemovedLines.clear();
+        for (const auto& [index, line] : linesToRemove) {
+            processLines.push_back(line);
+            m_lastRemovedLines.push_back(index);
+        }
+
+        DarkLineProcessor::removeDarkLines(finalImage, processLines);
+    }
+}

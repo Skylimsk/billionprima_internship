@@ -309,3 +309,44 @@ void DarkLineProcessor::removeDarkLines(std::vector<std::vector<uint16_t>>& imag
     // Update the image
     image = std::move(newImage);
 }
+
+void DarkLineProcessor::removeDarkLinesSelective(std::vector<std::vector<uint16_t>>& image,
+                                                 const std::vector<DarkLine>& lines,
+                                                 bool removeInObject,
+                                                 bool removeIsolated) {
+    if (lines.empty()) return;
+
+    std::vector<std::vector<uint16_t>> newImage = image;
+    int height = image.size();
+    int width = image[0].size();
+
+    // Process each line based on its classification
+    for (const auto& line : lines) {
+        // Skip if we don't want to remove this type of line
+        if (line.inObject && !removeInObject) continue;
+        if (!line.inObject && !removeIsolated) continue;
+
+        if (line.isVertical) {
+            // Process vertical line
+            for (int x = line.x; x < line.x + line.width; ++x) {
+                for (int y = 0; y < height; ++y) {
+                    if (image[y][x] <= MIN_BRIGHTNESS) {
+                        newImage[y][x] = findReplacementValue(image, x, y, true);
+                    }
+                }
+            }
+        } else {
+            // Process horizontal line
+            for (int y = line.y; y < line.y + line.width; ++y) {
+                for (int x = 0; x < width; ++x) {
+                    if (image[y][x] <= MIN_BRIGHTNESS) {
+                        newImage[y][x] = findReplacementValue(image, x, y, false);
+                    }
+                }
+            }
+        }
+    }
+
+    // Update the image
+    image = std::move(newImage);
+}
