@@ -969,7 +969,7 @@ void ControlPanel::createGroupBox(const QString& title, const std::vector<std::p
 
 void ControlPanel::setupBlackLineDetection() {
     createGroupBox("Dark Line Detection", {
-                                              {"Detect Black Lines", [this]() {
+                                              {"Detect Lines", [this]() {
                                                    if (checkZoomMode()) return;
 
                                                    QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
@@ -982,9 +982,23 @@ void ControlPanel::setupBlackLineDetection() {
 
                                                    // Create detection info summary
                                                    QString detectionInfo = "Detected Lines:\n";
+                                                   int inObjectCount = 0;
+                                                   int isolatedCount = 0;
+
                                                    for (size_t i = 0; i < m_detectedLines.size(); ++i) {
                                                        detectionInfo += formatLineInfo(m_detectedLines[i], i + 1);
+                                                       if (m_detectedLines[i].inObject) {
+                                                           inObjectCount++;
+                                                       } else {
+                                                           isolatedCount++;
+                                                       }
                                                    }
+
+                                                   // Add summary statistics
+                                                   detectionInfo += QString("\nSummary:\n");
+                                                   detectionInfo += QString("Total Lines: %1\n").arg(m_detectedLines.size());
+                                                   detectionInfo += QString("In-Object Lines: %1\n").arg(inObjectCount);
+                                                   detectionInfo += QString("Isolated Lines: %1\n").arg(isolatedCount);
 
                                                    m_darkLineInfoLabel->setText(detectionInfo);
                                                    adjustDarkLineInfoHeight(detectionInfo);
@@ -992,71 +1006,127 @@ void ControlPanel::setupBlackLineDetection() {
                                                    darkLineScrollArea->setVisible(true);
 
                                                    updateImageDisplay();
-                                                   updateLastAction("Detect Black Lines",
-                                                                    QString("%1 lines").arg(m_detectedLines.size()));
+                                                   updateLastAction("Detect Lines",
+                                                                    QString("%1 total (%2 in-object, %3 isolated)")
+                                                                        .arg(m_detectedLines.size())
+                                                                        .arg(inObjectCount)
+                                                                        .arg(isolatedCount));
                                                }},
 
-                                              {"Remove Lines", [this]() {
+                                              {"Remove All Lines", [this]() {
                                                    if (checkZoomMode()) return;
 
                                                    if (m_detectedLines.empty()) {
-                                                       QMessageBox::information(this, "Remove Lines", "Please detect black lines first.");
+                                                       QMessageBox::information(this, "Remove Lines", "Please detect lines first.");
                                                        return;
                                                    }
 
-                                                   // Create dialog for removal options
-                                                   QDialog dialog(this);
-                                                   dialog.setWindowTitle("Remove Lines Options");
-                                                   QVBoxLayout* layout = new QVBoxLayout(&dialog);
+                                                   // Add confirmation dialog
+                                                   QMessageBox::StandardButton reply;
+                                                   reply = QMessageBox::question(this, "Remove All Lines",
+                                                                                 "Are you sure you want to remove all detected lines?",
+                                                                                 QMessageBox::Yes|QMessageBox::No);
 
-                                                   // Create radio buttons
-                                                   QRadioButton* allLinesRadio = new QRadioButton("Remove All Lines");
-                                                   QRadioButton* inObjectRadio = new QRadioButton("Remove In Object Lines Only");
-                                                   QRadioButton* isolatedRadio = new QRadioButton("Remove Isolated Lines Only");
-                                                   allLinesRadio->setChecked(true);
+                                                   if (reply == QMessageBox::Yes) {
+                                                       m_imageProcessor.removeDarkLinesSelective(true, true);
 
-                                                   layout->addWidget(allLinesRadio);
-                                                   layout->addWidget(inObjectRadio);
-                                                   layout->addWidget(isolatedRadio);
-
-                                                   // Add OK and Cancel buttons
-                                                   QDialogButtonBox* buttonBox = new QDialogButtonBox(
-                                                       QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
-                                                       Qt::Horizontal, &dialog);
-                                                   layout->addWidget(buttonBox);
-
-                                                   connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-                                                   connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-
-                                                   if (dialog.exec() == QDialog::Accepted) {
-                                                       bool removeInObject = allLinesRadio->isChecked() || inObjectRadio->isChecked();
-                                                       bool removeIsolated = allLinesRadio->isChecked() || isolatedRadio->isChecked();
-
-                                                       m_imageProcessor.removeDarkLinesSelective(m_detectedLines, removeInObject, removeIsolated);
-
-                                                       // Get the indices of removed lines from ImageProcessor
-                                                       const auto& removedIndices = m_imageProcessor.getLastRemovedLines();
-
-                                                       // Create removal info string
-                                                       QString removalInfo = "Removed Lines:\n";
-                                                       for (size_t index : removedIndices) {
-                                                           removalInfo += QString("Line %1\n").arg(index);
-                                                       }
-
-                                                       // Update dark line info label
+                                                       QString removalInfo = QString("Removed All Lines (%1 total)\n")
+                                                                                 .arg(m_imageProcessor.getLastRemovedLines().size());
                                                        m_darkLineInfoLabel->setText(removalInfo);
                                                        adjustDarkLineInfoHeight(removalInfo);
 
-                                                       // Clear detected lines and update display
-                                                       m_detectedLines.clear();
-                                                       updateImageDisplay();
+                                                       resetDetectedLines();
 
-                                                       QString actionType = allLinesRadio->isChecked() ? "All" :
-                                                                                inObjectRadio->isChecked() ? "In Object" : "Isolated";
-                                                       updateLastAction("Remove Lines",
-                                                                        QString("%1 Lines (%2 removed)").arg(actionType).arg(removedIndices.size()));
+                                                       updateImageDisplay();
+                                                       updateLastAction("Remove All Lines",
+                                                                        QString("%1 lines removed")
+                                                                            .arg(m_imageProcessor.getLastRemovedLines().size()));
                                                    }
+
+                                                   resetDetectedLines();
+                                               }},
+
+                                              {"Remove In-Object Lines", [this]() {
+                                                   if (checkZoomMode()) return;
+
+                                                   if (m_detectedLines.empty()) {
+                                                       QMessageBox::information(this, "Remove Lines", "Please detect lines first.");
+                                                       return;
+                                                   }
+
+                                                   // Count in-object lines before removal
+                                                   int inObjectCount = std::count_if(m_detectedLines.begin(), m_detectedLines.end(),
+                                                                                     [](const DarkLine& line) { return line.inObject; });
+
+                                                   if (inObjectCount == 0) {
+                                                       QMessageBox::information(this, "Remove Lines", "No in-object lines detected.");
+                                                       return;
+                                                   }
+
+                                                   // Add confirmation dialog
+                                                   QMessageBox::StandardButton reply;
+                                                   reply = QMessageBox::question(this, "Remove In-Object Lines",
+                                                                                 QString("Are you sure you want to remove %1 in-object lines?").arg(inObjectCount),
+                                                                                 QMessageBox::Yes|QMessageBox::No);
+
+                                                   if (reply == QMessageBox::Yes) {
+                                                       m_imageProcessor.removeDarkLinesSelective(true, false);
+
+                                                       QString removalInfo = QString("Removed In-Object Lines (%1 lines)\n")
+                                                                                 .arg(m_imageProcessor.getLastRemovedLines().size());
+                                                       m_darkLineInfoLabel->setText(removalInfo);
+                                                       adjustDarkLineInfoHeight(removalInfo);
+
+                                                       resetDetectedLines();
+
+                                                       updateImageDisplay();
+                                                       updateLastAction("Remove In-Object Lines",
+                                                                        QString("%1 lines removed")
+                                                                            .arg(m_imageProcessor.getLastRemovedLines().size()));
+                                                   }
+                                               }},
+
+                                              {"Remove Isolated Lines", [this]() {
+                                                   if (checkZoomMode()) return;
+
+                                                   if (m_detectedLines.empty()) {
+                                                       QMessageBox::information(this, "Remove Lines", "Please detect lines first.");
+                                                       return;
+                                                   }
+
+                                                   // Count isolated lines before removal
+                                                   int isolatedCount = std::count_if(m_detectedLines.begin(), m_detectedLines.end(),
+                                                                                     [](const DarkLine& line) { return !line.inObject; });
+
+                                                   if (isolatedCount == 0) {
+                                                       QMessageBox::information(this, "Remove Lines", "No isolated lines detected.");
+                                                       return;
+                                                   }
+
+                                                   // Add confirmation dialog
+                                                   QMessageBox::StandardButton reply;
+                                                   reply = QMessageBox::question(this, "Remove Isolated Lines",
+                                                                                 QString("Are you sure you want to remove %1 isolated lines?").arg(isolatedCount),
+                                                                                 QMessageBox::Yes|QMessageBox::No);
+
+                                                   if (reply == QMessageBox::Yes) {
+                                                       m_imageProcessor.removeDarkLinesSelective(false, true);
+
+                                                       QString removalInfo = QString("Removed Isolated Lines (%1 lines)\n")
+                                                                                 .arg(m_imageProcessor.getLastRemovedLines().size());
+                                                       m_darkLineInfoLabel->setText(removalInfo);
+                                                       adjustDarkLineInfoHeight(removalInfo);
+
+                                                       resetDetectedLines();
+
+                                                       updateImageDisplay();
+                                                       updateLastAction("Remove Isolated Lines",
+                                                                        QString("%1 lines removed")
+                                                                            .arg(m_imageProcessor.getLastRemovedLines().size()));
+                                                   }
+
                                                }}
+
                                           });
 }
 

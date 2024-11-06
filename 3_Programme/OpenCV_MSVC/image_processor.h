@@ -127,9 +127,11 @@ public:
         return m_detectedLines;
     }
 
-    void removeDarkLinesSelective(const std::vector<DarkLine>& lines,
-                                  bool removeInObject,
-                                  bool removeIsolated);
+    void removeAllDarkLines();
+    void removeInObjectDarkLines();
+    void removeIsolatedDarkLines();
+    void removeDarkLinesSelective(bool removeInObject, bool removeIsolated);
+
 
     // Add new getter for removed lines
     const std::vector<size_t>& getLastRemovedLines() const {
@@ -166,9 +168,6 @@ private:
     std::vector<std::vector<uint16_t>> preProcessedImage;  // Store pre-processed image
     bool hasCLAHEBeenApplied;
 
-    std::vector<size_t> m_lastRemovedLines; // Track indices of removed lines
-    std::vector<DarkLine> m_detectedLines;
-
     // New zoom-related members
     float currentZoomLevel;
     const float MIN_ZOOM_LEVEL = 0.1f;
@@ -180,6 +179,9 @@ private:
         const std::vector<std::vector<std::vector<uint16_t>>>& parts);
     std::vector<std::vector<uint16_t>> mergeWithWeightedAverage(
         const std::vector<std::vector<std::vector<uint16_t>>>& parts);
+
+    std::vector<DarkLine> m_detectedLines;
+    std::vector<size_t> m_lastRemovedLines;
 };
 
 #endif // IMAGE_PROCESSOR_H

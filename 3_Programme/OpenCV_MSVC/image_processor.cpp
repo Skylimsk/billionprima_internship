@@ -726,35 +726,134 @@ QSize ImageProcessor::getZoomedImageDimensions() const {
                  static_cast<int>(height * currentZoomLevel));
 }
 
-void ImageProcessor::removeDarkLinesSelective(const std::vector<DarkLine>& lines,
-                                              bool removeInObject,
-                                              bool removeIsolated) {
-    if (lines.empty()) return;
+void ImageProcessor::removeAllDarkLines() {
+    if (m_detectedLines.empty()) {
+        m_detectedLines = detectDarkLines();
+    }
+    saveCurrentState();
 
-    // Filter lines based on criteria and track indices
-    std::vector<std::pair<size_t, DarkLine>> linesToRemove;
-    for (size_t i = 0; i < lines.size(); ++i) {
-        const auto& line = lines[i];
-        if ((line.inObject && removeInObject) || (!line.inObject && removeIsolated)) {
-            linesToRemove.push_back({i + 1, line}); // Store 1-based index with line
+    // First process in-object lines by width
+    std::map<int, std::vector<DarkLine>> inObjectLinesByWidth;
+    std::vector<DarkLine> isolatedLines;
+
+    // Separate in-object and isolated lines
+    for (const auto& line : m_detectedLines) {
+        if (line.inObject) {
+            inObjectLinesByWidth[line.width].push_back(line);
+        } else {
+            isolatedLines.push_back(line);
         }
     }
 
-    if (!linesToRemove.empty()) {
-        if (!imageHistory.empty() && imageHistory.top().image == finalImage) {
-            // If we're about to modify the same image state, pop it to avoid duplication
-            imageHistory.pop();
-        }
-        saveCurrentState();
+    m_lastRemovedLines.clear();
 
-        // Extract just the lines for processing
-        std::vector<DarkLine> processLines;
-        m_lastRemovedLines.clear();
-        for (const auto& [index, line] : linesToRemove) {
-            processLines.push_back(line);
-            m_lastRemovedLines.push_back(index);
-        }
+    // First remove in-object lines by width
+    for (const auto& [width, lines] : inObjectLinesByWidth) {
+        DarkLineProcessor::removeDarkLines(finalImage, lines);
 
-        DarkLineProcessor::removeDarkLines(finalImage, processLines);
+        // Track removed line indices
+        for (const auto& line : lines) {
+            auto it = std::find_if(m_detectedLines.begin(), m_detectedLines.end(),
+                                   [&line](const DarkLine& l) {
+                                       return l.x == line.x && l.y == line.y &&
+                                              l.width == line.width && l.isVertical == line.isVertical;
+                                   });
+            if (it != m_detectedLines.end()) {
+                m_lastRemovedLines.push_back(std::distance(m_detectedLines.begin(), it) + 1);
+            }
+        }
     }
+
+    // Then remove isolated lines
+    if (!isolatedLines.empty()) {
+        DarkLineProcessor::removeDarkLines(finalImage, isolatedLines);
+
+        // Track removed line indices
+        for (const auto& line : isolatedLines) {
+            auto it = std::find_if(m_detectedLines.begin(), m_detectedLines.end(),
+                                   [&line](const DarkLine& l) {
+                                       return l.x == line.x && l.y == line.y &&
+                                              l.width == line.width && l.isVertical == line.isVertical;
+                                   });
+            if (it != m_detectedLines.end()) {
+                m_lastRemovedLines.push_back(std::distance(m_detectedLines.begin(), it) + 1);
+            }
+        }
+    }
+
+    clearDetectedLines();
+}
+
+void ImageProcessor::removeInObjectDarkLines() {
+    if (m_detectedLines.empty()) {
+        m_detectedLines = detectDarkLines();
+    }
+    saveCurrentState();
+
+    // Group in-object lines by width
+    std::map<int, std::vector<DarkLine>> linesByWidth;
+    for (const auto& line : m_detectedLines) {
+        if (line.inObject) {
+            linesByWidth[line.width].push_back(line);
+        }
+    }
+
+    m_lastRemovedLines.clear();
+
+    // Process each width group sequentially
+    for (const auto& [width, lines] : linesByWidth) {
+        DarkLineProcessor::removeDarkLines(finalImage, lines);
+
+        // Track removed line indices
+        for (const auto& line : lines) {
+            auto it = std::find_if(m_detectedLines.begin(), m_detectedLines.end(),
+                                   [&line](const DarkLine& l) {
+                                       return l.x == line.x && l.y == line.y &&
+                                              l.width == line.width && l.isVertical == line.isVertical;
+                                   });
+            if (it != m_detectedLines.end()) {
+                m_lastRemovedLines.push_back(std::distance(m_detectedLines.begin(), it) + 1);
+            }
+        }
+    }
+
+    clearDetectedLines();
+}
+
+void ImageProcessor::removeIsolatedDarkLines() {
+    if (m_detectedLines.empty()) {
+        m_detectedLines = detectDarkLines();
+    }
+    saveCurrentState();
+
+    DarkLineProcessor::removeDarkLinesSelective(finalImage, m_detectedLines, false, true);
+
+    m_lastRemovedLines.clear();
+    for (size_t i = 0; i < m_detectedLines.size(); ++i) {
+        if (!m_detectedLines[i].inObject) {
+            m_lastRemovedLines.push_back(i + 1);
+        }
+    }
+
+    clearDetectedLines();
+}
+
+void ImageProcessor::removeDarkLinesSelective(bool removeInObject, bool removeIsolated) {
+    if (m_detectedLines.empty()) {
+        m_detectedLines = detectDarkLines();
+    }
+    saveCurrentState();
+
+    DarkLineProcessor::removeDarkLinesSelective(finalImage, m_detectedLines, removeInObject, removeIsolated);
+
+    m_lastRemovedLines.clear();
+    for (size_t i = 0; i < m_detectedLines.size(); ++i) {
+        bool shouldRemove = (m_detectedLines[i].inObject && removeInObject) ||
+                            (!m_detectedLines[i].inObject && removeIsolated);
+        if (shouldRemove) {
+            m_lastRemovedLines.push_back(i + 1);
+        }
+    }
+
+    clearDetectedLines();
 }

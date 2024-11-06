@@ -24,10 +24,20 @@ public:
     static std::vector<DarkLine> detectDarkLines(const std::vector<std::vector<uint16_t>>& image);
     static void removeDarkLines(std::vector<std::vector<uint16_t>>& image, const std::vector<DarkLine>& lines);
 
+    static void removeAllDarkLines(std::vector<std::vector<uint16_t>>& image,
+                                   std::vector<DarkLine>& detectedLines);
+
+    static void removeInObjectDarkLines(std::vector<std::vector<uint16_t>>& image,
+                                        std::vector<DarkLine>& detectedLines);
+
+    static void removeIsolatedDarkLines(std::vector<std::vector<uint16_t>>& image,
+                                        std::vector<DarkLine>& detectedLines);
+
     static void removeDarkLinesSelective(std::vector<std::vector<uint16_t>>& image,
                                          const std::vector<DarkLine>& lines,
                                          bool removeInObject,
                                          bool removeIsolated);
+
 
 private:
     // Constants for detection and removal

@@ -310,12 +310,29 @@ void DarkLineProcessor::removeDarkLines(std::vector<std::vector<uint16_t>>& imag
     image = std::move(newImage);
 }
 
+void DarkLineProcessor::removeAllDarkLines(std::vector<std::vector<uint16_t>>& image,
+                                           std::vector<DarkLine>& detectedLines) {
+    // Remove both in-object and isolated lines
+    removeDarkLinesSelective(image, detectedLines, true, true);
+}
+
+void DarkLineProcessor::removeInObjectDarkLines(std::vector<std::vector<uint16_t>>& image,
+                                                std::vector<DarkLine>& detectedLines) {
+    // Remove only in-object lines
+    removeDarkLinesSelective(image, detectedLines, true, false);
+}
+
+void DarkLineProcessor::removeIsolatedDarkLines(std::vector<std::vector<uint16_t>>& image,
+                                                std::vector<DarkLine>& detectedLines) {
+    // Remove only isolated lines
+    removeDarkLinesSelective(image, detectedLines, false, true);
+}
+
 void DarkLineProcessor::removeDarkLinesSelective(std::vector<std::vector<uint16_t>>& image,
                                                  const std::vector<DarkLine>& lines,
                                                  bool removeInObject,
                                                  bool removeIsolated) {
     if (lines.empty()) return;
-
     std::vector<std::vector<uint16_t>> newImage = image;
     int height = image.size();
     int width = image[0].size();
