@@ -89,6 +89,7 @@ SOURCES = \
     ThreadLogger.cpp \
     adjustments.cpp \
     dark_line.cpp \
+    display_window.cpp \
     main.cpp \
     control_panel.cpp \
     image_label.cpp \
@@ -102,6 +103,7 @@ HEADERS = \
     adjustments.h \
     control_panel.h \
     dark_line.h \
+    display_window.h \
     image_label.h \
     image_processing_params.h \
     image_processor.h \

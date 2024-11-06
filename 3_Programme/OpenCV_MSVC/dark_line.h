@@ -20,6 +20,11 @@ public:
         bool inObject;   // true if line is within a dark object
     };
 
+    enum class RemovalMethod {
+        NEIGHBOR_VALUES,  // 使用邻近值填充
+        DIRECT_STITCH    // 直接拼接
+    };
+
     // Main functionality
     static std::vector<DarkLine> detectDarkLines(const std::vector<std::vector<uint16_t>>& image);
     static void removeDarkLines(std::vector<std::vector<uint16_t>>& image, const std::vector<DarkLine>& lines);
@@ -33,10 +38,30 @@ public:
     static void removeIsolatedDarkLines(std::vector<std::vector<uint16_t>>& image,
                                         std::vector<DarkLine>& detectedLines);
 
-    static void removeDarkLinesSelective(std::vector<std::vector<uint16_t>>& image,
-                                         const std::vector<DarkLine>& lines,
-                                         bool removeInObject,
-                                         bool removeIsolated);
+    static void removeDarkLinesSelective(
+        std::vector<std::vector<uint16_t>>& image,
+        const std::vector<DarkLine>& lines,
+        bool removeInObject,
+        bool removeIsolated,
+        RemovalMethod method = RemovalMethod::NEIGHBOR_VALUES);
+
+    // Make other helper functions static if they're used by static functions
+    static uint16_t findStitchValue(
+        const std::vector<std::vector<uint16_t>>& image,
+        const DarkLine& line,
+        int x, int y);
+
+    static uint16_t findReplacementValue(
+        const std::vector<std::vector<uint16_t>>& image,
+        int x, int y,
+        bool isVertical);
+
+    static void removeDarkLinesSequential(
+        std::vector<std::vector<uint16_t>>& image,
+        const std::vector<DarkLine>& lines,
+        bool removeInObject,
+        bool removeIsolated,
+        RemovalMethod method = RemovalMethod::NEIGHBOR_VALUES);
 
 
 private:
@@ -52,7 +77,6 @@ private:
 
     // Helper functions
     static bool isInObject(const std::vector<std::vector<uint16_t>>& image, int pos, int lineWidth, bool isVertical, int threadId);
-    static uint16_t findReplacementValue(const std::vector<std::vector<uint16_t>>& image, int x, int y, bool isVertical);
 };
 
 #endif // DARK_LINE_H

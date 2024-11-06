@@ -43,6 +43,8 @@ private:
     void createGroupBox(const QString& title, const std::vector<std::pair<QString, std::function<void()>>>& buttons);
     void updateImageDisplay();
 
+    void updateLineRemovalInfo(const std::vector<size_t>& removedLineIndices, const QString& actionType);
+
     QVBoxLayout* m_mainLayout;
     QVBoxLayout* m_scrollLayout;
     QScrollArea* m_scrollArea;
@@ -69,15 +71,14 @@ private:
     QMessageBox* m_zoomWarningBox;
 
     using DarkLine = ImageProcessor::DarkLine;  // Add this type alias
-    QString formatWidthSummary(const std::map<int, std::vector<DarkLine>>& linesByWidth);
 
     void updateLineInfo(const QString& info);
-    void adjustDarkLineInfoHeight(const QString& text);
     void resetDetectedLines();
-    QString formatLineInfo(const ImageProcessor::DarkLine& line, int index);
 
     std::vector<ImageProcessor::DarkLine> m_detectedLines;
     QLabel* m_darkLineInfoLabel;
+
+    QLabel* m_imageSizeLabel;
 };
 
 

@@ -328,42 +328,225 @@ void DarkLineProcessor::removeIsolatedDarkLines(std::vector<std::vector<uint16_t
     removeDarkLinesSelective(image, detectedLines, false, true);
 }
 
-void DarkLineProcessor::removeDarkLinesSelective(std::vector<std::vector<uint16_t>>& image,
-                                                 const std::vector<DarkLine>& lines,
-                                                 bool removeInObject,
-                                                 bool removeIsolated) {
+// Modified findStitchValue function for direct stitching
+uint16_t DarkLineProcessor::findStitchValue(const std::vector<std::vector<uint16_t>>& image,
+                                            const DarkLine& line,
+                                            int x, int y) {
+    int height = image.size();
+    int width = image[0].size();
+
+    if (line.isVertical) {
+        // For vertical lines, find values from both sides
+        int leftX = line.x - 1;
+        int rightX = line.x + line.width;
+
+        if (leftX >= 0 && rightX < width) {
+            // If we're closer to the left edge, use left value
+            if (x - line.x < line.width / 2) {
+                return image[y][leftX];
+            } else {
+                // Otherwise use right value
+                return image[y][rightX];
+            }
+        } else if (leftX >= 0) {
+            return image[y][leftX];
+        } else if (rightX < width) {
+            return image[y][rightX];
+        }
+    } else {
+        // For horizontal lines, find values from top and bottom
+        int topY = line.y - 1;
+        int bottomY = line.y + line.width;
+
+        if (topY >= 0 && bottomY < height) {
+            // If we're closer to the top, use top value
+            if (y - line.y < line.width / 2) {
+                return image[topY][x];
+            } else {
+                // Otherwise use bottom value
+                return image[bottomY][x];
+            }
+        } else if (topY >= 0) {
+            return image[topY][x];
+        } else if (bottomY < height) {
+            return image[bottomY][x];
+        }
+    }
+
+    return image[y][x]; // Return original value if no stitch is possible
+}
+
+void DarkLineProcessor::removeDarkLinesSelective(
+    std::vector<std::vector<uint16_t>>& image,
+    const std::vector<DarkLine>& lines,
+    bool removeInObject,
+    bool removeIsolated,
+    RemovalMethod method) {
+
     if (lines.empty()) return;
     std::vector<std::vector<uint16_t>> newImage = image;
     int height = image.size();
     int width = image[0].size();
 
-    // Process each line based on its classification
     for (const auto& line : lines) {
-        // Skip if we don't want to remove this type of line
-        if (line.inObject && !removeInObject) continue;
-        if (!line.inObject && !removeIsolated) continue;
+        // Skip lines based on selection criteria
+        if ((line.inObject && !removeInObject) || (!line.inObject && !removeIsolated)) {
+            continue;
+        }
 
-        if (line.isVertical) {
-            // Process vertical line
-            for (int x = line.x; x < line.x + line.width; ++x) {
+        if (method == RemovalMethod::DIRECT_STITCH) {
+            // Pure direct stitch implementation
+            if (line.isVertical) {
+                // For vertical lines, shift all content after the line to the left
                 for (int y = 0; y < height; ++y) {
-                    if (image[y][x] <= MIN_BRIGHTNESS) {
-                        newImage[y][x] = findReplacementValue(image, x, y, true);
+                    for (int x = line.x; x < width - line.width; ++x) {
+                        newImage[y][x] = image[y][x + line.width];
+                    }
+                }
+            } else {
+                // For horizontal lines, shift all content after the line upward
+                for (int y = line.y; y < height - line.width; ++y) {
+                    for (int x = 0; x < width; ++x) {
+                        newImage[y][x] = image[y + line.width][x];
                     }
                 }
             }
         } else {
-            // Process horizontal line
-            for (int y = line.y; y < line.y + line.width; ++y) {
-                for (int x = 0; x < width; ++x) {
-                    if (image[y][x] <= MIN_BRIGHTNESS) {
-                        newImage[y][x] = findReplacementValue(image, x, y, false);
+            // Original neighbor values method for isolated lines
+            if (line.isVertical) {
+                for (int x = line.x; x < line.x + line.width; ++x) {
+                    for (int y = 0; y < height; ++y) {
+                        if (image[y][x] <= MIN_BRIGHTNESS) {
+                            newImage[y][x] = findReplacementValue(image, x, y, true);
+                        }
+                    }
+                }
+            } else {
+                for (int y = line.y; y < line.y + line.width; ++y) {
+                    for (int x = 0; x < width; ++x) {
+                        if (image[y][x] <= MIN_BRIGHTNESS) {
+                            newImage[y][x] = findReplacementValue(image, x, y, false);
+                        }
                     }
                 }
             }
         }
     }
 
-    // Update the image
+    // Resize the image if any lines were removed using direct stitch
+    if (method == RemovalMethod::DIRECT_STITCH) {
+        int totalVerticalWidth = 0;
+        int totalHorizontalHeight = 0;
+
+        // Calculate total width/height to remove
+        for (const auto& line : lines) {
+            if ((line.inObject && removeInObject) || (!line.inObject && removeIsolated)) {
+                if (line.isVertical) {
+                    totalVerticalWidth += line.width;
+                } else {
+                    totalHorizontalHeight += line.width;
+                }
+            }
+        }
+
+        // Resize the image
+        if (totalVerticalWidth > 0 || totalHorizontalHeight > 0) {
+            int newWidth = width - totalVerticalWidth;
+            int newHeight = height - totalHorizontalHeight;
+            std::vector<std::vector<uint16_t>> resizedImage(newHeight, std::vector<uint16_t>(newWidth));
+
+            // Copy the valid portion of the image
+            for (int y = 0; y < newHeight; ++y) {
+                for (int x = 0; x < newWidth; ++x) {
+                    resizedImage[y][x] = newImage[y][x];
+                }
+            }
+            newImage = std::move(resizedImage);
+        }
+    }
+
     image = std::move(newImage);
+}
+
+void DarkLineProcessor::removeDarkLinesSequential(
+    std::vector<std::vector<uint16_t>>& image,
+    const std::vector<DarkLine>& lines,
+    bool removeInObject,
+    bool removeIsolated,
+    RemovalMethod method) {
+
+    if (lines.empty()) return;
+
+    int height = image.size();
+    int width = image[0].size();
+
+    // 处理每一条线
+    for (const auto& line : lines) {
+        // 根据选择条件跳过不需要处理的线
+        if ((line.inObject && !removeInObject) || (!line.inObject && !removeIsolated)) {
+            continue;
+        }
+
+        if (method == RemovalMethod::DIRECT_STITCH) {
+            // 每处理一条线创建新的图像
+            std::vector<std::vector<uint16_t>> newImage = image;
+
+            if (line.isVertical) {
+                // 竖直线：将线右侧的内容向左移动
+                for (int y = 0; y < height; ++y) {
+                    for (int x = line.x; x < width - line.width; ++x) {
+                        newImage[y][x] = image[y][x + line.width];
+                    }
+                }
+
+                // 调整图像宽度
+                width -= line.width;
+                std::vector<std::vector<uint16_t>> resizedImage(height, std::vector<uint16_t>(width));
+                for (int y = 0; y < height; ++y) {
+                    for (int x = 0; x < width; ++x) {
+                        resizedImage[y][x] = newImage[y][x];
+                    }
+                }
+                image = std::move(resizedImage);
+            } else {
+                // 水平线：将线下方的内容向上移动
+                for (int y = line.y; y < height - line.width; ++y) {
+                    for (int x = 0; x < width; ++x) {
+                        newImage[y][x] = image[y + line.width][x];
+                    }
+                }
+
+                // 调整图像高度
+                height -= line.width;
+                std::vector<std::vector<uint16_t>> resizedImage(height, std::vector<uint16_t>(width));
+                for (int y = 0; y < height; ++y) {
+                    for (int x = 0; x < width; ++x) {
+                        resizedImage[y][x] = newImage[y][x];
+                    }
+                }
+                image = std::move(resizedImage);
+            }
+        } else {
+            // 使用原来的邻近值方法
+            std::vector<std::vector<uint16_t>> newImage = image;
+            if (line.isVertical) {
+                for (int x = line.x; x < line.x + line.width; ++x) {
+                    for (int y = 0; y < height; ++y) {
+                        if (image[y][x] <= MIN_BRIGHTNESS) {
+                            newImage[y][x] = findReplacementValue(image, x, y, true);
+                        }
+                    }
+                }
+            } else {
+                for (int y = line.y; y < line.y + line.width; ++y) {
+                    for (int x = 0; x < width; ++x) {
+                        if (image[y][x] <= MIN_BRIGHTNESS) {
+                            newImage[y][x] = findReplacementValue(image, x, y, false);
+                        }
+                    }
+                }
+            }
+            image = std::move(newImage);
+        }
+    }
 }

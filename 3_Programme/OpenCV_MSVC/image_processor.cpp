@@ -364,7 +364,8 @@ std::vector<std::vector<uint16_t>> ImageProcessor::mergeWithMinimum(
 }
 
 std::vector<std::vector<uint16_t>> ImageProcessor::mergeWithWeightedAverage(
-    const std::vector<std::vector<std::vector<uint16_t>>>& parts) {
+    const std::vector<std::vector<std::vector<uint16_t>>>& parts,
+    const std::vector<float>& weights) {
 
     if (parts.empty()) return std::vector<std::vector<uint16_t>>();
 
@@ -372,13 +373,22 @@ std::vector<std::vector<uint16_t>> ImageProcessor::mergeWithWeightedAverage(
     int width = parts[0][0].size();
     std::vector<std::vector<uint16_t>> result(height, std::vector<uint16_t>(width));
 
+    // If no weights provided, use equal weights
+    std::vector<float> effectiveWeights;
+    if (weights.empty()) {
+        float equalWeight = 1.0f / parts.size();
+        effectiveWeights.resize(parts.size(), equalWeight);
+    } else {
+        effectiveWeights = weights;
+    }
+
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
-            uint32_t sum = 0;
-            for (const auto& part : parts) {
-                sum += part[y][x];
+            float weightedSum = 0.0f;
+            for (size_t i = 0; i < parts.size(); ++i) {
+                weightedSum += parts[i][y][x] * effectiveWeights[i];
             }
-            result[y][x] = static_cast<uint16_t>(sum / parts.size());
+            result[y][x] = static_cast<uint16_t>(std::min(weightedSum, 65535.0f));
         }
     }
     return result;
@@ -732,53 +742,11 @@ void ImageProcessor::removeAllDarkLines() {
     }
     saveCurrentState();
 
-    // First process in-object lines by width
-    std::map<int, std::vector<DarkLine>> inObjectLinesByWidth;
-    std::vector<DarkLine> isolatedLines;
-
-    // Separate in-object and isolated lines
-    for (const auto& line : m_detectedLines) {
-        if (line.inObject) {
-            inObjectLinesByWidth[line.width].push_back(line);
-        } else {
-            isolatedLines.push_back(line);
-        }
-    }
+    DarkLineProcessor::removeDarkLinesSelective(finalImage, m_detectedLines, true, true);
 
     m_lastRemovedLines.clear();
-
-    // First remove in-object lines by width
-    for (const auto& [width, lines] : inObjectLinesByWidth) {
-        DarkLineProcessor::removeDarkLines(finalImage, lines);
-
-        // Track removed line indices
-        for (const auto& line : lines) {
-            auto it = std::find_if(m_detectedLines.begin(), m_detectedLines.end(),
-                                   [&line](const DarkLine& l) {
-                                       return l.x == line.x && l.y == line.y &&
-                                              l.width == line.width && l.isVertical == line.isVertical;
-                                   });
-            if (it != m_detectedLines.end()) {
-                m_lastRemovedLines.push_back(std::distance(m_detectedLines.begin(), it) + 1);
-            }
-        }
-    }
-
-    // Then remove isolated lines
-    if (!isolatedLines.empty()) {
-        DarkLineProcessor::removeDarkLines(finalImage, isolatedLines);
-
-        // Track removed line indices
-        for (const auto& line : isolatedLines) {
-            auto it = std::find_if(m_detectedLines.begin(), m_detectedLines.end(),
-                                   [&line](const DarkLine& l) {
-                                       return l.x == line.x && l.y == line.y &&
-                                              l.width == line.width && l.isVertical == line.isVertical;
-                                   });
-            if (it != m_detectedLines.end()) {
-                m_lastRemovedLines.push_back(std::distance(m_detectedLines.begin(), it) + 1);
-            }
-        }
+    for (size_t i = 0; i < m_detectedLines.size(); ++i) {
+        m_lastRemovedLines.push_back(i + 1);
     }
 
     clearDetectedLines();
@@ -790,30 +758,14 @@ void ImageProcessor::removeInObjectDarkLines() {
     }
     saveCurrentState();
 
-    // Group in-object lines by width
-    std::map<int, std::vector<DarkLine>> linesByWidth;
-    for (const auto& line : m_detectedLines) {
-        if (line.inObject) {
-            linesByWidth[line.width].push_back(line);
-        }
-    }
+    // Process only in-object lines
+    DarkLineProcessor::removeDarkLinesSelective(finalImage, m_detectedLines, true, false);
 
+    // Track removed line indices
     m_lastRemovedLines.clear();
-
-    // Process each width group sequentially
-    for (const auto& [width, lines] : linesByWidth) {
-        DarkLineProcessor::removeDarkLines(finalImage, lines);
-
-        // Track removed line indices
-        for (const auto& line : lines) {
-            auto it = std::find_if(m_detectedLines.begin(), m_detectedLines.end(),
-                                   [&line](const DarkLine& l) {
-                                       return l.x == line.x && l.y == line.y &&
-                                              l.width == line.width && l.isVertical == line.isVertical;
-                                   });
-            if (it != m_detectedLines.end()) {
-                m_lastRemovedLines.push_back(std::distance(m_detectedLines.begin(), it) + 1);
-            }
+    for (size_t i = 0; i < m_detectedLines.size(); ++i) {
+        if (m_detectedLines[i].inObject) {
+            m_lastRemovedLines.push_back(i + 1);
         }
     }
 
@@ -826,8 +778,10 @@ void ImageProcessor::removeIsolatedDarkLines() {
     }
     saveCurrentState();
 
+    // Process only isolated lines
     DarkLineProcessor::removeDarkLinesSelective(finalImage, m_detectedLines, false, true);
 
+    // Track removed line indices
     m_lastRemovedLines.clear();
     for (size_t i = 0; i < m_detectedLines.size(); ++i) {
         if (!m_detectedLines[i].inObject) {
@@ -838,13 +792,27 @@ void ImageProcessor::removeIsolatedDarkLines() {
     clearDetectedLines();
 }
 
-void ImageProcessor::removeDarkLinesSelective(bool removeInObject, bool removeIsolated) {
+void ImageProcessor::removeDarkLinesSelective(
+    bool removeInObject,
+    bool removeIsolated,
+    LineRemovalMethod method) {
+
     if (m_detectedLines.empty()) {
         m_detectedLines = detectDarkLines();
     }
     saveCurrentState();
 
-    DarkLineProcessor::removeDarkLinesSelective(finalImage, m_detectedLines, removeInObject, removeIsolated);
+    DarkLineProcessor::RemovalMethod processorMethod =
+        (method == LineRemovalMethod::DIRECT_STITCH) ?
+            DarkLineProcessor::RemovalMethod::DIRECT_STITCH :
+            DarkLineProcessor::RemovalMethod::NEIGHBOR_VALUES;
+
+    DarkLineProcessor::removeDarkLinesSelective(
+        finalImage,
+        m_detectedLines,
+        removeInObject,
+        removeIsolated,
+        processorMethod);
 
     m_lastRemovedLines.clear();
     for (size_t i = 0; i < m_detectedLines.size(); ++i) {
@@ -856,4 +824,173 @@ void ImageProcessor::removeDarkLinesSelective(bool removeInObject, bool removeIs
     }
 
     clearDetectedLines();
+}
+
+void ImageProcessor::removeDarkLinesSequential(
+    const std::vector<DarkLine>& selectedLines,
+    bool removeInObject,
+    bool removeIsolated,
+    LineRemovalMethod method) {
+
+    if (selectedLines.empty()) return;
+
+    saveCurrentState();
+
+    // 转换移除方法枚举
+    DarkLineProcessor::RemovalMethod processorMethod =
+        (method == LineRemovalMethod::DIRECT_STITCH) ?
+            DarkLineProcessor::RemovalMethod::DIRECT_STITCH :
+            DarkLineProcessor::RemovalMethod::NEIGHBOR_VALUES;
+
+    // 现在使用静态方法调用
+    DarkLineProcessor::removeDarkLinesSequential(
+        finalImage,
+        selectedLines,
+        removeInObject,
+        removeIsolated,
+        processorMethod
+        );
+
+    // 更新移除的线条记录
+    m_lastRemovedLines.clear();
+    for (size_t i = 0; i < selectedLines.size(); ++i) {
+        m_lastRemovedLines.push_back(i + 1);
+    }
+
+    // 清除检测到的线条
+    clearDetectedLines();
+}
+
+ImageProcessor::InterlacedResult ImageProcessor::processInterlacedEnergySectionsWithDisplay(
+    InterlaceStartPoint lowEnergyStart,
+    InterlaceStartPoint highEnergyStart,
+    float stretchFactor)
+{
+    saveCurrentState();
+
+    int height = finalImage.size();
+    int width = finalImage[0].size();
+    int quarterWidth = width / 4;
+
+    // Split image into four parts
+    std::vector<std::vector<uint16_t>> leftLeft(height, std::vector<uint16_t>(quarterWidth));
+    std::vector<std::vector<uint16_t>> leftRight(height, std::vector<uint16_t>(quarterWidth));
+    std::vector<std::vector<uint16_t>> rightLeft(height, std::vector<uint16_t>(quarterWidth));
+    std::vector<std::vector<uint16_t>> rightRight(height, std::vector<uint16_t>(quarterWidth));
+
+    // Copy parts from finalImage
+    for (int y = 0; y < height; ++y) {
+        std::copy(finalImage[y].begin(),
+                  finalImage[y].begin() + quarterWidth,
+                  leftLeft[y].begin());
+        std::copy(finalImage[y].begin() + quarterWidth,
+                  finalImage[y].begin() + 2 * quarterWidth,
+                  leftRight[y].begin());
+        std::copy(finalImage[y].begin() + 2 * quarterWidth,
+                  finalImage[y].begin() + 3 * quarterWidth,
+                  rightLeft[y].begin());
+        std::copy(finalImage[y].begin() + 3 * quarterWidth,
+                  finalImage[y].end(),
+                  rightRight[y].begin());
+    }
+
+    // Determine which parts to use for low and high energy based on start points
+    std::vector<std::vector<uint16_t>>* lowEnergyFirst = nullptr;
+    std::vector<std::vector<uint16_t>>* lowEnergySecond = nullptr;
+    std::vector<std::vector<uint16_t>>* highEnergyFirst = nullptr;
+    std::vector<std::vector<uint16_t>>* highEnergySecond = nullptr;
+
+    // Map start points to corresponding image parts
+    if (lowEnergyStart == InterlaceStartPoint::LEFT_LEFT) {
+        lowEnergyFirst = &leftLeft;
+        lowEnergySecond = &leftRight;
+    } else {
+        lowEnergyFirst = &leftRight;
+        lowEnergySecond = &leftLeft;
+    }
+
+    if (highEnergyStart == InterlaceStartPoint::RIGHT_LEFT) {
+        highEnergyFirst = &rightLeft;
+        highEnergySecond = &rightRight;
+    } else {
+        highEnergyFirst = &rightRight;
+        highEnergySecond = &rightLeft;
+    }
+
+    // Apply stretching to all parts
+    auto stretchPart = [this, stretchFactor](std::vector<std::vector<uint16_t>>& part) {
+        if (rotationState == 1 || rotationState == 3) {
+            stretchImageX(part, stretchFactor);
+        } else {
+            stretchImageY(part, stretchFactor);
+        }
+    };
+
+    stretchPart(*lowEnergyFirst);
+    stretchPart(*lowEnergySecond);
+    stretchPart(*highEnergyFirst);
+    stretchPart(*highEnergySecond);
+
+    // Create interlaced result images for both low and high energy sections
+    std::vector<std::vector<uint16_t>> lowEnergyInterlaced(height * 2, std::vector<uint16_t>(quarterWidth));
+    std::vector<std::vector<uint16_t>> highEnergyInterlaced(height * 2, std::vector<uint16_t>(quarterWidth));
+
+    // Perform interlacing for low energy section
+    for (int y = 0; y < height; ++y) {
+        std::copy((*lowEnergyFirst)[y].begin(),
+                  (*lowEnergyFirst)[y].end(),
+                  lowEnergyInterlaced[y * 2].begin());
+
+        std::copy((*lowEnergySecond)[y].begin(),
+                  (*lowEnergySecond)[y].end(),
+                  lowEnergyInterlaced[y * 2 + 1].begin());
+    }
+
+    // Perform interlacing for high energy section
+    for (int y = 0; y < height; ++y) {
+        std::copy((*highEnergyFirst)[y].begin(),
+                  (*highEnergyFirst)[y].end(),
+                  highEnergyInterlaced[y * 2].begin());
+
+        std::copy((*highEnergySecond)[y].begin(),
+                  (*highEnergySecond)[y].end(),
+                  highEnergyInterlaced[y * 2 + 1].begin());
+    }
+
+    // Create and update display windows
+    if (!lowEnergyWindow) {
+        lowEnergyWindow = std::make_unique<DisplayWindow>("Low Energy Interlaced");
+    }
+    if (!highEnergyWindow) {
+        highEnergyWindow = std::make_unique<DisplayWindow>("High Energy Interlaced");
+    }
+
+    lowEnergyWindow->updateImage(lowEnergyInterlaced);
+    highEnergyWindow->updateImage(highEnergyInterlaced);
+    lowEnergyWindow->show();
+    highEnergyWindow->show();
+
+    // Combine the interlaced sections into final image
+    std::vector<std::vector<uint16_t>> finalInterlaced(height * 2, std::vector<uint16_t>(width));
+
+    for (int y = 0; y < height * 2; ++y) {
+        // Copy low energy section (left half)
+        std::copy(lowEnergyInterlaced[y].begin(),
+                  lowEnergyInterlaced[y].end(),
+                  finalInterlaced[y].begin());
+
+        // Copy high energy section (right half)
+        std::copy(highEnergyInterlaced[y].begin(),
+                  highEnergyInterlaced[y].end(),
+                  finalInterlaced[y].begin() + width/2);
+    }
+
+    // Update final image
+    finalImage = finalInterlaced;
+
+    // Create and return the result
+    InterlacedResult result;
+    result.lowEnergyImage = lowEnergyInterlaced;
+    result.highEnergyImage = highEnergyInterlaced;
+    return result;
 }
