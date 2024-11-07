@@ -77,6 +77,7 @@ public:
     struct InterlacedResult {
         std::vector<std::vector<uint16_t>> lowEnergyImage;
         std::vector<std::vector<uint16_t>> highEnergyImage;
+        std::vector<std::vector<uint16_t>> combinedImage;
     };
 
     ImageProcessor(QLabel* imageLabel);
@@ -155,8 +156,7 @@ public:
     // New Interlaced Processing
     InterlacedResult processInterlacedEnergySectionsWithDisplay(
         InterlaceStartPoint lowEnergyStart,
-        InterlaceStartPoint highEnergyStart,
-        float stretchFactor
+        InterlaceStartPoint highEnergyStart
         );
 
     // State Management

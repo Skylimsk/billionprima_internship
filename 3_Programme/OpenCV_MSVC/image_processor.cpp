@@ -863,8 +863,7 @@ void ImageProcessor::removeDarkLinesSequential(
 
 ImageProcessor::InterlacedResult ImageProcessor::processInterlacedEnergySectionsWithDisplay(
     InterlaceStartPoint lowEnergyStart,
-    InterlaceStartPoint highEnergyStart,
-    float stretchFactor)
+    InterlaceStartPoint highEnergyStart)
 {
     saveCurrentState();
 
@@ -916,20 +915,6 @@ ImageProcessor::InterlacedResult ImageProcessor::processInterlacedEnergySections
         highEnergyFirst = &rightRight;
         highEnergySecond = &rightLeft;
     }
-
-    // Apply stretching to all parts
-    auto stretchPart = [this, stretchFactor](std::vector<std::vector<uint16_t>>& part) {
-        if (rotationState == 1 || rotationState == 3) {
-            stretchImageX(part, stretchFactor);
-        } else {
-            stretchImageY(part, stretchFactor);
-        }
-    };
-
-    stretchPart(*lowEnergyFirst);
-    stretchPart(*lowEnergySecond);
-    stretchPart(*highEnergyFirst);
-    stretchPart(*highEnergySecond);
 
     // Create interlaced result images for both low and high energy sections
     std::vector<std::vector<uint16_t>> lowEnergyInterlaced(height * 2, std::vector<uint16_t>(quarterWidth));
@@ -990,7 +975,8 @@ ImageProcessor::InterlacedResult ImageProcessor::processInterlacedEnergySections
 
     // Create and return the result
     InterlacedResult result;
-    result.lowEnergyImage = lowEnergyInterlaced;
-    result.highEnergyImage = highEnergyInterlaced;
+    result.lowEnergyImage = std::move(lowEnergyInterlaced);
+    result.highEnergyImage = std::move(highEnergyInterlaced);
+    result.combinedImage = std::move(finalInterlaced);
     return result;
 }

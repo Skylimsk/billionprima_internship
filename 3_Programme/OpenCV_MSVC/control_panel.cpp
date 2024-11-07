@@ -544,26 +544,7 @@ void ControlPanel::setupPreProcessingOperations()
                                                       highEnergyBox->setLayout(highEnergyLayout);
                                                       layout->addWidget(highEnergyBox);
 
-                                                      // Stretch factor input
-                                                      QGroupBox* stretchBox = new QGroupBox("Stretch Settings");
-                                                      QVBoxLayout* stretchLayout = new QVBoxLayout(stretchBox);
-
-                                                      QLabel* factorLabel = new QLabel("Stretch Factor:");
-                                                      QDoubleSpinBox* factorSpinBox = new QDoubleSpinBox();
-                                                      factorSpinBox->setRange(0.1, 10.0);
-                                                      factorSpinBox->setValue(1.5);
-                                                      factorSpinBox->setSingleStep(0.1);
-
-                                                      QLabel* stretchExplanation = new QLabel("Adjusts the stretching applied to each section before interlacing");
-                                                      stretchExplanation->setStyleSheet("color: #666; font-size: 10px;");
-
-                                                      stretchLayout->addWidget(factorLabel);
-                                                      stretchLayout->addWidget(factorSpinBox);
-                                                      stretchLayout->addWidget(stretchExplanation);
-                                                      stretchBox->setLayout(stretchLayout);
-                                                      layout->addWidget(stretchBox);
-
-                                                      // Add OK and Cancel buttons
+                                                      // Add buttons
                                                       QDialogButtonBox* buttonBox = new QDialogButtonBox(
                                                           QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
                                                           Qt::Horizontal, &dialog);
@@ -573,7 +554,6 @@ void ControlPanel::setupPreProcessingOperations()
                                                       connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
                                                       if (dialog.exec() == QDialog::Accepted) {
-                                                          // Get selected options
                                                           ImageProcessor::InterlaceStartPoint lowEnergyStart =
                                                               leftLeftLowRadio->isChecked() ?
                                                                   ImageProcessor::InterlaceStartPoint::LEFT_LEFT :
@@ -584,27 +564,21 @@ void ControlPanel::setupPreProcessingOperations()
                                                                   ImageProcessor::InterlaceStartPoint::RIGHT_LEFT :
                                                                   ImageProcessor::InterlaceStartPoint::RIGHT_RIGHT;
 
-                                                          float stretchFactor = factorSpinBox->value();
-
-                                                          // Process the image
                                                           m_imageProcessor.processInterlacedEnergySectionsWithDisplay(
                                                               lowEnergyStart,
-                                                              highEnergyStart,
-                                                              stretchFactor
+                                                              highEnergyStart
                                                               );
 
                                                           m_imageLabel->clearSelection();
                                                           updateImageDisplay();
 
-                                                          // Create descriptive strings for the action history
                                                           QString lowEnergyStr = leftLeftLowRadio->isChecked() ? "LeftLeft" : "LeftRight";
                                                           QString highEnergyStr = rightLeftHighRadio->isChecked() ? "RightLeft" : "RightRight";
 
                                                           updateLastAction("Interlace",
-                                                                           QString("Low: %1, High: %2, Stretch: %3")
+                                                                           QString("Low: %1, High: %2")
                                                                                .arg(lowEnergyStr)
-                                                                               .arg(highEnergyStr)
-                                                                               .arg(stretchFactor, 0, 'f', 2));
+                                                                               .arg(highEnergyStr));
                                                       }
                                                   }},
                                                     {"Split & Merge", [this]() {
