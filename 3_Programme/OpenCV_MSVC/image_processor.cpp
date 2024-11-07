@@ -942,19 +942,6 @@ ImageProcessor::InterlacedResult ImageProcessor::processInterlacedEnergySections
                   highEnergyInterlaced[y * 2 + 1].begin());
     }
 
-    // Create and update display windows
-    if (!lowEnergyWindow) {
-        lowEnergyWindow = std::make_unique<DisplayWindow>("Low Energy Interlaced");
-    }
-    if (!highEnergyWindow) {
-        highEnergyWindow = std::make_unique<DisplayWindow>("High Energy Interlaced");
-    }
-
-    lowEnergyWindow->updateImage(lowEnergyInterlaced);
-    highEnergyWindow->updateImage(highEnergyInterlaced);
-    lowEnergyWindow->show();
-    highEnergyWindow->show();
-
     // Combine the interlaced sections into final image
     std::vector<std::vector<uint16_t>> finalInterlaced(height * 2, std::vector<uint16_t>(width));
 

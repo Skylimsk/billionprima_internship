@@ -499,88 +499,88 @@ void ControlPanel::setupPreProcessingOperations()
                                                              updateLastAction("Calibration", QString("Y: %1, X: %2").arg(linesToProcessY).arg(linesToProcessX));
                                                          }
                                                      }},
-                                                 {"Interlace", [this]() {
-                                                      if (checkZoomMode()) return;
-                                                      m_darkLineInfoLabel->hide();
-                                                      resetDetectedLines();
+                                                    {"Interlace", [this]() {
+                                                         if (checkZoomMode()) return;
+                                                         m_darkLineInfoLabel->hide();
+                                                         resetDetectedLines();
 
-                                                      // Create dialog for options
-                                                      QDialog dialog(this);
-                                                      dialog.setWindowTitle("Interlace Processing Options");
-                                                      dialog.setMinimumWidth(400);
-                                                      QVBoxLayout* layout = new QVBoxLayout(&dialog);
+                                                         // Create dialog for options
+                                                         QDialog dialog(this);
+                                                         dialog.setWindowTitle("Interlace Processing Options");
+                                                         dialog.setMinimumWidth(400);
+                                                         QVBoxLayout* layout = new QVBoxLayout(&dialog);
 
-                                                      // Low Energy Section
-                                                      QGroupBox* lowEnergyBox = new QGroupBox("Low Energy Section Start");
-                                                      QVBoxLayout* lowEnergyLayout = new QVBoxLayout(lowEnergyBox);
-                                                      QRadioButton* leftLeftLowRadio = new QRadioButton("Start with Left Left");
-                                                      QRadioButton* leftRightLowRadio = new QRadioButton("Start with Left Right");
-                                                      leftLeftLowRadio->setChecked(true);
+                                                         // Low Energy Section
+                                                         QGroupBox* lowEnergyBox = new QGroupBox("Low Energy Section Start");
+                                                         QVBoxLayout* lowEnergyLayout = new QVBoxLayout(lowEnergyBox);
+                                                         QRadioButton* leftLeftLowRadio = new QRadioButton("Start with Left Left");
+                                                         QRadioButton* leftRightLowRadio = new QRadioButton("Start with Left Right");
+                                                         leftLeftLowRadio->setChecked(true);
 
-                                                      // Add explanatory label for Low Energy
-                                                      QLabel* lowEnergyExplanation = new QLabel("Low Energy interlace pattern will be:\nRow 1: Selected start section\nRow 2: Other section\nRepeating for each original row");
-                                                      lowEnergyExplanation->setStyleSheet("color: #666; font-size: 10px;");
+                                                         // Add explanatory label for Low Energy
+                                                         QLabel* lowEnergyExplanation = new QLabel("Low Energy interlace pattern will be:\nRow 1: Selected start section\nRow 2: Other section\nRepeating for each original row");
+                                                         lowEnergyExplanation->setStyleSheet("color: #666; font-size: 10px;");
 
-                                                      lowEnergyLayout->addWidget(leftLeftLowRadio);
-                                                      lowEnergyLayout->addWidget(leftRightLowRadio);
-                                                      lowEnergyLayout->addWidget(lowEnergyExplanation);
-                                                      lowEnergyBox->setLayout(lowEnergyLayout);
-                                                      layout->addWidget(lowEnergyBox);
+                                                         lowEnergyLayout->addWidget(leftLeftLowRadio);
+                                                         lowEnergyLayout->addWidget(leftRightLowRadio);
+                                                         lowEnergyLayout->addWidget(lowEnergyExplanation);
+                                                         lowEnergyBox->setLayout(lowEnergyLayout);
+                                                         layout->addWidget(lowEnergyBox);
 
-                                                      // High Energy Section
-                                                      QGroupBox* highEnergyBox = new QGroupBox("High Energy Section Start");
-                                                      QVBoxLayout* highEnergyLayout = new QVBoxLayout(highEnergyBox);
-                                                      QRadioButton* rightLeftHighRadio = new QRadioButton("Start with Right Left");
-                                                      QRadioButton* rightRightHighRadio = new QRadioButton("Start with Right Right");
-                                                      rightLeftHighRadio->setChecked(true);
+                                                         // High Energy Section
+                                                         QGroupBox* highEnergyBox = new QGroupBox("High Energy Section Start");
+                                                         QVBoxLayout* highEnergyLayout = new QVBoxLayout(highEnergyBox);
+                                                         QRadioButton* rightLeftHighRadio = new QRadioButton("Start with Right Left");
+                                                         QRadioButton* rightRightHighRadio = new QRadioButton("Start with Right Right");
+                                                         rightLeftHighRadio->setChecked(true);
 
-                                                      // Add explanatory label for High Energy
-                                                      QLabel* highEnergyExplanation = new QLabel("High Energy interlace pattern will be:\nRow 1: Selected start section\nRow 2: Other section\nRepeating for each original row");
-                                                      highEnergyExplanation->setStyleSheet("color: #666; font-size: 10px;");
+                                                         // Add explanatory label for High Energy
+                                                         QLabel* highEnergyExplanation = new QLabel("High Energy interlace pattern will be:\nRow 1: Selected start section\nRow 2: Other section\nRepeating for each original row");
+                                                         highEnergyExplanation->setStyleSheet("color: #666; font-size: 10px;");
 
-                                                      highEnergyLayout->addWidget(rightLeftHighRadio);
-                                                      highEnergyLayout->addWidget(rightRightHighRadio);
-                                                      highEnergyLayout->addWidget(highEnergyExplanation);
-                                                      highEnergyBox->setLayout(highEnergyLayout);
-                                                      layout->addWidget(highEnergyBox);
+                                                         highEnergyLayout->addWidget(rightLeftHighRadio);
+                                                         highEnergyLayout->addWidget(rightRightHighRadio);
+                                                         highEnergyLayout->addWidget(highEnergyExplanation);
+                                                         highEnergyBox->setLayout(highEnergyLayout);
+                                                         layout->addWidget(highEnergyBox);
 
-                                                      // Add buttons
-                                                      QDialogButtonBox* buttonBox = new QDialogButtonBox(
-                                                          QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
-                                                          Qt::Horizontal, &dialog);
-                                                      layout->addWidget(buttonBox);
+                                                         // Add buttons
+                                                         QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                                                             QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+                                                             Qt::Horizontal, &dialog);
+                                                         layout->addWidget(buttonBox);
 
-                                                      connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-                                                      connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+                                                         connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                                                         connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
-                                                      if (dialog.exec() == QDialog::Accepted) {
-                                                          ImageProcessor::InterlaceStartPoint lowEnergyStart =
-                                                              leftLeftLowRadio->isChecked() ?
-                                                                  ImageProcessor::InterlaceStartPoint::LEFT_LEFT :
-                                                                  ImageProcessor::InterlaceStartPoint::LEFT_RIGHT;
+                                                         if (dialog.exec() == QDialog::Accepted) {
+                                                             ImageProcessor::InterlaceStartPoint lowEnergyStart =
+                                                                 leftLeftLowRadio->isChecked() ?
+                                                                     ImageProcessor::InterlaceStartPoint::LEFT_LEFT :
+                                                                     ImageProcessor::InterlaceStartPoint::LEFT_RIGHT;
 
-                                                          ImageProcessor::InterlaceStartPoint highEnergyStart =
-                                                              rightLeftHighRadio->isChecked() ?
-                                                                  ImageProcessor::InterlaceStartPoint::RIGHT_LEFT :
-                                                                  ImageProcessor::InterlaceStartPoint::RIGHT_RIGHT;
+                                                             ImageProcessor::InterlaceStartPoint highEnergyStart =
+                                                                 rightLeftHighRadio->isChecked() ?
+                                                                     ImageProcessor::InterlaceStartPoint::RIGHT_LEFT :
+                                                                     ImageProcessor::InterlaceStartPoint::RIGHT_RIGHT;
 
-                                                          m_imageProcessor.processInterlacedEnergySectionsWithDisplay(
-                                                              lowEnergyStart,
-                                                              highEnergyStart
-                                                              );
+                                                             m_imageProcessor.processInterlacedEnergySectionsWithDisplay(
+                                                                 lowEnergyStart,
+                                                                 highEnergyStart
+                                                                 );
 
-                                                          m_imageLabel->clearSelection();
-                                                          updateImageDisplay();
+                                                             m_imageLabel->clearSelection();
+                                                             updateImageDisplay();
 
-                                                          QString lowEnergyStr = leftLeftLowRadio->isChecked() ? "LeftLeft" : "LeftRight";
-                                                          QString highEnergyStr = rightLeftHighRadio->isChecked() ? "RightLeft" : "RightRight";
+                                                             QString lowEnergyStr = leftLeftLowRadio->isChecked() ? "LeftLeft" : "LeftRight";
+                                                             QString highEnergyStr = rightLeftHighRadio->isChecked() ? "RightLeft" : "RightRight";
 
-                                                          updateLastAction("Interlace",
-                                                                           QString("Low: %1, High: %2")
-                                                                               .arg(lowEnergyStr)
-                                                                               .arg(highEnergyStr));
-                                                      }
-                                                  }},
+                                                             updateLastAction("Interlace",
+                                                                              QString("Low: %1, High: %2")
+                                                                                  .arg(lowEnergyStr)
+                                                                                  .arg(highEnergyStr));
+                                                         }
+                                                     }},
                                                     {"Split & Merge", [this]() {
                                                          if (checkZoomMode()) return;
                                                          m_darkLineInfoLabel->hide();
@@ -666,9 +666,9 @@ void ControlPanel::setupPreProcessingOperations()
 void ControlPanel::setupFilteringOperations() {
     createGroupBox("Filtering Operations", {
                                                {"Median Filter", [this]() {
-                                                 if (checkZoomMode()) return;
-                                                 m_darkLineInfoLabel->hide();
-                                                 resetDetectedLines();
+                                                    if (checkZoomMode()) return;
+                                                    m_darkLineInfoLabel->hide();
+                                                    resetDetectedLines();
                                                     auto [filterKernelSize, ok] = showInputDialog("Median Filter", "Enter kernel size:", 3, 1, 21);
                                                     if (ok) {
                                                         m_imageProcessor.applyMedianFilter(
@@ -681,9 +681,9 @@ void ControlPanel::setupFilteringOperations() {
                                                     }
                                                 }},
                                                {"High-Pass Filter", [this]() {
-                                                 if (checkZoomMode()) return;
-                                                 m_darkLineInfoLabel->hide();
-                                                 resetDetectedLines();
+                                                    if (checkZoomMode()) return;
+                                                    m_darkLineInfoLabel->hide();
+                                                    resetDetectedLines();
                                                     m_imageProcessor.applyHighPassFilter(const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()));
                                                     m_imageLabel->clearSelection();
                                                     updateImageDisplay();
@@ -695,70 +695,70 @@ void ControlPanel::setupFilteringOperations() {
 void ControlPanel::setupAdvancedOperations()
 {
     createGroupBox("Advanced Operations", {
-                                           {"Stretch", [this]() {
-                                                if (checkZoomMode()) return;
-                                                m_darkLineInfoLabel->hide();
-                                                resetDetectedLines();
+                                              {"Stretch", [this]() {
+                                                   if (checkZoomMode()) return;
+                                                   m_darkLineInfoLabel->hide();
+                                                   resetDetectedLines();
 
-                                                // Create dialog for stretch options
-                                                QDialog dialog(this);
-                                                dialog.setWindowTitle("Stretch Options");
-                                                QVBoxLayout* layout = new QVBoxLayout(&dialog);
+                                                   // Create dialog for stretch options
+                                                   QDialog dialog(this);
+                                                   dialog.setWindowTitle("Stretch Options");
+                                                   QVBoxLayout* layout = new QVBoxLayout(&dialog);
 
-                                                // Direction selection
-                                                QGroupBox* directionBox = new QGroupBox("Stretch Direction");
-                                                QVBoxLayout* directionLayout = new QVBoxLayout(directionBox);
-                                                QRadioButton* verticalRadio = new QRadioButton("Vertical");
-                                                QRadioButton* horizontalRadio = new QRadioButton("Horizontal");
-                                                verticalRadio->setChecked(true);
-                                                directionLayout->addWidget(verticalRadio);
-                                                directionLayout->addWidget(horizontalRadio);
-                                                layout->addWidget(directionBox);
+                                                   // Direction selection
+                                                   QGroupBox* directionBox = new QGroupBox("Stretch Direction");
+                                                   QVBoxLayout* directionLayout = new QVBoxLayout(directionBox);
+                                                   QRadioButton* verticalRadio = new QRadioButton("Vertical");
+                                                   QRadioButton* horizontalRadio = new QRadioButton("Horizontal");
+                                                   verticalRadio->setChecked(true);
+                                                   directionLayout->addWidget(verticalRadio);
+                                                   directionLayout->addWidget(horizontalRadio);
+                                                   layout->addWidget(directionBox);
 
-                                                // Stretch factor input
-                                                QLabel* factorLabel = new QLabel("Stretch Factor:");
-                                                QDoubleSpinBox* factorSpinBox = new QDoubleSpinBox();
-                                                factorSpinBox->setRange(0.1, 10.0);
-                                                factorSpinBox->setValue(1.5);
-                                                factorSpinBox->setSingleStep(0.1);
-                                                layout->addWidget(factorLabel);
-                                                layout->addWidget(factorSpinBox);
+                                                   // Stretch factor input
+                                                   QLabel* factorLabel = new QLabel("Stretch Factor:");
+                                                   QDoubleSpinBox* factorSpinBox = new QDoubleSpinBox();
+                                                   factorSpinBox->setRange(0.1, 10.0);
+                                                   factorSpinBox->setValue(1.5);
+                                                   factorSpinBox->setSingleStep(0.1);
+                                                   layout->addWidget(factorLabel);
+                                                   layout->addWidget(factorSpinBox);
 
-                                                // Add OK and Cancel buttons
-                                                QDialogButtonBox* buttonBox = new QDialogButtonBox(
-                                                    QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
-                                                    Qt::Horizontal, &dialog);
-                                                layout->addWidget(buttonBox);
+                                                   // Add OK and Cancel buttons
+                                                   QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                                                       QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+                                                       Qt::Horizontal, &dialog);
+                                                   layout->addWidget(buttonBox);
 
-                                                connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-                                                connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+                                                   connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                                                   connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
-                                                if (dialog.exec() == QDialog::Accepted) {
-                                                    float stretchFactor = factorSpinBox->value();
-                                                    bool isVertical = verticalRadio->isChecked();
+                                                   if (dialog.exec() == QDialog::Accepted) {
+                                                       float stretchFactor = factorSpinBox->value();
+                                                       bool isVertical = verticalRadio->isChecked();
 
-                                                    if (isVertical) {
-                                                        m_imageProcessor.stretchImageY(
-                                                            const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()),
-                                                            stretchFactor);
-                                                    } else {
-                                                        m_imageProcessor.stretchImageX(
-                                                            const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()),
-                                                            stretchFactor);
-                                                    }
+                                                       if (isVertical) {
+                                                           m_imageProcessor.stretchImageY(
+                                                               const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()),
+                                                               stretchFactor);
+                                                       } else {
+                                                           m_imageProcessor.stretchImageX(
+                                                               const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()),
+                                                               stretchFactor);
+                                                       }
 
-                                                    m_imageLabel->clearSelection();
-                                                    updateImageDisplay();
-                                                    updateLastAction("Stretch",
-                                                                     QString("%1 - Factor: %2")
-                                                                         .arg(isVertical ? "Vertical" : "Horizontal")
-                                                                         .arg(stretchFactor, 0, 'f', 2));
-                                                }
-                                            }},
+                                                       m_imageLabel->clearSelection();
+                                                       updateImageDisplay();
+                                                       updateLastAction("Stretch",
+                                                                        QString("%1 - Factor: %2")
+                                                                            .arg(isVertical ? "Vertical" : "Horizontal")
+                                                                            .arg(stretchFactor, 0, 'f', 2));
+                                                   }
+                                               }},
                                               {"Padding", [this]() {
-                                                if (checkZoomMode()) return;
-                                                m_darkLineInfoLabel->hide();
-                                                resetDetectedLines();
+                                                   if (checkZoomMode()) return;
+                                                   m_darkLineInfoLabel->hide();
+                                                   resetDetectedLines();
                                                    auto [paddingSize, ok] = showInputDialog("Padding Size", "Enter padding size:", 10, 1, 1000);
                                                    if (ok) {
                                                        auto paddedImage = m_imageProcessor.addPadding(m_imageProcessor.getFinalImage(), paddingSize);
@@ -769,9 +769,9 @@ void ControlPanel::setupAdvancedOperations()
                                                    }
                                                }},
                                               {"Apply Distortion", [this]() {
-                                                if (checkZoomMode()) return;
-                                                m_darkLineInfoLabel->hide();
-                                                resetDetectedLines();
+                                                   if (checkZoomMode()) return;
+                                                   m_darkLineInfoLabel->hide();
+                                                   resetDetectedLines();
                                                    QStringList directions = {"Left", "Right", "Top", "Bottom"};
                                                    bool ok;
                                                    QString selectedDirection = QInputDialog::getItem(this, "Distortion Direction", "Select direction:", directions, 0, false, &ok);
@@ -792,9 +792,9 @@ void ControlPanel::setupAdvancedOperations()
 void ControlPanel::setupCLAHEOperations() {
     createGroupBox("CLAHE Operations", {
                                            {"CLAHE (GPU)", [this]() {
-                                             if (checkZoomMode()) return;
-                                             m_darkLineInfoLabel->hide();
-                                             resetDetectedLines();
+                                                if (checkZoomMode()) return;
+                                                m_darkLineInfoLabel->hide();
+                                                resetDetectedLines();
                                                 auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 1000);
                                                 if (!clipOk) return;
 
@@ -821,9 +821,9 @@ void ControlPanel::setupCLAHEOperations() {
                                             }},
 
                                            {"CLAHE (CPU)", [this]() {
-                                             if (checkZoomMode()) return;
-                                             m_darkLineInfoLabel->hide();
-                                             resetDetectedLines();
+                                                if (checkZoomMode()) return;
+                                                m_darkLineInfoLabel->hide();
+                                                resetDetectedLines();
                                                 auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 1000);
                                                 if (!clipOk) return;
 
@@ -850,9 +850,9 @@ void ControlPanel::setupCLAHEOperations() {
                                             }},
 
                                            {"Threshold CLAHE (GPU)", [this]() {
-                                             if (checkZoomMode()) return;
-                                             m_darkLineInfoLabel->hide();
-                                             resetDetectedLines();
+                                                if (checkZoomMode()) return;
+                                                m_darkLineInfoLabel->hide();
+                                                resetDetectedLines();
                                                 auto [threshold, thresholdOk] = showInputDialog("Threshold", "Enter threshold value:", 5000, 0, 65535);
                                                 if (!thresholdOk) return;
 
@@ -884,9 +884,9 @@ void ControlPanel::setupCLAHEOperations() {
                                             }},
 
                                            {"Threshold CLAHE (CPU)", [this]() {
-                                             if (checkZoomMode()) return;
-                                             m_darkLineInfoLabel->hide();
-                                             resetDetectedLines();
+                                                if (checkZoomMode()) return;
+                                                m_darkLineInfoLabel->hide();
+                                                resetDetectedLines();
                                                 auto [threshold, thresholdOk] = showInputDialog("Threshold", "Enter threshold value:", 5000, 0, 65535);
                                                 if (!thresholdOk) return;
 
@@ -923,7 +923,7 @@ void ControlPanel::setupGlobalAdjustments()
 {
     createGroupBox("Global Adjustments", {
                                              {"Overall Gamma", [this]() {
-                                               if (checkZoomMode()) return;
+                                                  if (checkZoomMode()) return;
                                                   m_darkLineInfoLabel->hide();
                                                   resetDetectedLines();
                                                   auto [gammaValue, ok] = showInputDialog("Overall Gamma", "Enter gamma value:", 1.0, 0.1, 10.0);
@@ -935,8 +935,8 @@ void ControlPanel::setupGlobalAdjustments()
                                                   }
                                               }},
                                              {"Overall Sharpen", [this]() {
-                                               if (checkZoomMode()) return;
-                                               m_darkLineInfoLabel->hide();
+                                                  if (checkZoomMode()) return;
+                                                  m_darkLineInfoLabel->hide();
                                                   resetDetectedLines();
                                                   auto [sharpenStrength, ok] = showInputDialog("Overall Sharpen", "Enter sharpen strength:", 1.0, 0.1, 10.0);
                                                   if (ok) {
@@ -947,7 +947,7 @@ void ControlPanel::setupGlobalAdjustments()
                                                   }
                                               }},
                                              {"Overall Contrast", [this]() {
-                                               m_darkLineInfoLabel->hide();
+                                                  m_darkLineInfoLabel->hide();
                                                   resetDetectedLines();
                                                   auto [contrastFactor, ok] = showInputDialog("Overall Contrast", "Enter contrast factor:", 1.0, 0.1, 10.0);
                                                   if (ok) {
@@ -964,8 +964,8 @@ void ControlPanel::setupRegionalAdjustments()
 {
     createGroupBox("Regional Adjustments", {
                                                {"Region Gamma", [this]() {
-                                                 if (checkZoomMode()) return;
-                                                 m_darkLineInfoLabel->hide();
+                                                    if (checkZoomMode()) return;
+                                                    m_darkLineInfoLabel->hide();
                                                     resetDetectedLines();
                                                     if (m_imageLabel->isRegionSelected()) {
                                                         auto [gamma, ok] = showInputDialog("Region Gamma", "Enter gamma value:", 1.0, 0.1, 10.0);
@@ -981,8 +981,8 @@ void ControlPanel::setupRegionalAdjustments()
                                                     }
                                                 }},
                                                {"Region Sharpen", [this]() {
-                                                 if (checkZoomMode()) return;
-                                                 m_darkLineInfoLabel->hide();
+                                                    if (checkZoomMode()) return;
+                                                    m_darkLineInfoLabel->hide();
                                                     resetDetectedLines();
                                                     if (m_imageLabel->isRegionSelected()) {
                                                         auto [sharpenStrength, ok] = showInputDialog("Region Sharpen", "Enter sharpen strength:", 0.5, 0.1, 5.0);
@@ -998,8 +998,8 @@ void ControlPanel::setupRegionalAdjustments()
                                                     }
                                                 }},
                                                {"Region Contrast", [this]() {
-                                                 if (checkZoomMode()) return;
-                                                 m_darkLineInfoLabel->hide();
+                                                    if (checkZoomMode()) return;
+                                                    m_darkLineInfoLabel->hide();
                                                     resetDetectedLines();
                                                     if (m_imageLabel->isRegionSelected()) {
                                                         auto [contrastFactor, ok] = showInputDialog("Region Contrast", "Enter contrast factor:", 1.5, 0.1, 5.0);

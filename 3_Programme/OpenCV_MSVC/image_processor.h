@@ -23,7 +23,7 @@
 #include "CLAHE.h"
 #include "dark_line.h"
 #include "adjustments.h"
-#include "display_window.h"
+//#include "display_window.h"
 
 class ImageProcessor {
 public:
@@ -216,9 +216,6 @@ private:
     std::vector<DarkLine> m_detectedLines;
     std::vector<size_t> m_lastRemovedLines;
 
-    // Display windows for interlaced processing
-    std::unique_ptr<DisplayWindow> lowEnergyWindow;
-    std::unique_ptr<DisplayWindow> highEnergyWindow;
 };
 
 #endif // IMAGE_PROCESSOR_H
