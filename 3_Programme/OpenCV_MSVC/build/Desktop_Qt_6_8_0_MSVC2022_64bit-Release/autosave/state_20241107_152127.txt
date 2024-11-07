@@ -1,0 +1,7 @@
+Action: Load Image - 010120240718120036_raw.txt
+Timestamp: 2024-11-07T15:21:27
+Image width: 3328
+Image height: 1536
+
+Action History:
+0: Load Image - 010120240718120036_raw.txt

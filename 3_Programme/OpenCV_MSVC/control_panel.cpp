@@ -406,7 +406,7 @@ void ControlPanel::setupFileOperations()
                                           {"Revert", [this]() {
                                                QString revertedAction = m_imageProcessor.revertImage();
                                                if (!revertedAction.isEmpty()) {
-                                                   resetDetectedLines();
+                                                   m_darkLineInfoLabel->hide();
                                                    updateImageDisplay();
                                                    handleRevert();
 

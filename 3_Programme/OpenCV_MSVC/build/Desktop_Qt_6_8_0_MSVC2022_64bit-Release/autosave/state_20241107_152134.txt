@@ -1,0 +1,10 @@
+Action: Split & Merge - Mode: All Parts, Method: Weighted Average
+Timestamp: 2024-11-07T15:21:34
+Image width: 832
+Image height: 3072
+
+Action History:
+0: Split & Merge - Mode: All Parts, Method: Weighted Average
+1: Interlace - Low: LeftLeft, High: RightLeft
+2: Calibration - Y: 100, X: 100
+3: Load Image - 010120240718120036_raw.txt

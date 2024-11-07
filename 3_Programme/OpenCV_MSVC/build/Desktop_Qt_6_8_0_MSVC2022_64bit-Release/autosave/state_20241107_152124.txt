@@ -1,0 +1,6 @@
+Action: Initial State
+Timestamp: 2024-11-07T15:21:24
+Image width: 3328
+Image height: 1536
+
+Action History:

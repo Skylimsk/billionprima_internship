@@ -1,0 +1,9 @@
+Action: Interlace - Low: LeftLeft, High: RightLeft
+Timestamp: 2024-11-07T15:21:30
+Image width: 3328
+Image height: 3072
+
+Action History:
+0: Interlace - Low: LeftLeft, High: RightLeft
+1: Calibration - Y: 100, X: 100
+2: Load Image - 010120240718120036_raw.txt

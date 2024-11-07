@@ -1,0 +1,6 @@
+Action: Revert from: Load Image - 010120240718120036_raw.txt
+Timestamp: 2024-11-07T15:21:40
+Image width: 3328
+Image height: 3072
+
+Action History:

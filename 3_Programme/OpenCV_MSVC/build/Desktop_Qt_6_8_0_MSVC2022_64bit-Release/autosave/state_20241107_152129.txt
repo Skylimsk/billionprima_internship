@@ -1,0 +1,8 @@
+Action: Calibration - Y: 100, X: 100
+Timestamp: 2024-11-07T15:21:29
+Image width: 3328
+Image height: 1536
+
+Action History:
+0: Calibration - Y: 100, X: 100
+1: Load Image - 010120240718120036_raw.txt

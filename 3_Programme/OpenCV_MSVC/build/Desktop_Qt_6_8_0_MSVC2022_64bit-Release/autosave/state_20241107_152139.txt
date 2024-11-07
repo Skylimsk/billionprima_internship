@@ -1,0 +1,7 @@
+Action: Revert from: Calibration - Y: 100, X: 100
+Timestamp: 2024-11-07T15:21:39
+Image width: 3328
+Image height: 3072
+
+Action History:
+0: Load Image - 010120240718120036_raw.txt
