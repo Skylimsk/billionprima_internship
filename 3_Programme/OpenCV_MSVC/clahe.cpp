@@ -202,7 +202,7 @@ void CLAHEProcessor::applyThresholdCLAHE_GPU(std::vector<std::vector<uint16_t>>&
                                              const cv::Size& tileSize) {
     metrics.reset();
     metrics.isCLAHE = true;
-    metrics.threadsUsed = threadConfig.numThreads; // GPU processing
+    metrics.threadsUsed = threadConfig.numThreads;
     auto startTime = std::chrono::high_resolution_clock::now();
 
     // Convert vector to Mat
@@ -210,10 +210,12 @@ void CLAHEProcessor::applyThresholdCLAHE_GPU(std::vector<std::vector<uint16_t>>&
     int height = matImage.rows;
     int width = matImage.cols;
 
-    // Create dark mask with transition zone using multiple threads
+    // 1. 改进的暗区检测
     cv::Mat cpuDarkMask = cv::Mat::zeros(matImage.size(), CV_32F);
-    float transitionRange = threshold * 0.35f;
+    cv::Mat darkPixels = matImage.clone();
+    float transitionRange = threshold * 0.2f;
 
+    // 并行创建暗区掩码
     {
         std::vector<std::future<void>> futures;
         int rowsPerThread = height / threadConfig.numThreads;
@@ -223,10 +225,10 @@ void CLAHEProcessor::applyThresholdCLAHE_GPU(std::vector<std::vector<uint16_t>>&
             int endRow = (i == threadConfig.numThreads - 1) ? height : (i + 1) * rowsPerThread;
 
             futures.push_back(std::async(std::launch::async, [&, i, startRow, endRow]() {
-                logThreadStart(i, "Dark Mask Creation", startRow, endRow);
-                createDarkMask(matImage, cpuDarkMask, threshold, transitionRange,
-                               startRow, endRow, i);
-                logThreadComplete(i, "Dark Mask Creation");
+                logThreadStart(i, "Enhanced Dark Mask Creation", startRow, endRow);
+                createEnhancedDarkMask(matImage, cpuDarkMask, threshold, transitionRange,
+                                       startRow, endRow, i);
+                logThreadComplete(i, "Enhanced Dark Mask Creation");
             }));
         }
 
@@ -235,145 +237,111 @@ void CLAHEProcessor::applyThresholdCLAHE_GPU(std::vector<std::vector<uint16_t>>&
         }
     }
 
-    // Upload mask to GPU and apply Gaussian blur
+    // 2. 改进的模糊处理
     cv::cuda::GpuMat darkMask;
     darkMask.upload(cpuDarkMask);
 
     cv::cuda::GpuMat tempMask;
     cv::Ptr<cv::cuda::Filter> gaussianFilter1 = cv::cuda::createGaussianFilter(
-        darkMask.type(), darkMask.type(), cv::Size(7, 7), 1.5);
-    cv::Ptr<cv::cuda::Filter> gaussianFilter2 = cv::cuda::createGaussianFilter(
         darkMask.type(), darkMask.type(), cv::Size(5, 5), 1.0);
+    cv::Ptr<cv::cuda::Filter> gaussianFilter2 = cv::cuda::createGaussianFilter(
+        darkMask.type(), darkMask.type(), cv::Size(3, 3), 0.8);
 
     gaussianFilter1->apply(darkMask, tempMask);
     gaussianFilter2->apply(tempMask, darkMask);
 
-    // Setup CLAHE processing
-    cv::Ptr<cv::cuda::CLAHE> gpuClahe = cv::cuda::createCLAHE(clipLimit * 0.6, tileSize);
-    cv::cuda::GpuMat gpuClaheResult;
-    cv::cuda::GpuMat darkPixels;
-    darkPixels.upload(matImage);
+    // 3. 动态调整CLAHE参数
+    double adaptiveClipLimit = clipLimit;
+    cv::Size adaptiveTileSize = tileSize;
 
+    // 基于图像特征动态调整参数
+    {
+        cv::Mat hist;
+        int histSize = 256;
+        float range[] = {0, 65536};
+        const float* histRange = {range};
+        cv::calcHist(&matImage, 1, 0, cv::Mat(), hist, 1, &histSize, &histRange);
+
+        float darkPixelRatio = cv::sum(hist.rowRange(0, threshold/256))[0] / cv::sum(hist)[0];
+
+        if (darkPixelRatio > 0.3f) {
+            adaptiveClipLimit *= 1.5;
+            adaptiveTileSize.width = std::max(8, tileSize.width / 2);
+            adaptiveTileSize.height = std::max(8, tileSize.height / 2);
+        }
+    }
+
+    // 4. 改进的CLAHE处理
+    cv::cuda::GpuMat gpuClaheResult;
     cv::Mat darkMaskVis;
     cv::Mat cpuDarkMask2;
     darkMask.download(cpuDarkMask2);
     cpuDarkMask2.convertTo(darkMaskVis, CV_8U, 255.0);
 
-    // Apply CLAHE if dark regions are found
+    cv::cuda::GpuMat gpuImage;
+    gpuImage.upload(matImage);
+
     if (cv::countNonZero(darkMaskVis) > 0) {
-        logThreadStart(0, "CLAHE GPU Processing", 0, height);
+        // 在GPU上创建和应用CLAHE
         cv::cuda::GpuMat validPixels;
-        darkPixels.copyTo(validPixels, darkMask);
+        gpuImage.copyTo(validPixels, darkMask);
+
+        cv::Ptr<cv::cuda::CLAHE> gpuClahe = cv::cuda::createCLAHE(adaptiveClipLimit, adaptiveTileSize);
         gpuClahe->apply(validPixels, gpuClaheResult);
-        logThreadComplete(0, "CLAHE GPU Processing");
 
-        // Download for CPU sharpening
-        cv::Mat cpuResult;
-        gpuClaheResult.download(cpuResult);
+        // 5. 细节增强
+        cv::cuda::GpuMat detailMask;
+        cv::Ptr<cv::cuda::Filter> laplacian = cv::cuda::createLaplacianFilter(
+            validPixels.type(), validPixels.type(), 1);
+        laplacian->apply(validPixels, detailMask);
 
-        logThreadStart(0, "Sharpening Filter", 0, height);
+        // 保持原始细节
+        cv::cuda::addWeighted(gpuClaheResult, 0.85, detailMask, 0.15, 0, gpuClaheResult);
+
+        // 6. 锐化处理
         cv::Mat sharpenKernel = (cv::Mat_<float>(3,3) <<
-                                     0, -0.3, 0,
-                                 -0.3, 2.2, -0.3,
-                                 0, -0.3, 0);
+                                     -0.1, -0.1, -0.1,
+                                 -0.1,  2.0, -0.1,
+                                 -0.1, -0.1, -0.1);
 
-        cv::Mat sharpened;
-        cv::filter2D(cpuResult, sharpened, CV_16U, sharpenKernel);
+        cv::cuda::GpuMat gpuSharpenKernel;
+        gpuSharpenKernel.upload(sharpenKernel);
 
-        cv::cuda::GpuMat gpuSharpened;
-        gpuSharpened.upload(sharpened);
-        cv::cuda::addWeighted(gpuClaheResult, 0.5, gpuSharpened, 0.5, 0, gpuClaheResult);
-        logThreadComplete(0, "Sharpening Filter");
+        cv::cuda::GpuMat sharpened;
+        cv::Ptr<cv::cuda::Filter> sharpenFilter = cv::cuda::createLinearFilter(
+            gpuClaheResult.type(), gpuClaheResult.type(), sharpenKernel);
+        sharpenFilter->apply(gpuClaheResult, sharpened);
+
+        // 自适应混合
+        cv::cuda::addWeighted(gpuClaheResult, 0.7, sharpened, 0.3, 0, gpuClaheResult);
     } else {
-        darkPixels.copyTo(gpuClaheResult);
+        gpuImage.copyTo(gpuClaheResult);
     }
 
-    // Process final image blending
-    cv::Mat resultImage = matImage.clone();
-    cv::Mat cpuClaheResult;
-    gpuClaheResult.download(cpuClaheResult);
-
-    {
-        std::vector<std::future<void>> futures;
-        int rowsPerThread = height / threadConfig.numThreads;
-
-        for (unsigned int i = 0; i < threadConfig.numThreads; ++i) {
-            int startRow = i * rowsPerThread;
-            int endRow = (i == threadConfig.numThreads - 1) ? height : (i + 1) * rowsPerThread;
-
-            futures.push_back(std::async(std::launch::async, [&, i, startRow, endRow]() {
-                logThreadStart(i, "Progressive Blending", startRow, endRow);
-                processImageChunk(resultImage, matImage, cpuClaheResult, cpuDarkMask2,
-                                  threshold, startRow, endRow, i);
-                logThreadComplete(i, "Progressive Blending");
-            }));
-        }
-
-        for (auto& future : futures) {
-            future.wait();
-        }
-    }
-
-    // Final GPU processing steps
-    logThreadStart(0, "Final GPU Processing", 0, height);
+    // 7. 改进的结果混合
     cv::cuda::GpuMat gpuResult;
-    gpuResult.upload(resultImage);
+    gpuImage.copyTo(gpuResult);
 
-    cv::Mat normalizedResult;
-    cv::normalize(resultImage, normalizedResult, 0, 65535, cv::NORM_MINMAX, CV_16U);
-    cv::cuda::GpuMat gpuNormalized;
-    gpuNormalized.upload(normalizedResult);
-
-    cv::cuda::addWeighted(gpuResult, 0.8, gpuNormalized, 0.2, 0, gpuResult);
-
-    cv::Ptr<cv::cuda::Filter> finalBlur = cv::cuda::createGaussianFilter(
-        gpuResult.type(), gpuResult.type(), cv::Size(3, 3), 0.5);
-    finalBlur->apply(gpuResult, gpuResult);
-
-    auto endTime = std::chrono::high_resolution_clock::now();
-    metrics.processingTime = std::chrono::duration<double, std::milli>(endTime - startTime).count();
-    metrics.totalTime = metrics.processingTime;
-
+    cv::Mat resultImage;
     gpuResult.download(resultImage);
-    logThreadComplete(0, "Final GPU Processing");
 
-    // Update the final image
-    finalImage = matToVector(resultImage);
-}
-
-void CLAHEProcessor::applyThresholdCLAHE_CPU(std::vector<std::vector<uint16_t>>& finalImage,
-                                             uint16_t threshold, double clipLimit,
-                                             const cv::Size& tileSize,
-                                             const ThreadConfig& threadConfig) {
-    metrics.reset();
-    metrics.isCLAHE = true;
-    metrics.threadsUsed = threadConfig.numThreads;
-    auto startTime = std::chrono::high_resolution_clock::now();    metrics.isCLAHE = true;
-    metrics.threadsUsed = threadConfig.numThreads;
-
-    // Convert vector to Mat
-    cv::Mat matImage = vectorToMat(finalImage);
-    int height = matImage.rows;
-    int width = matImage.cols;
-
-    // Create mask with transition zone using multiple threads
-    cv::Mat darkMask = cv::Mat::zeros(matImage.size(), CV_32F);
-    cv::Mat darkPixels = matImage.clone();
-    float transitionRange = threshold * 0.35f;
-
+    // 使用CPU进行最终的图像块处理（保持与CPU版本一致）
     {
         std::vector<std::future<void>> futures;
         int rowsPerThread = height / threadConfig.numThreads;
 
+        cv::Mat claheResult;
+        gpuClaheResult.download(claheResult);
+
         for (unsigned int i = 0; i < threadConfig.numThreads; ++i) {
             int startRow = i * rowsPerThread;
             int endRow = (i == threadConfig.numThreads - 1) ? height : (i + 1) * rowsPerThread;
 
             futures.push_back(std::async(std::launch::async, [&, i, startRow, endRow]() {
-                logThreadStart(i, "Dark Mask Creation", startRow, endRow);
-                createDarkMask(matImage, darkMask, threshold, transitionRange,
-                               startRow, endRow, i);
-                logThreadComplete(i, "Dark Mask Creation");
+                logThreadStart(i, "Enhanced Progressive Blending", startRow, endRow);
+                processEnhancedImageChunk(resultImage, matImage, claheResult, cpuDarkMask2,
+                                          threshold, startRow, endRow, i);
+                logThreadComplete(i, "Enhanced Progressive Blending");
             }));
         }
 
@@ -382,113 +350,88 @@ void CLAHEProcessor::applyThresholdCLAHE_CPU(std::vector<std::vector<uint16_t>>&
         }
     }
 
-    // Multi-pass Gaussian smoothing
-    cv::GaussianBlur(darkMask, darkMask, cv::Size(7, 7), 1.5);
-    cv::GaussianBlur(darkMask, darkMask, cv::Size(5, 5), 1.0);
+    // 8. 最终优化
+    cv::cuda::GpuMat gpuFinal;
+    gpuFinal.upload(resultImage);
 
-    // Apply CLAHE with parallel processing
-    cv::Mat claheResult;
-    cv::Mat darkMaskVis;
-    darkMask.convertTo(darkMaskVis, CV_8U, 255.0);
-
-    if (cv::countNonZero(darkMaskVis) > 0) {
-        std::vector<cv::Ptr<cv::CLAHE>> claheInstances(threadConfig.numThreads);
-        for (auto& instance : claheInstances) {
-            instance = cv::createCLAHE(clipLimit * 0.6, tileSize);
-        }
-
-        cv::Mat validPixels;
-        darkPixels.copyTo(validPixels, darkMaskVis);
-        claheResult = cv::Mat::zeros(validPixels.size(), validPixels.type());
-
-        std::vector<std::future<void>> futures;
-        int rowsPerThread = height / threadConfig.numThreads;
-
-        for (unsigned int i = 0; i < threadConfig.numThreads; ++i) {
-            int startRow = i * rowsPerThread;
-            int endRow = (i == threadConfig.numThreads - 1) ? height : (i + 1) * rowsPerThread;
-
-            futures.push_back(std::async(std::launch::async, [&, i, startRow, endRow]() {
-                logThreadStart(i, "CLAHE Processing", startRow, endRow);
-                cv::Mat strip = validPixels(cv::Range(startRow, endRow), cv::Range::all());
-                cv::Mat stripResult;
-
-                claheInstances[i]->apply(strip, stripResult);
-
-                {
-                    std::lock_guard<std::mutex> lock(processingMutex);
-                    stripResult.copyTo(claheResult(cv::Range(startRow, endRow), cv::Range::all()));
-                }
-                logThreadComplete(i, "CLAHE Processing");
-            }));
-        }
-
-        for (auto& future : futures) {
-            future.wait();
-        }
-
-        // Apply sharpening
-        cv::Mat sharpenKernel = (cv::Mat_<float>(3,3) <<
-                                     0, -0.3, 0,
-                                 -0.3, 2.2, -0.3,
-                                 0, -0.3, 0);
-
-        cv::Mat sharpened;
-        cv::filter2D(claheResult, sharpened, CV_16U, sharpenKernel);
-
-        float sharpenBlend = 0.5f;
-        cv::addWeighted(claheResult, 1.0 - sharpenBlend, sharpened, sharpenBlend, 0, claheResult);
-    } else {
-        claheResult = darkPixels.clone();
-    }
-
-    // Progressive blending with parallel processing
-    cv::Mat resultImage = matImage.clone();
-
-    {
-        std::vector<std::future<void>> futures;
-        int rowsPerThread = height / threadConfig.numThreads;
-
-        for (unsigned int i = 0; i < threadConfig.numThreads; ++i) {
-            int startRow = i * rowsPerThread;
-            int endRow = (i == threadConfig.numThreads - 1) ? height : (i + 1) * rowsPerThread;
-
-            futures.push_back(std::async(std::launch::async, [&, i, startRow, endRow]() {
-                logThreadStart(i, "Progressive Blending", startRow, endRow);
-                processImageChunk(resultImage, matImage, claheResult, darkMask,
-                                  threshold, startRow, endRow, i);
-                logThreadComplete(i, "Progressive Blending");
-            }));
-        }
-
-        for (auto& future : futures) {
-            future.wait();
-        }
-    }
-
-    // Final processing steps
-    cv::Mat normalizedResult;
-    cv::normalize(resultImage, normalizedResult, 0, 65535, cv::NORM_MINMAX, CV_16U);
-
-    float normalizationStrength = 0.2f;
-    cv::addWeighted(resultImage, 1.0 - normalizationStrength,
-                    normalizedResult, normalizationStrength, 0, resultImage);
-
-    cv::GaussianBlur(resultImage, resultImage, cv::Size(3, 3), 0.5);
+    cv::Ptr<cv::cuda::Filter> denoise = cv::cuda::createGaussianFilter(
+        gpuFinal.type(), gpuFinal.type(), cv::Size(3, 3), 0.5);
+    denoise->apply(gpuFinal, gpuFinal);
 
     auto endTime = std::chrono::high_resolution_clock::now();
     metrics.processingTime = std::chrono::duration<double, std::milli>(endTime - startTime).count();
     metrics.totalTime = metrics.processingTime;
 
-    // Update the final image
+    gpuFinal.download(resultImage);
     finalImage = matToVector(resultImage);
 }
 
-void CLAHEProcessor::processImageChunk(cv::Mat& result, const cv::Mat& original,
-                                       const cv::Mat& claheResult, const cv::Mat& darkMask,
-                                       uint16_t threshold, int startRow, int endRow,
-                                       int threadId) {
+// 改进的暗区掩码创建函数
+void CLAHEProcessor::createEnhancedDarkMask(const cv::Mat& input, cv::Mat& darkMask,
+                                            uint16_t threshold, float transitionRange,
+                                            int startRow, int endRow, int threadId) {
+    const int width = input.cols;
+    const int kernelSize = 3;
+    const int offset = kernelSize / 2;
+
+    for (int y = startRow; y < endRow; ++y) {
+        for (int x = 0; x < width; ++x) {
+            uint16_t pixelValue = input.at<uint16_t>(y, x);
+
+            // 计算局部方差作为纹理特征
+            float localVariance = 0.0f;
+            if (y >= offset && y < input.rows - offset && x >= offset && x < width - offset) {
+                float mean = 0.0f;
+                float sqSum = 0.0f;
+                int count = 0;
+
+                for (int ky = -offset; ky <= offset; ++ky) {
+                    for (int kx = -offset; kx <= offset; ++kx) {
+                        float val = input.at<uint16_t>(y + ky, x + kx);
+                        mean += val;
+                        sqSum += val * val;
+                        count++;
+                    }
+                }
+
+                mean /= count;
+                localVariance = (sqSum / count) - (mean * mean);
+            }
+
+            if (pixelValue < threshold) {
+                if (pixelValue > threshold - transitionRange) {
+                    // 改进的过渡函数，考虑局部方差
+                    float factor = (threshold - pixelValue) / transitionRange;
+                    factor = std::pow(factor, 2.0f) * (3.0f - 2.0f * factor);
+
+                    // 根据局部方差调整因子
+                    float varianceWeight = std::min(1.0f, localVariance / 10000.0f);
+                    factor = factor * (0.8f + 0.2f * varianceWeight);
+
+                    darkMask.at<float>(y, x) = factor;
+                } else {
+                    // 为深暗区域提供更强的增强
+                    float intensity = pixelValue / static_cast<float>(threshold - transitionRange);
+                    float enhancementFactor = 0.6f + 0.4f * intensity;
+
+                    // 考虑局部方差
+                    float varianceWeight = std::min(1.0f, localVariance / 10000.0f);
+                    enhancementFactor *= (0.85f + 0.15f * varianceWeight);
+
+                    darkMask.at<float>(y, x) = enhancementFactor;
+                }
+            }
+        }
+    }
+}
+
+// 改进的图像块处理函数
+void CLAHEProcessor::processEnhancedImageChunk(cv::Mat& result, const cv::Mat& original,
+                                               const cv::Mat& claheResult, const cv::Mat& darkMask,
+                                               uint16_t threshold, int startRow, int endRow,
+                                               int threadId) {
     const int width = result.cols;
+    const float gamma = 1.1f;  // 轻微的gamma校正
 
     for (int y = startRow; y < endRow; ++y) {
         for (int x = 0; x < width; ++x) {
@@ -497,11 +440,17 @@ void CLAHEProcessor::processImageChunk(cv::Mat& result, const cv::Mat& original,
                 uint16_t originalValue = original.at<uint16_t>(y, x);
                 uint16_t claheValue = claheResult.at<uint16_t>(y, x);
 
+                // 改进的自适应混合
                 float adaptiveBlend = blendFactor;
-                if (originalValue < threshold * 0.6) {
-                    float darknessFactor = originalValue / (threshold * 0.6f);
-                    adaptiveBlend *= 0.7f + 0.3f * darknessFactor;
+                if (originalValue < threshold * 0.5) {
+                    float darknessFactor = originalValue / (threshold * 0.5f);
+                    // 为较暗区域提供更平滑的过渡
+                    adaptiveBlend *= 0.8f + 0.2f * std::pow(darknessFactor, gamma);
                 }
+
+                // 保持更多原始细节
+                float detailPreservation = 1.0f - std::min(1.0f, std::abs(claheValue - originalValue) / 5000.0f);
+                adaptiveBlend *= (0.85f + 0.15f * detailPreservation);
 
                 result.at<uint16_t>(y, x) = static_cast<uint16_t>(
                     originalValue * (1.0f - adaptiveBlend) +
@@ -512,25 +461,176 @@ void CLAHEProcessor::processImageChunk(cv::Mat& result, const cv::Mat& original,
     }
 }
 
-void CLAHEProcessor::createDarkMask(const cv::Mat& input, cv::Mat& darkMask,
-                                    uint16_t threshold, float transitionRange,
-                                    int startRow, int endRow,
-                                    int threadId) {
-    const int width = input.cols;
+void CLAHEProcessor::applyThresholdCLAHE_CPU(std::vector<std::vector<uint16_t>>& finalImage,
+                                             uint16_t threshold, double clipLimit,
+                                             const cv::Size& tileSize) {
+    metrics.reset();
+    metrics.isCLAHE = true;
+    metrics.threadsUsed = threadConfig.numThreads;
+    auto startTime = std::chrono::high_resolution_clock::now();
 
-    for (int y = startRow; y < endRow; ++y) {
-        for (int x = 0; x < width; ++x) {
-            uint16_t pixelValue = input.at<uint16_t>(y, x);
-            if (pixelValue < threshold) {
-                if (pixelValue > threshold - transitionRange) {
-                    float factor = (threshold - pixelValue) / transitionRange;
-                    factor = factor * factor * factor * (factor * (6 * factor - 15) + 10);
-                    darkMask.at<float>(y, x) = factor;
-                } else {
-                    darkMask.at<float>(y, x) = 0.8f +
-                                               0.2f * (pixelValue / (threshold - transitionRange));
-                }
-            }
+    // Convert vector to Mat
+    cv::Mat matImage = vectorToMat(finalImage);
+    int height = matImage.rows;
+    int width = matImage.cols;
+
+    // 1. 改进的暗区检测
+    cv::Mat darkMask = cv::Mat::zeros(matImage.size(), CV_32F);
+    cv::Mat darkPixels = matImage.clone();
+    float transitionRange = threshold * 0.2f;
+
+    // 并行创建暗区掩码
+    {
+        std::vector<std::future<void>> futures;
+        int rowsPerThread = height / threadConfig.numThreads;
+
+        for (unsigned int i = 0; i < threadConfig.numThreads; ++i) {
+            int startRow = i * rowsPerThread;
+            int endRow = (i == threadConfig.numThreads - 1) ? height : (i + 1) * rowsPerThread;
+
+            futures.push_back(std::async(std::launch::async, [&, i, startRow, endRow]() {
+                logThreadStart(i, "Enhanced Dark Mask Creation", startRow, endRow);
+                createEnhancedDarkMask(matImage, darkMask, threshold, transitionRange,
+                                       startRow, endRow, i);
+                logThreadComplete(i, "Enhanced Dark Mask Creation");
+            }));
+        }
+
+        for (auto& future : futures) {
+            future.wait();
         }
     }
+
+    // 2. 改进的模糊处理 - 转换为CPU版本
+    cv::Mat tempMask;
+    cv::GaussianBlur(darkMask, tempMask, cv::Size(5, 5), 1.0);
+    cv::GaussianBlur(tempMask, darkMask, cv::Size(3, 3), 0.8);
+
+    // 3. 动态调整CLAHE参数
+    double adaptiveClipLimit = clipLimit;
+    cv::Size adaptiveTileSize = tileSize;
+
+    // 基于图像特征动态调整参数
+    {
+        cv::Mat hist;
+        int histSize = 256;
+        float range[] = {0, 65536};
+        const float* histRange = {range};
+        cv::calcHist(&matImage, 1, 0, cv::Mat(), hist, 1, &histSize, &histRange);
+
+        float darkPixelRatio = cv::sum(hist.rowRange(0, threshold/256))[0] / cv::sum(hist)[0];
+
+        if (darkPixelRatio > 0.3f) {
+            adaptiveClipLimit *= 1.5;
+            adaptiveTileSize.width = std::max(8, tileSize.width / 2);
+            adaptiveTileSize.height = std::max(8, tileSize.height / 2);
+        }
+    }
+
+    // 4. 改进的CLAHE处理 - 转换为CPU版本
+    cv::Mat claheResult;
+    cv::Mat darkMaskVis;
+    darkMask.convertTo(darkMaskVis, CV_8U, 255.0);
+
+    if (cv::countNonZero(darkMaskVis) > 0) {
+        // 创建和应用CLAHE
+        cv::Mat validPixels;
+        matImage.copyTo(validPixels, darkMaskVis);
+
+        // 创建CLAHE实例并应用
+        cv::Ptr<cv::CLAHE> clahePtr = cv::createCLAHE(adaptiveClipLimit, adaptiveTileSize);
+        clahePtr->apply(validPixels, claheResult);
+
+        // 5. 细节增强
+        cv::Mat detailMask;
+        cv::Laplacian(validPixels, detailMask, validPixels.type(), 1);
+
+        // 保持原始细节
+        cv::addWeighted(claheResult, 0.85, detailMask, 0.15, 0, claheResult);
+
+        // 6. 锐化处理
+        cv::Mat sharpenKernel = (cv::Mat_<float>(3,3) <<
+                                     -0.1, -0.1, -0.1,
+                                 -0.1,  2.0, -0.1,
+                                 -0.1, -0.1, -0.1);
+
+        cv::Mat sharpened;
+        cv::filter2D(claheResult, sharpened, claheResult.depth(), sharpenKernel);
+
+        // 自适应混合
+        cv::addWeighted(claheResult, 0.7, sharpened, 0.3, 0, claheResult);
+    } else {
+        claheResult = matImage.clone();
+    }
+
+    // 7. 改进的结果混合
+    cv::Mat resultImage = matImage.clone();
+
+    // 使用CPU进行最终的图像块处理
+    {
+        std::vector<std::future<void>> futures;
+        int rowsPerThread = height / threadConfig.numThreads;
+
+        for (unsigned int i = 0; i < threadConfig.numThreads; ++i) {
+            int startRow = i * rowsPerThread;
+            int endRow = (i == threadConfig.numThreads - 1) ? height : (i + 1) * rowsPerThread;
+
+            futures.push_back(std::async(std::launch::async, [&, i, startRow, endRow]() {
+                logThreadStart(i, "Enhanced Progressive Blending", startRow, endRow);
+                processEnhancedImageChunk(resultImage, matImage, claheResult, darkMask,
+                                          threshold, startRow, endRow, i);
+                logThreadComplete(i, "Enhanced Progressive Blending");
+            }));
+        }
+
+        for (auto& future : futures) {
+            future.wait();
+        }
+    }
+
+    // 8. 最终优化 - 转换为CPU版本
+    cv::GaussianBlur(resultImage, resultImage, cv::Size(3, 3), 0.5);
+
+    auto endTime = std::chrono::high_resolution_clock::now();
+    metrics.processingTime = std::chrono::duration<double, std::milli>(endTime - startTime).count();
+    metrics.totalTime = metrics.processingTime;
+
+    finalImage = matToVector(resultImage);
+}
+
+// 新增：增强的条带处理函数
+void CLAHEProcessor::processEnhancedStrip(cv::Mat& strip, cv::Ptr<cv::CLAHE>& clahe) {
+    cv::Mat stripResult;
+    clahe->apply(strip, stripResult);
+
+    // 局部对比度增强
+    cv::Mat localContrast;
+    cv::Laplacian(strip, localContrast, CV_16U, 1);
+
+    // 自适应混合
+    float contrastWeight = 0.15f;
+    cv::addWeighted(stripResult, 1.0 - contrastWeight, localContrast, contrastWeight, 0, stripResult);
+
+    // 边缘保持
+    cv::Mat edges;
+    cv::Sobel(strip, edges, CV_16U, 1, 1);
+    float edgeWeight = 0.1f;
+    cv::addWeighted(stripResult, 1.0 - edgeWeight, edges, edgeWeight, 0, strip);
+}
+
+// 新增：增强的结果优化函数
+void CLAHEProcessor::optimizeResult(cv::Mat& result, const cv::Mat& original, float strength = 1.0f) {
+    // 计算局部方差作为细节图
+    cv::Mat variance;
+    cv::Mat mean, meanSq;
+    cv::boxFilter(result, mean, -1, cv::Size(3, 3));
+    cv::boxFilter(result.mul(result), meanSq, -1, cv::Size(3, 3));
+    variance = meanSq - mean.mul(mean);
+
+    // 使用方差图来调整细节保持
+    cv::Mat mask = variance > 1000;
+    result.copyTo(result, mask);
+
+    // 轻微的去噪
+    cv::GaussianBlur(result, result, cv::Size(3, 3), 0.5 * strength);
 }

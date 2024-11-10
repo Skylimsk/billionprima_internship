@@ -72,8 +72,7 @@ public:
                                  const cv::Size& tileSize);
     void applyThresholdCLAHE_CPU(std::vector<std::vector<uint16_t>>& finalImage,
                                  uint16_t threshold, double clipLimit,
-                                 const cv::Size& tileSize,
-                                 const ThreadConfig& threadConfig = ThreadConfig());
+                                 const cv::Size& tileSize);
 
     // Configuration and metrics
     void setThreadConfig(const ThreadConfig& config) { threadConfig = config; }
@@ -102,6 +101,18 @@ protected:
                         uint16_t threshold, float transitionRange,
                         int startRow, int endRow,
                         int threadId);
+
+    void processEnhancedImageChunk(cv::Mat& result, const cv::Mat& original,
+                                   const cv::Mat& claheResult, const cv::Mat& darkMask,
+                                   uint16_t threshold, int startRow, int endRow,
+                                   int threadId);
+
+    void createEnhancedDarkMask(const cv::Mat& input, cv::Mat& darkMask,
+                                uint16_t threshold, float transitionRange,
+                                int startRow, int endRow, int threadId) ;
+
+    void optimizeResult(cv::Mat& result, const cv::Mat& original, float strength);
+    void processEnhancedStrip(cv::Mat& strip, cv::Ptr<cv::CLAHE>& clahe);
 
     // Conversion helpers
     cv::Mat convertTo8Bit(const cv::Mat& input);
