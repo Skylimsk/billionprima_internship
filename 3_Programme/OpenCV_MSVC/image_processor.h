@@ -23,6 +23,7 @@
 #include "CLAHE.h"
 #include "dark_line.h"
 #include "adjustments.h"
+#include "interlace.h"
 //#include "display_window.h"
 
 class ImageProcessor {
@@ -52,32 +53,9 @@ public:
         RIGHT_MOST    // Last two quarters (RightLeft & RightRight)
     };
 
-    enum class MergeMethod {
-        WEIGHTED_AVERAGE,
-        MINIMUM_VALUE
-    };
-
     enum class LineRemovalMethod {
         NEIGHBOR_VALUES,
         DIRECT_STITCH
-    };
-
-    enum class EnergySection {
-        LOW_ENERGY,    // Left Left & Left Right
-        HIGH_ENERGY    // Right Left & Right Right
-    };
-
-    enum class InterlaceStartPoint {
-        LEFT_LEFT,
-        LEFT_RIGHT,
-        RIGHT_LEFT,
-        RIGHT_RIGHT
-    };
-
-    struct InterlacedResult {
-        std::vector<std::vector<uint16_t>> lowEnergyImage;
-        std::vector<std::vector<uint16_t>> highEnergyImage;
-        std::vector<std::vector<uint16_t>> combinedImage;
     };
 
     ImageProcessor(QLabel* imageLabel);
@@ -91,7 +69,6 @@ public:
 
     // Image Processing Functions
     void processYXAxis(std::vector<std::vector<uint16_t>>& image, int linesToAvgY, int linesToAvgX);
-    void processAndMergeImageParts(SplitMode splitMode, MergeMethod mergeMethod);
     void applyMedianFilter(std::vector<std::vector<uint16_t>>& image, int filterKernelSize);
     void applyHighPassFilter(std::vector<std::vector<uint16_t>>& image);
 
@@ -153,12 +130,6 @@ public:
     void removeDarkLinesSelective(bool removeInObject, bool removeIsolated, LineRemovalMethod method = LineRemovalMethod::NEIGHBOR_VALUES);
     void removeDarkLinesSequential(const std::vector<DarkLine>& selectedLines, bool removeInObject, bool removeIsolated, LineRemovalMethod method);
 
-    // New Interlaced Processing
-    InterlacedResult processInterlacedEnergySectionsWithDisplay(
-        InterlaceStartPoint lowEnergyStart,
-        InterlaceStartPoint highEnergyStart
-        );
-
     // State Management
     void saveCurrentState();
     void setLastAction(const QString& action, const QString& parameters = QString());
@@ -179,6 +150,12 @@ public:
     void zoomOut() { setZoomLevel(currentZoomLevel / ZOOM_STEP); }
     void resetZoom() { setZoomLevel(1.0f); }
     QSize getZoomedImageDimensions() const;
+
+    InterlaceProcessor::InterlacedResult processEnhancedInterlacedSections(
+        InterlaceProcessor::StartPoint lowEnergyStart,
+        InterlaceProcessor::StartPoint highEnergyStart,
+        InterlaceProcessor::MergeMethod mergeMethod
+        );
 
 private:
     std::vector<std::vector<uint16_t>> imgData;
@@ -207,11 +184,6 @@ private:
     const float MIN_ZOOM_LEVEL = 0.1f;
     const float MAX_ZOOM_LEVEL = 10.0f;
     const float ZOOM_STEP = 1.2f;
-
-    // Helper methods for merging
-    std::vector<std::vector<uint16_t>> mergeWithMinimum(const std::vector<std::vector<std::vector<uint16_t>>>& parts);
-    std::vector<std::vector<uint16_t>> mergeWithWeightedAverage(const std::vector<std::vector<std::vector<uint16_t>>>& parts,
-                                                                const std::vector<float>& weights = std::vector<float>());
 
     std::vector<DarkLine> m_detectedLines;
     std::vector<size_t> m_lastRemovedLines;

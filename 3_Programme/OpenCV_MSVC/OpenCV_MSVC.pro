@@ -90,6 +90,7 @@ SOURCES = \
     adjustments.cpp \
     dark_line.cpp \
     display_window.cpp \
+    interlace.cpp \
     main.cpp \
     control_panel.cpp \
     image_label.cpp \
@@ -109,6 +110,7 @@ HEADERS = \
     image_processor.h \
     histogram.h \
     CLAHE.h \
+    interlace.h \
     third_party/qcustomplot/qcustomplot.h
 
 # Default rules for deployment

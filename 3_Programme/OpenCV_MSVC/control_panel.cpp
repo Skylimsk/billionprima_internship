@@ -1,5 +1,6 @@
 #include "control_panel.h"
 #include "adjustments.h"
+#include "interlace.h"
 #include <QPushButton>
 #include <QGroupBox>
 #include <QInputDialog>
@@ -499,14 +500,14 @@ void ControlPanel::setupPreProcessingOperations()
                                                              updateLastAction("Calibration", QString("Y: %1, X: %2").arg(linesToProcessY).arg(linesToProcessX));
                                                          }
                                                      }},
-                                                    {"Interlace", [this]() {
+                                                    {"Enhanced Interlace", [this]() {
                                                          if (checkZoomMode()) return;
                                                          m_darkLineInfoLabel->hide();
                                                          resetDetectedLines();
 
                                                          // Create dialog for options
                                                          QDialog dialog(this);
-                                                         dialog.setWindowTitle("Interlace Processing Options");
+                                                         dialog.setWindowTitle("Enhanced Interlace Options");
                                                          dialog.setMinimumWidth(400);
                                                          QVBoxLayout* layout = new QVBoxLayout(&dialog);
 
@@ -518,13 +519,17 @@ void ControlPanel::setupPreProcessingOperations()
                                                          leftLeftLowRadio->setChecked(true);
 
                                                          // Add explanatory label for Low Energy
-                                                         QLabel* lowEnergyExplanation = new QLabel("Low Energy interlace pattern will be:\nRow 1: Selected start section\nRow 2: Other section\nRepeating for each original row");
+                                                         QLabel* lowEnergyExplanation = new QLabel(
+                                                             "Low Energy interlace pattern will be:\n"
+                                                             "Row 1: Selected start section\n"
+                                                             "Row 2: Other section\n"
+                                                             "Repeating for each original row"
+                                                             );
                                                          lowEnergyExplanation->setStyleSheet("color: #666; font-size: 10px;");
 
                                                          lowEnergyLayout->addWidget(leftLeftLowRadio);
                                                          lowEnergyLayout->addWidget(leftRightLowRadio);
                                                          lowEnergyLayout->addWidget(lowEnergyExplanation);
-                                                         lowEnergyBox->setLayout(lowEnergyLayout);
                                                          layout->addWidget(lowEnergyBox);
 
                                                          // High Energy Section
@@ -535,14 +540,37 @@ void ControlPanel::setupPreProcessingOperations()
                                                          rightLeftHighRadio->setChecked(true);
 
                                                          // Add explanatory label for High Energy
-                                                         QLabel* highEnergyExplanation = new QLabel("High Energy interlace pattern will be:\nRow 1: Selected start section\nRow 2: Other section\nRepeating for each original row");
+                                                         QLabel* highEnergyExplanation = new QLabel(
+                                                             "High Energy interlace pattern will be:\n"
+                                                             "Row 1: Selected start section\n"
+                                                             "Row 2: Other section\n"
+                                                             "Repeating for each original row"
+                                                             );
                                                          highEnergyExplanation->setStyleSheet("color: #666; font-size: 10px;");
 
                                                          highEnergyLayout->addWidget(rightLeftHighRadio);
                                                          highEnergyLayout->addWidget(rightRightHighRadio);
                                                          highEnergyLayout->addWidget(highEnergyExplanation);
-                                                         highEnergyBox->setLayout(highEnergyLayout);
                                                          layout->addWidget(highEnergyBox);
+
+                                                         // Merge Method Selection
+                                                         QGroupBox* mergeBox = new QGroupBox("Merge Method");
+                                                         QVBoxLayout* mergeLayout = new QVBoxLayout(mergeBox);
+                                                         QRadioButton* weightedAvgRadio = new QRadioButton("Weighted Average");
+                                                         QRadioButton* minValueRadio = new QRadioButton("Minimum Value");
+                                                         weightedAvgRadio->setChecked(true);
+
+                                                         // Add explanatory label for Merge Method
+                                                         QLabel* mergeExplanation = new QLabel(
+                                                             "Weighted Average: Average of corresponding pixels\n"
+                                                             "Minimum Value: Choose the smaller value between corresponding pixels"
+                                                             );
+                                                         mergeExplanation->setStyleSheet("color: #666; font-size: 10px;");
+
+                                                         mergeLayout->addWidget(weightedAvgRadio);
+                                                         mergeLayout->addWidget(minValueRadio);
+                                                         mergeLayout->addWidget(mergeExplanation);
+                                                         layout->addWidget(mergeBox);
 
                                                          // Add buttons
                                                          QDialogButtonBox* buttonBox = new QDialogButtonBox(
@@ -554,110 +582,42 @@ void ControlPanel::setupPreProcessingOperations()
                                                          connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
                                                          if (dialog.exec() == QDialog::Accepted) {
-                                                             ImageProcessor::InterlaceStartPoint lowEnergyStart =
+                                                             // Convert UI selections to InterlaceProcessor types
+                                                             InterlaceProcessor::StartPoint lowEnergyStart =
                                                                  leftLeftLowRadio->isChecked() ?
-                                                                     ImageProcessor::InterlaceStartPoint::LEFT_LEFT :
-                                                                     ImageProcessor::InterlaceStartPoint::LEFT_RIGHT;
+                                                                     InterlaceProcessor::StartPoint::LEFT_LEFT :
+                                                                     InterlaceProcessor::StartPoint::LEFT_RIGHT;
 
-                                                             ImageProcessor::InterlaceStartPoint highEnergyStart =
+                                                             InterlaceProcessor::StartPoint highEnergyStart =
                                                                  rightLeftHighRadio->isChecked() ?
-                                                                     ImageProcessor::InterlaceStartPoint::RIGHT_LEFT :
-                                                                     ImageProcessor::InterlaceStartPoint::RIGHT_RIGHT;
+                                                                     InterlaceProcessor::StartPoint::RIGHT_LEFT :
+                                                                     InterlaceProcessor::StartPoint::RIGHT_RIGHT;
 
-                                                             m_imageProcessor.processInterlacedEnergySectionsWithDisplay(
+                                                             InterlaceProcessor::MergeMethod mergeMethod =
+                                                                 weightedAvgRadio->isChecked() ?
+                                                                     InterlaceProcessor::MergeMethod::WEIGHTED_AVERAGE :
+                                                                     InterlaceProcessor::MergeMethod::MINIMUM_VALUE;
+
+                                                             // Process the image with selected options
+                                                             m_imageProcessor.processEnhancedInterlacedSections(
                                                                  lowEnergyStart,
-                                                                 highEnergyStart
+                                                                 highEnergyStart,
+                                                                 mergeMethod
                                                                  );
 
                                                              m_imageLabel->clearSelection();
                                                              updateImageDisplay();
 
+                                                             // Create status message
                                                              QString lowEnergyStr = leftLeftLowRadio->isChecked() ? "LeftLeft" : "LeftRight";
                                                              QString highEnergyStr = rightLeftHighRadio->isChecked() ? "RightLeft" : "RightRight";
+                                                             QString mergeStr = weightedAvgRadio->isChecked() ? "WeightedAvg" : "MinValue";
 
-                                                             updateLastAction("Interlace",
-                                                                              QString("Low: %1, High: %2")
+                                                             updateLastAction("Enhanced Interlace",
+                                                                              QString("Low: %1, High: %2, Merge: %3")
                                                                                   .arg(lowEnergyStr)
-                                                                                  .arg(highEnergyStr));
-                                                         }
-                                                     }},
-                                                    {"Split & Merge", [this]() {
-                                                         if (checkZoomMode()) return;
-                                                         m_darkLineInfoLabel->hide();
-                                                         resetDetectedLines();
-
-                                                         // Create dialog for options
-                                                         QDialog dialog(this);
-                                                         dialog.setWindowTitle("Split & Merge Options");
-                                                         QVBoxLayout* layout = new QVBoxLayout(&dialog);
-
-                                                         // Split mode selection
-                                                         QGroupBox* splitBox = new QGroupBox("Split Mode");
-                                                         QVBoxLayout* splitLayout = new QVBoxLayout(splitBox);
-                                                         QRadioButton* allPartsRadio = new QRadioButton("All Parts");
-                                                         QRadioButton* leftMostRadio = new QRadioButton("Left Most (Parts 1-2)");
-                                                         QRadioButton* rightMostRadio = new QRadioButton("Right Most (Parts 3-4)");
-                                                         allPartsRadio->setChecked(true);
-                                                         splitLayout->addWidget(allPartsRadio);
-                                                         splitLayout->addWidget(leftMostRadio);
-                                                         splitLayout->addWidget(rightMostRadio);
-                                                         layout->addWidget(splitBox);
-
-                                                         // Merge method selection
-                                                         QGroupBox* mergeBox = new QGroupBox("Merge Method");
-                                                         QVBoxLayout* mergeLayout = new QVBoxLayout(mergeBox);
-                                                         QRadioButton* weightedAvgRadio = new QRadioButton("Weighted Average");
-                                                         QRadioButton* minValueRadio = new QRadioButton("Minimum Value");
-                                                         weightedAvgRadio->setChecked(true);
-                                                         mergeLayout->addWidget(weightedAvgRadio);
-                                                         mergeLayout->addWidget(minValueRadio);
-                                                         layout->addWidget(mergeBox);
-
-                                                         // Add OK and Cancel buttons
-                                                         QDialogButtonBox* buttonBox = new QDialogButtonBox(
-                                                             QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
-                                                             Qt::Horizontal, &dialog);
-                                                         layout->addWidget(buttonBox);
-
-                                                         connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-                                                         connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-
-                                                         if (dialog.exec() == QDialog::Accepted) {
-                                                             ImageProcessor::SplitMode splitMode;
-                                                             if (leftMostRadio->isChecked()) {
-                                                                 splitMode = ImageProcessor::SplitMode::LEFT_MOST;
-                                                             } else if (rightMostRadio->isChecked()) {
-                                                                 splitMode = ImageProcessor::SplitMode::RIGHT_MOST;
-                                                             } else {
-                                                                 splitMode = ImageProcessor::SplitMode::ALL_PARTS;
-                                                             }
-
-                                                             ImageProcessor::MergeMethod mergeMethod = minValueRadio->isChecked() ?
-                                                                                                           ImageProcessor::MergeMethod::MINIMUM_VALUE :
-                                                                                                           ImageProcessor::MergeMethod::WEIGHTED_AVERAGE;
-
-                                                             m_imageProcessor.processAndMergeImageParts(splitMode, mergeMethod);
-                                                             m_imageLabel->clearSelection();
-                                                             updateImageDisplay();
-
-                                                             // Update last action with the selected options
-                                                             QString modeStr;
-                                                             switch (splitMode) {
-                                                             case ImageProcessor::SplitMode::LEFT_MOST:
-                                                                 modeStr = "Left Most (Parts 1-2)";
-                                                                 break;
-                                                             case ImageProcessor::SplitMode::RIGHT_MOST:
-                                                                 modeStr = "Right Most (Parts 3-4)";
-                                                                 break;
-                                                             default:
-                                                                 modeStr = "All Parts";
-                                                             }
-
-                                                             QString methodStr = mergeMethod == ImageProcessor::MergeMethod::MINIMUM_VALUE ?
-                                                                                     "Minimum Value" : "Weighted Average";
-
-                                                             updateLastAction("Split & Merge",
-                                                                              QString("Mode: %1, Method: %2").arg(modeStr).arg(methodStr));
+                                                                                  .arg(highEnergyStr)
+                                                                                  .arg(mergeStr));
                                                          }
                                                      }}
                                                 });

@@ -258,142 +258,6 @@ void ImageProcessor::processYXAxis(std::vector<std::vector<uint16_t>>& image, in
     }
 }
 
-void ImageProcessor::processAndMergeImageParts(SplitMode splitMode, MergeMethod mergeMethod) {
-    saveCurrentState();
-
-    // Use finalImage instead of originalImg to preserve current state
-    int height = finalImage.size();
-    int width = finalImage[0].size();
-    int quarterWidth = width / 4;
-
-    // Split image into four parts using std::copy for efficiency
-    std::vector<std::vector<uint16_t>> leftLeft(height, std::vector<uint16_t>(quarterWidth));
-    std::vector<std::vector<uint16_t>> leftRight(height, std::vector<uint16_t>(quarterWidth));
-    std::vector<std::vector<uint16_t>> rightLeft(height, std::vector<uint16_t>(quarterWidth));
-    std::vector<std::vector<uint16_t>> rightRight(height, std::vector<uint16_t>(quarterWidth));
-
-    // Copy the parts from finalImage instead of originalImg
-    for (int y = 0; y < height; ++y) {
-        std::copy(finalImage[y].begin(), finalImage[y].begin() + quarterWidth, leftLeft[y].begin());
-        std::copy(finalImage[y].begin() + quarterWidth, finalImage[y].begin() + 2 * quarterWidth, leftRight[y].begin());
-        std::copy(finalImage[y].begin() + 2 * quarterWidth, finalImage[y].begin() + 3 * quarterWidth, rightLeft[y].begin());
-        std::copy(finalImage[y].begin() + 3 * quarterWidth, finalImage[y].end(), rightRight[y].begin());
-    }
-
-    // Rest of the method remains the same
-    auto processPart = [&](std::vector<std::vector<uint16_t>>& part) {
-        if (rotationState == 1 || rotationState == 3) {
-            stretchImageX(part, params.yStretchFactor);
-        } else {
-            stretchImageY(part, params.yStretchFactor);
-        }
-    };
-
-    // Process based on split mode
-    switch (splitMode) {
-    case SplitMode::ALL_PARTS:
-        processPart(leftLeft);
-        processPart(leftRight);
-        processPart(rightLeft);
-        processPart(rightRight);
-        break;
-    case SplitMode::LEFT_MOST:
-        processPart(leftLeft);
-        processPart(leftRight);
-        break;
-    case SplitMode::RIGHT_MOST:
-        processPart(rightLeft);
-        processPart(rightRight);
-        break;
-    }
-
-    // Create result based on split mode
-    std::vector<std::vector<uint16_t>> result;
-
-    if (mergeMethod == MergeMethod::MINIMUM_VALUE) {
-        switch (splitMode) {
-        case SplitMode::ALL_PARTS:
-            result = mergeWithMinimum({leftLeft, leftRight, rightLeft, rightRight});
-            break;
-        case SplitMode::LEFT_MOST:
-            result = mergeWithMinimum({leftLeft, leftRight});
-            break;
-        case SplitMode::RIGHT_MOST:
-            result = mergeWithMinimum({rightLeft, rightRight});
-            break;
-        }
-    } else { // WEIGHTED_AVERAGE
-        switch (splitMode) {
-        case SplitMode::ALL_PARTS:
-            result = mergeWithWeightedAverage({leftLeft, leftRight, rightLeft, rightRight});
-            break;
-        case SplitMode::LEFT_MOST:
-            result = mergeWithWeightedAverage({leftLeft, leftRight});
-            break;
-        case SplitMode::RIGHT_MOST:
-            result = mergeWithWeightedAverage({rightLeft, rightRight});
-            break;
-        }
-    }
-
-    // Replace final image with merged result
-    finalImage = result;
-}
-
-// Add these helper methods to ImageProcessor class:
-
-std::vector<std::vector<uint16_t>> ImageProcessor::mergeWithMinimum(
-    const std::vector<std::vector<std::vector<uint16_t>>>& parts) {
-
-    if (parts.empty()) return std::vector<std::vector<uint16_t>>();
-
-    int height = parts[0].size();
-    int width = parts[0][0].size();
-    std::vector<std::vector<uint16_t>> result(height, std::vector<uint16_t>(width, 65535));
-
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            uint16_t minVal = 65535;
-            for (const auto& part : parts) {
-                minVal = std::min(minVal, part[y][x]);
-            }
-            result[y][x] = minVal;
-        }
-    }
-    return result;
-}
-
-std::vector<std::vector<uint16_t>> ImageProcessor::mergeWithWeightedAverage(
-    const std::vector<std::vector<std::vector<uint16_t>>>& parts,
-    const std::vector<float>& weights) {
-
-    if (parts.empty()) return std::vector<std::vector<uint16_t>>();
-
-    int height = parts[0].size();
-    int width = parts[0][0].size();
-    std::vector<std::vector<uint16_t>> result(height, std::vector<uint16_t>(width));
-
-    // If no weights provided, use equal weights
-    std::vector<float> effectiveWeights;
-    if (weights.empty()) {
-        float equalWeight = 1.0f / parts.size();
-        effectiveWeights.resize(parts.size(), equalWeight);
-    } else {
-        effectiveWeights = weights;
-    }
-
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            float weightedSum = 0.0f;
-            for (size_t i = 0; i < parts.size(); ++i) {
-                weightedSum += parts[i][y][x] * effectiveWeights[i];
-            }
-            result[y][x] = static_cast<uint16_t>(std::min(weightedSum, 65535.0f));
-        }
-    }
-    return result;
-}
-
 void ImageProcessor::applyMedianFilter(std::vector<std::vector<uint16_t>>& image, int filterKernelSize) {
 
     saveCurrentState();
@@ -861,109 +725,22 @@ void ImageProcessor::removeDarkLinesSequential(
     clearDetectedLines();
 }
 
-ImageProcessor::InterlacedResult ImageProcessor::processInterlacedEnergySectionsWithDisplay(
-    InterlaceStartPoint lowEnergyStart,
-    InterlaceStartPoint highEnergyStart)
-{
+InterlaceProcessor::InterlacedResult ImageProcessor::processEnhancedInterlacedSections(
+    InterlaceProcessor::StartPoint lowEnergyStart,
+    InterlaceProcessor::StartPoint highEnergyStart,
+    InterlaceProcessor::MergeMethod mergeMethod) {
+
     saveCurrentState();
 
-    int height = finalImage.size();
-    int width = finalImage[0].size();
-    int quarterWidth = width / 4;
+    auto result = InterlaceProcessor::processEnhancedInterlacedSections(
+        finalImage,
+        lowEnergyStart,
+        highEnergyStart,
+        mergeMethod
+        );
 
-    // Split image into four parts
-    std::vector<std::vector<uint16_t>> leftLeft(height, std::vector<uint16_t>(quarterWidth));
-    std::vector<std::vector<uint16_t>> leftRight(height, std::vector<uint16_t>(quarterWidth));
-    std::vector<std::vector<uint16_t>> rightLeft(height, std::vector<uint16_t>(quarterWidth));
-    std::vector<std::vector<uint16_t>> rightRight(height, std::vector<uint16_t>(quarterWidth));
+    // Update final image with the combined result
+    finalImage = result.combinedImage;
 
-    // Copy parts from finalImage
-    for (int y = 0; y < height; ++y) {
-        std::copy(finalImage[y].begin(),
-                  finalImage[y].begin() + quarterWidth,
-                  leftLeft[y].begin());
-        std::copy(finalImage[y].begin() + quarterWidth,
-                  finalImage[y].begin() + 2 * quarterWidth,
-                  leftRight[y].begin());
-        std::copy(finalImage[y].begin() + 2 * quarterWidth,
-                  finalImage[y].begin() + 3 * quarterWidth,
-                  rightLeft[y].begin());
-        std::copy(finalImage[y].begin() + 3 * quarterWidth,
-                  finalImage[y].end(),
-                  rightRight[y].begin());
-    }
-
-    // Determine which parts to use for low and high energy based on start points
-    std::vector<std::vector<uint16_t>>* lowEnergyFirst = nullptr;
-    std::vector<std::vector<uint16_t>>* lowEnergySecond = nullptr;
-    std::vector<std::vector<uint16_t>>* highEnergyFirst = nullptr;
-    std::vector<std::vector<uint16_t>>* highEnergySecond = nullptr;
-
-    // Map start points to corresponding image parts
-    if (lowEnergyStart == InterlaceStartPoint::LEFT_LEFT) {
-        lowEnergyFirst = &leftLeft;
-        lowEnergySecond = &leftRight;
-    } else {
-        lowEnergyFirst = &leftRight;
-        lowEnergySecond = &leftLeft;
-    }
-
-    if (highEnergyStart == InterlaceStartPoint::RIGHT_LEFT) {
-        highEnergyFirst = &rightLeft;
-        highEnergySecond = &rightRight;
-    } else {
-        highEnergyFirst = &rightRight;
-        highEnergySecond = &rightLeft;
-    }
-
-    // Create interlaced result images for both low and high energy sections
-    std::vector<std::vector<uint16_t>> lowEnergyInterlaced(height * 2, std::vector<uint16_t>(quarterWidth));
-    std::vector<std::vector<uint16_t>> highEnergyInterlaced(height * 2, std::vector<uint16_t>(quarterWidth));
-
-    // Perform interlacing for low energy section
-    for (int y = 0; y < height; ++y) {
-        std::copy((*lowEnergyFirst)[y].begin(),
-                  (*lowEnergyFirst)[y].end(),
-                  lowEnergyInterlaced[y * 2].begin());
-
-        std::copy((*lowEnergySecond)[y].begin(),
-                  (*lowEnergySecond)[y].end(),
-                  lowEnergyInterlaced[y * 2 + 1].begin());
-    }
-
-    // Perform interlacing for high energy section
-    for (int y = 0; y < height; ++y) {
-        std::copy((*highEnergyFirst)[y].begin(),
-                  (*highEnergyFirst)[y].end(),
-                  highEnergyInterlaced[y * 2].begin());
-
-        std::copy((*highEnergySecond)[y].begin(),
-                  (*highEnergySecond)[y].end(),
-                  highEnergyInterlaced[y * 2 + 1].begin());
-    }
-
-    // Combine the interlaced sections into final image
-    std::vector<std::vector<uint16_t>> finalInterlaced(height * 2, std::vector<uint16_t>(width));
-
-    for (int y = 0; y < height * 2; ++y) {
-        // Copy low energy section (left half)
-        std::copy(lowEnergyInterlaced[y].begin(),
-                  lowEnergyInterlaced[y].end(),
-                  finalInterlaced[y].begin());
-
-        // Copy high energy section (right half)
-        std::copy(highEnergyInterlaced[y].begin(),
-                  highEnergyInterlaced[y].end(),
-                  finalInterlaced[y].begin() + width/2);
-    }
-
-    // Update final image
-    finalImage = finalInterlaced;
-
-    // Create and return the result
-    InterlacedResult result;
-    result.lowEnergyImage = std::move(lowEnergyInterlaced);
-    result.highEnergyImage = std::move(highEnergyInterlaced);
-    result.combinedImage = std::move(finalInterlaced);
     return result;
 }
