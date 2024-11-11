@@ -157,6 +157,38 @@ public:
         InterlaceProcessor::MergeMethod mergeMethod
         );
 
+    void processYXAxisWithStoredParams(std::vector<std::vector<uint16_t>>& image) {
+        if (InterlaceProcessor::hasCalibrationParams()) {
+            saveCurrentState();
+            InterlaceProcessor::applyCalibration(image);
+        }
+    }
+
+    void removeDarkLinesSelective(
+        bool removeInObject,
+        bool removeIsolated,
+        DarkLineProcessor::RemovalMethod method,
+        const std::vector<DarkLine>& specificLines) {
+
+        saveCurrentState();
+
+        if (!specificLines.empty()) {
+            DarkLineProcessor::removeDarkLinesSequential(
+                finalImage,
+                specificLines,
+                removeInObject,
+                removeIsolated,
+                method
+                );
+
+            // Update the last removed lines record
+            m_lastRemovedLines.clear();
+            for (size_t i = 0; i < specificLines.size(); ++i) {
+                m_lastRemovedLines.push_back(i + 1);
+            }
+        }
+    }
+
 private:
     std::vector<std::vector<uint16_t>> imgData;
     std::vector<std::vector<uint16_t>> originalImg;
@@ -187,6 +219,9 @@ private:
 
     std::vector<DarkLine> m_detectedLines;
     std::vector<size_t> m_lastRemovedLines;
+
+    static constexpr int SEGMENT_WIDTH = 40;    // Default segment width for processing
+    static constexpr int WIDTH_THRESHOLD = 50;  // Threshold for using segmented processing
 
 };
 

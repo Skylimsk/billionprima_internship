@@ -220,6 +220,8 @@ void ImageProcessor::processYXAxis(std::vector<std::vector<uint16_t>>& image, in
 
     saveCurrentState();
 
+    InterlaceProcessor::setCalibrationParams(linesToAvgY, linesToAvgX);
+
     int height = image.size();
     int width = image[0].size();
 
@@ -671,6 +673,7 @@ void ImageProcessor::removeDarkLinesSelective(
             DarkLineProcessor::RemovalMethod::DIRECT_STITCH :
             DarkLineProcessor::RemovalMethod::NEIGHBOR_VALUES;
 
+    // 直接调用 removeDarkLinesSelective，无需考虑线条宽度
     DarkLineProcessor::removeDarkLinesSelective(
         finalImage,
         m_detectedLines,
@@ -678,6 +681,7 @@ void ImageProcessor::removeDarkLinesSelective(
         removeIsolated,
         processorMethod);
 
+    // 更新移除的线条记录
     m_lastRemovedLines.clear();
     for (size_t i = 0; i < m_detectedLines.size(); ++i) {
         bool shouldRemove = (m_detectedLines[i].inObject && removeInObject) ||
@@ -739,7 +743,7 @@ InterlaceProcessor::InterlacedResult ImageProcessor::processEnhancedInterlacedSe
         mergeMethod
         );
 
-    // Update final image with the combined result
+    // Update final image with the combined and calibrated result
     finalImage = result.combinedImage;
 
     return result;

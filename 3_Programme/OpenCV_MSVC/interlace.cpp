@@ -70,6 +70,8 @@ InterlaceProcessor::InterlacedResult InterlaceProcessor::processEnhancedInterlac
         mergeMethod
         );
 
+    applyCalibration(result.combinedImage);
+
     return result;
 }
 
@@ -121,4 +123,55 @@ std::vector<std::vector<uint16_t>> InterlaceProcessor::mergeInterlacedSections(
     }
 
     return mergedResult;
+}
+
+InterlaceProcessor::CalibrationParams InterlaceProcessor::calibrationParams;
+
+// Add calibration parameter setter
+void InterlaceProcessor::setCalibrationParams(int linesToProcessY, int linesToProcessX) {
+    calibrationParams.linesToProcessY = linesToProcessY;
+    calibrationParams.linesToProcessX = linesToProcessX;
+    calibrationParams.isInitialized = true;
+}
+
+// Add calibration implementation
+void InterlaceProcessor::applyCalibration(std::vector<std::vector<uint16_t>>& image) {
+    if (!calibrationParams.isInitialized) return;
+
+    int height = image.size();
+    int width = image[0].size();
+
+    // Y-axis processing
+    std::vector<float> referenceYMean(width, 0.0f);
+    for (int y = 0; y < std::min(calibrationParams.linesToProcessY, height); ++y) {
+        for (int x = 0; x < width; ++x) {
+            referenceYMean[x] += image[y][x];
+        }
+    }
+    for (int x = 0; x < width; ++x) {
+        referenceYMean[x] /= calibrationParams.linesToProcessY;
+    }
+
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            float normalizedValue = static_cast<float>(image[y][x]) / referenceYMean[x];
+            image[y][x] = static_cast<uint16_t>(std::min(normalizedValue * 65535.0f, 65535.0f));
+        }
+    }
+
+    // X-axis processing
+    std::vector<float> referenceXMean(height, 0.0f);
+    for (int y = 0; y < height; ++y) {
+        for (int x = width - calibrationParams.linesToProcessX; x < width; ++x) {
+            referenceXMean[y] += image[y][x];
+        }
+        referenceXMean[y] /= calibrationParams.linesToProcessX;
+    }
+
+    for (int x = 0; x < width; ++x) {
+        for (int y = 0; y < height; ++y) {
+            float normalizedValue = static_cast<float>(image[y][x]) / referenceXMean[y];
+            image[y][x] = static_cast<uint16_t>(std::min(normalizedValue * 65535.0f, 65535.0f));
+        }
+    }
 }

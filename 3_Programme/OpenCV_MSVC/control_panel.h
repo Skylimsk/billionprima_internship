@@ -79,6 +79,13 @@ private:
     QLabel* m_darkLineInfoLabel;
 
     QLabel* m_imageSizeLabel;
+
+    void setupCalibrationUI();
+    QPushButton* m_calibrationButton;
+    QPushButton* m_resetCalibrationButton;
+    void updateCalibrationButtonText();
+
+    void updateDarkLineInfoDisplay();
 };
 
 

@@ -482,146 +482,249 @@ void ControlPanel::setupBasicOperations()
                                        });
 }
 
-void ControlPanel::setupPreProcessingOperations()
-{
-    createGroupBox("Pre-Processing Operations", {
-                                                    {"Calibration", [this]() {
-                                                         if (checkZoomMode()) return;
-                                                         m_darkLineInfoLabel->hide();
-                                                         resetDetectedLines();
-                                                         auto [linesToProcessY, yOk] = showInputDialog("Calibration", "Enter lines to process for Y-axis:", 10, 1, 1000);
-                                                         if (!yOk) return;
+void ControlPanel::setupPreProcessingOperations() {
+    QGroupBox* groupBox = new QGroupBox("Pre-Processing Operations");
+    QVBoxLayout* layout = new QVBoxLayout(groupBox);
 
-                                                         auto [linesToProcessX, xOk] = showInputDialog("Calibration", "Enter lines to process for X-axis:", 10, 1, 1000);
-                                                         if (xOk) {
-                                                             m_imageProcessor.processYXAxis(const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()),
-                                                                                            linesToProcessY, linesToProcessX);
-                                                             m_imageLabel->clearSelection();
-                                                             updateImageDisplay();
-                                                             updateLastAction("Calibration", QString("Y: %1, X: %2").arg(linesToProcessY).arg(linesToProcessX));
-                                                         }
-                                                     }},
-                                                    {"Enhanced Interlace", [this]() {
-                                                         if (checkZoomMode()) return;
-                                                         m_darkLineInfoLabel->hide();
-                                                         resetDetectedLines();
+    // Create calibration button
+    m_calibrationButton = new QPushButton("Calibration");
+    m_calibrationButton->setFixedHeight(35);
+    m_calibrationButton->setToolTip("Apply calibration using Y-axis and X-axis parameters");
+    layout->addWidget(m_calibrationButton);
 
-                                                         // Create dialog for options
-                                                         QDialog dialog(this);
-                                                         dialog.setWindowTitle("Enhanced Interlace Options");
-                                                         dialog.setMinimumWidth(400);
-                                                         QVBoxLayout* layout = new QVBoxLayout(&dialog);
+    // Create reset calibration button
+    m_resetCalibrationButton = new QPushButton("Reset Calibration Parameters");
+    m_resetCalibrationButton->setFixedHeight(35);
+    m_resetCalibrationButton->setEnabled(false); // Initially disabled
+    m_resetCalibrationButton->setToolTip("Reset stored calibration parameters");
+    layout->addWidget(m_resetCalibrationButton);
 
-                                                         // Low Energy Section
-                                                         QGroupBox* lowEnergyBox = new QGroupBox("Low Energy Section Start");
-                                                         QVBoxLayout* lowEnergyLayout = new QVBoxLayout(lowEnergyBox);
-                                                         QRadioButton* leftLeftLowRadio = new QRadioButton("Start with Left Left");
-                                                         QRadioButton* leftRightLowRadio = new QRadioButton("Start with Left Right");
-                                                         leftLeftLowRadio->setChecked(true);
+    // Create Enhanced Interlace button
+    QPushButton* enhancedInterlaceBtn = new QPushButton("Enhanced Interlace");
+    enhancedInterlaceBtn->setFixedHeight(35);
+    enhancedInterlaceBtn->setToolTip("Process image using enhanced interlacing method");
+    layout->addWidget(enhancedInterlaceBtn);
 
-                                                         // Add explanatory label for Low Energy
-                                                         QLabel* lowEnergyExplanation = new QLabel(
-                                                             "Low Energy interlace pattern will be:\n"
-                                                             "Row 1: Selected start section\n"
-                                                             "Row 2: Other section\n"
-                                                             "Repeating for each original row"
-                                                             );
-                                                         lowEnergyExplanation->setStyleSheet("color: #666; font-size: 10px;");
+    // Connect calibration button
+    connect(m_calibrationButton, &QPushButton::clicked, this, [this]() {
+        if (checkZoomMode()) return;
+        m_darkLineInfoLabel->hide();
+        resetDetectedLines();
 
-                                                         lowEnergyLayout->addWidget(leftLeftLowRadio);
-                                                         lowEnergyLayout->addWidget(leftRightLowRadio);
-                                                         lowEnergyLayout->addWidget(lowEnergyExplanation);
-                                                         layout->addWidget(lowEnergyBox);
+        if (!InterlaceProcessor::hasCalibrationParams()) {
+            // First time calibration - ask for parameters
+            auto [linesToProcessY, yOk] = showInputDialog(
+                "Calibration",
+                "Enter lines to process for Y-axis:",
+                10, 1, 1000
+                );
+            if (!yOk) return;
 
-                                                         // High Energy Section
-                                                         QGroupBox* highEnergyBox = new QGroupBox("High Energy Section Start");
-                                                         QVBoxLayout* highEnergyLayout = new QVBoxLayout(highEnergyBox);
-                                                         QRadioButton* rightLeftHighRadio = new QRadioButton("Start with Right Left");
-                                                         QRadioButton* rightRightHighRadio = new QRadioButton("Start with Right Right");
-                                                         rightLeftHighRadio->setChecked(true);
+            auto [linesToProcessX, xOk] = showInputDialog(
+                "Calibration",
+                "Enter lines to process for X-axis:",
+                10, 1, 1000
+                );
+            if (!xOk) return;
 
-                                                         // Add explanatory label for High Energy
-                                                         QLabel* highEnergyExplanation = new QLabel(
-                                                             "High Energy interlace pattern will be:\n"
-                                                             "Row 1: Selected start section\n"
-                                                             "Row 2: Other section\n"
-                                                             "Repeating for each original row"
-                                                             );
-                                                         highEnergyExplanation->setStyleSheet("color: #666; font-size: 10px;");
+            m_imageProcessor.processYXAxis(
+                const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()),
+                linesToProcessY,
+                linesToProcessX
+                );
 
-                                                         highEnergyLayout->addWidget(rightLeftHighRadio);
-                                                         highEnergyLayout->addWidget(rightRightHighRadio);
-                                                         highEnergyLayout->addWidget(highEnergyExplanation);
-                                                         layout->addWidget(highEnergyBox);
+            // Enable reset button after first calibration
+            m_resetCalibrationButton->setEnabled(true);
+        } else {
+            // Use existing parameters
+            m_imageProcessor.processYXAxisWithStoredParams(
+                const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage())
+                );
+        }
 
-                                                         // Merge Method Selection
-                                                         QGroupBox* mergeBox = new QGroupBox("Merge Method");
-                                                         QVBoxLayout* mergeLayout = new QVBoxLayout(mergeBox);
-                                                         QRadioButton* weightedAvgRadio = new QRadioButton("Weighted Average");
-                                                         QRadioButton* minValueRadio = new QRadioButton("Minimum Value");
-                                                         weightedAvgRadio->setChecked(true);
+        m_imageLabel->clearSelection();
+        updateImageDisplay();
+        updateLastAction("Calibration", InterlaceProcessor::getCalibrationParamsString());
+        updateCalibrationButtonText();
+    });
 
-                                                         // Add explanatory label for Merge Method
-                                                         QLabel* mergeExplanation = new QLabel(
-                                                             "Weighted Average: Average of corresponding pixels\n"
-                                                             "Minimum Value: Choose the smaller value between corresponding pixels"
-                                                             );
-                                                         mergeExplanation->setStyleSheet("color: #666; font-size: 10px;");
+    // Connect reset button
+    connect(m_resetCalibrationButton, &QPushButton::clicked, this, [this]() {
+        InterlaceProcessor::resetCalibrationParams();
+        m_resetCalibrationButton->setEnabled(false);
+        updateCalibrationButtonText();
+        QMessageBox::information(this, "Calibration Reset",
+                                 "Calibration parameters have been reset. Next calibration will require new parameters.");
+    });
 
-                                                         mergeLayout->addWidget(weightedAvgRadio);
-                                                         mergeLayout->addWidget(minValueRadio);
-                                                         mergeLayout->addWidget(mergeExplanation);
-                                                         layout->addWidget(mergeBox);
+    // Connect Enhanced Interlace button
+    connect(enhancedInterlaceBtn, &QPushButton::clicked, this, [this]() {
+        if (checkZoomMode()) return;
+        m_darkLineInfoLabel->hide();
+        resetDetectedLines();
 
-                                                         // Add buttons
-                                                         QDialogButtonBox* buttonBox = new QDialogButtonBox(
-                                                             QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
-                                                             Qt::Horizontal, &dialog);
-                                                         layout->addWidget(buttonBox);
+        // Create dialog for options
+        QDialog dialog(this);
+        dialog.setWindowTitle("Enhanced Interlace Options");
+        dialog.setMinimumWidth(400);
+        QVBoxLayout* dialogLayout = new QVBoxLayout(&dialog);
 
-                                                         connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-                                                         connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+        // Low Energy Section
+        QGroupBox* lowEnergyBox = new QGroupBox("Low Energy Section Start");
+        QVBoxLayout* lowEnergyLayout = new QVBoxLayout(lowEnergyBox);
+        QRadioButton* leftLeftLowRadio = new QRadioButton("Start with Left Left");
+        QRadioButton* leftRightLowRadio = new QRadioButton("Start with Left Right");
+        leftLeftLowRadio->setChecked(true);
 
-                                                         if (dialog.exec() == QDialog::Accepted) {
-                                                             // Convert UI selections to InterlaceProcessor types
-                                                             InterlaceProcessor::StartPoint lowEnergyStart =
-                                                                 leftLeftLowRadio->isChecked() ?
-                                                                     InterlaceProcessor::StartPoint::LEFT_LEFT :
-                                                                     InterlaceProcessor::StartPoint::LEFT_RIGHT;
+        // Add explanatory label for Low Energy
+        QLabel* lowEnergyExplanation = new QLabel(
+            "Low Energy interlace pattern will be:\n"
+            "Row 1: Selected start section\n"
+            "Row 2: Other section\n"
+            "Repeating for each original row"
+            );
+        lowEnergyExplanation->setStyleSheet("color: #666; font-size: 10px;");
 
-                                                             InterlaceProcessor::StartPoint highEnergyStart =
-                                                                 rightLeftHighRadio->isChecked() ?
-                                                                     InterlaceProcessor::StartPoint::RIGHT_LEFT :
-                                                                     InterlaceProcessor::StartPoint::RIGHT_RIGHT;
+        lowEnergyLayout->addWidget(leftLeftLowRadio);
+        lowEnergyLayout->addWidget(leftRightLowRadio);
+        lowEnergyLayout->addWidget(lowEnergyExplanation);
+        dialogLayout->addWidget(lowEnergyBox);
 
-                                                             InterlaceProcessor::MergeMethod mergeMethod =
-                                                                 weightedAvgRadio->isChecked() ?
-                                                                     InterlaceProcessor::MergeMethod::WEIGHTED_AVERAGE :
-                                                                     InterlaceProcessor::MergeMethod::MINIMUM_VALUE;
+        // High Energy Section
+        QGroupBox* highEnergyBox = new QGroupBox("High Energy Section Start");
+        QVBoxLayout* highEnergyLayout = new QVBoxLayout(highEnergyBox);
+        QRadioButton* rightLeftHighRadio = new QRadioButton("Start with Right Left");
+        QRadioButton* rightRightHighRadio = new QRadioButton("Start with Right Right");
+        rightLeftHighRadio->setChecked(true);
 
-                                                             // Process the image with selected options
-                                                             m_imageProcessor.processEnhancedInterlacedSections(
-                                                                 lowEnergyStart,
-                                                                 highEnergyStart,
-                                                                 mergeMethod
-                                                                 );
+        // Add explanatory label for High Energy
+        QLabel* highEnergyExplanation = new QLabel(
+            "High Energy interlace pattern will be:\n"
+            "Row 1: Selected start section\n"
+            "Row 2: Other section\n"
+            "Repeating for each original row"
+            );
+        highEnergyExplanation->setStyleSheet("color: #666; font-size: 10px;");
 
-                                                             m_imageLabel->clearSelection();
-                                                             updateImageDisplay();
+        highEnergyLayout->addWidget(rightLeftHighRadio);
+        highEnergyLayout->addWidget(rightRightHighRadio);
+        highEnergyLayout->addWidget(highEnergyExplanation);
+        dialogLayout->addWidget(highEnergyBox);
 
-                                                             // Create status message
-                                                             QString lowEnergyStr = leftLeftLowRadio->isChecked() ? "LeftLeft" : "LeftRight";
-                                                             QString highEnergyStr = rightLeftHighRadio->isChecked() ? "RightLeft" : "RightRight";
-                                                             QString mergeStr = weightedAvgRadio->isChecked() ? "WeightedAvg" : "MinValue";
+        // Merge Method Selection
+        QGroupBox* mergeBox = new QGroupBox("Merge Method");
+        QVBoxLayout* mergeLayout = new QVBoxLayout(mergeBox);
+        QRadioButton* weightedAvgRadio = new QRadioButton("Weighted Average");
+        QRadioButton* minValueRadio = new QRadioButton("Minimum Value");
+        weightedAvgRadio->setChecked(true);
 
-                                                             updateLastAction("Enhanced Interlace",
-                                                                              QString("Low: %1, High: %2, Merge: %3")
-                                                                                  .arg(lowEnergyStr)
-                                                                                  .arg(highEnergyStr)
-                                                                                  .arg(mergeStr));
-                                                         }
-                                                     }}
-                                                });
+        // Add explanatory label for Merge Method
+        QLabel* mergeExplanation = new QLabel(
+            "Weighted Average: Average of corresponding pixels\n"
+            "Minimum Value: Choose the smaller value between corresponding pixels"
+            );
+        mergeExplanation->setStyleSheet("color: #666; font-size: 10px;");
+
+        mergeLayout->addWidget(weightedAvgRadio);
+        mergeLayout->addWidget(minValueRadio);
+        mergeLayout->addWidget(mergeExplanation);
+        dialogLayout->addWidget(mergeBox);
+
+        // Add note about automatic calibration
+        QLabel* autoCalibrationNote = new QLabel(
+            "\nNote: After processing, the system will automatically perform "
+            "calibration using your previous calibration parameters "
+            "(if available).\n"
+            "This ensures consistent results without requiring additional input."
+            );
+        autoCalibrationNote->setStyleSheet(
+            "color: #444;"
+            "font-style: italic;"
+            "font-size: 10px;"
+            "background-color: #f8f8f8;"
+            "padding: 8px;"
+            "margin-top: 5px;"
+            "margin-bottom: 5px;"
+            "border-radius: 4px;"
+            "border: 1px solid #ddd;"
+            );
+        autoCalibrationNote->setWordWrap(true);
+        dialogLayout->addWidget(autoCalibrationNote);
+
+        // Show current calibration parameters if available
+        if (InterlaceProcessor::hasCalibrationParams()) {
+            QLabel* currentParamsLabel = new QLabel(
+                QString("Current calibration parameters: %1")
+                    .arg(InterlaceProcessor::getCalibrationParamsString())
+                );
+            currentParamsLabel->setStyleSheet(
+                "color: #0066cc;"
+                "font-size: 10px;"
+                "margin-bottom: 8px;"
+                );
+            dialogLayout->addWidget(currentParamsLabel);
+        }
+
+        // Add buttons
+        QDialogButtonBox* buttonBox = new QDialogButtonBox(
+            QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+            Qt::Horizontal, &dialog);
+        dialogLayout->addWidget(buttonBox);
+
+        connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+        connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+        if (dialog.exec() == QDialog::Accepted) {
+            // Convert UI selections to InterlaceProcessor types
+            InterlaceProcessor::StartPoint lowEnergyStart =
+                leftLeftLowRadio->isChecked() ?
+                    InterlaceProcessor::StartPoint::LEFT_LEFT :
+                    InterlaceProcessor::StartPoint::LEFT_RIGHT;
+
+            InterlaceProcessor::StartPoint highEnergyStart =
+                rightLeftHighRadio->isChecked() ?
+                    InterlaceProcessor::StartPoint::RIGHT_LEFT :
+                    InterlaceProcessor::StartPoint::RIGHT_RIGHT;
+
+            InterlaceProcessor::MergeMethod mergeMethod =
+                weightedAvgRadio->isChecked() ?
+                    InterlaceProcessor::MergeMethod::WEIGHTED_AVERAGE :
+                    InterlaceProcessor::MergeMethod::MINIMUM_VALUE;
+
+            // Process the image with selected options
+            m_imageProcessor.processEnhancedInterlacedSections(
+                lowEnergyStart,
+                highEnergyStart,
+                mergeMethod
+                );
+
+            m_imageLabel->clearSelection();
+            updateImageDisplay();
+
+            // Create status message
+            QString lowEnergyStr = leftLeftLowRadio->isChecked() ? "LeftLeft" : "LeftRight";
+            QString highEnergyStr = rightLeftHighRadio->isChecked() ? "RightLeft" : "RightRight";
+            QString mergeStr = weightedAvgRadio->isChecked() ? "WeightedAvg" : "MinValue";
+
+            // Add calibration info to status if available
+            QString statusMsg = QString("Low: %1, High: %2, Merge: %3")
+                                    .arg(lowEnergyStr)
+                                    .arg(highEnergyStr)
+                                    .arg(mergeStr);
+
+            if (InterlaceProcessor::hasCalibrationParams()) {
+                statusMsg += QString(" (Auto-calibrated: %1)")
+                .arg(InterlaceProcessor::getCalibrationParamsString());
+            }
+
+            updateLastAction("Enhanced Interlace", statusMsg);
+        }
+    });
+
+    layout->setSpacing(10);
+    layout->addStretch();
+    m_scrollLayout->addWidget(groupBox);
+    updateCalibrationButtonText();
 }
 
 void ControlPanel::setupFilteringOperations() {
@@ -1361,6 +1464,37 @@ void ControlPanel::setupBlackLineDetection() {
                                           });
 }
 
+void ControlPanel::resetDetectedLines() {
+    m_detectedLines.clear();
+    m_imageProcessor.clearDetectedLines();
+
+    QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
+        qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
+        );
+
+    m_darkLineInfoLabel->clear();
+    m_darkLineInfoLabel->setVisible(false);
+    darkLineScrollArea->setVisible(false);
+
+    updateImageDisplay();
+}
+
+void ControlPanel::updateDarkLineInfoDisplay() {
+    QFontMetrics fm(m_darkLineInfoLabel->font());
+    QString text = m_darkLineInfoLabel->text();
+    int textHeight = fm.lineSpacing() * text.count('\n') + 40;
+    int preferredHeight = qMin(textHeight, 300);
+    preferredHeight = qMax(preferredHeight, 30);
+
+    QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
+        qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
+        );
+    darkLineScrollArea->setFixedHeight(preferredHeight);
+
+    m_darkLineInfoLabel->setVisible(true);
+    darkLineScrollArea->setVisible(true);
+}
+
 void ControlPanel::updateImageDisplay() {
     const auto& finalImage = m_imageProcessor.getFinalImage();
     if (!finalImage.empty()) {
@@ -1468,17 +1602,14 @@ void ControlPanel::updateImageDisplay() {
     }
 }
 
-void ControlPanel::resetDetectedLines() {
-    m_detectedLines.clear();
-    m_imageProcessor.clearDetectedLines();
-
-    QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
-        qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
-        );
-
-    m_darkLineInfoLabel->clear();
-    m_darkLineInfoLabel->setVisible(false);
-    darkLineScrollArea->setVisible(false);
-
-    updateImageDisplay();
+void ControlPanel::updateCalibrationButtonText() {
+    if (InterlaceProcessor::hasCalibrationParams()) {
+        m_calibrationButton->setText(
+            QString("Calibration (%1)")
+                .arg(InterlaceProcessor::getCalibrationParamsString())
+            );
+    } else {
+        m_calibrationButton->setText("Calibration");
+    }
 }
+
