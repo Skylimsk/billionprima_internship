@@ -18,16 +18,15 @@
 #endif
 
 ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabel, QWidget* parent)
-    : QWidget(parent),
-    m_imageProcessor(imageProcessor),
-    m_imageLabel(imageLabel),
-    m_lastGpuTime(-1),
-    m_lastCpuTime(-1),
-    m_hasCpuClaheTime(false),
-    m_hasGpuClaheTime(false),
-    m_preZoomLevel(1.0f),
-    m_zoomControlsGroup(nullptr),
-    m_zoomModeActive(false)
+    : QWidget(parent)
+    , m_imageProcessor(imageProcessor)
+    , m_imageLabel(imageLabel)
+    , m_lastGpuTime(-1)
+    , m_lastCpuTime(-1)
+    , m_hasCpuClaheTime(false)
+    , m_hasGpuClaheTime(false)
+    , m_zoomControlsGroup(nullptr)
+    , m_zoomWarningBox(nullptr)
 {
     m_mainLayout = new QVBoxLayout(this);
     this->setMinimumWidth(280);
@@ -120,7 +119,8 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
 }
 
 bool ControlPanel::checkZoomMode() {
-    if (m_zoomModeActive) {
+    auto& zoomManager = m_imageProcessor.getZoomManager();
+    if (zoomManager.isZoomModeActive() && !zoomManager.isZoomFixed()) {
         m_zoomWarningBox->exec();
         return true;
     }
@@ -288,63 +288,107 @@ void ControlPanel::setupZoomControls() {
     m_zoomControlsGroup = new QGroupBox("Zoom Controls");
     QVBoxLayout* zoomLayout = new QVBoxLayout(m_zoomControlsGroup);
 
-    // Create zoom control buttons with consistent styling
     QPushButton* zoomInBtn = new QPushButton("Zoom In");
     QPushButton* zoomOutBtn = new QPushButton("Zoom Out");
     QPushButton* resetZoomBtn = new QPushButton("Reset Zoom");
+    m_fixZoomButton = new QPushButton("Fix Zoom");
+    m_fixZoomButton->setCheckable(true);
 
-    // Set fixed height for buttons to match other controls
+    // Store pointers to zoom buttons for enabling/disabling
+    m_zoomInButton = zoomInBtn;
+    m_zoomOutButton = zoomOutBtn;
+    m_resetZoomButton = resetZoomBtn;
+
+    // Set fixed height for buttons
     const int buttonHeight = 35;
     zoomInBtn->setFixedHeight(buttonHeight);
     zoomOutBtn->setFixedHeight(buttonHeight);
     resetZoomBtn->setFixedHeight(buttonHeight);
+    m_fixZoomButton->setFixedHeight(buttonHeight);
 
     // Add tooltips
     zoomInBtn->setToolTip("Increase zoom level by 20%");
     zoomOutBtn->setToolTip("Decrease zoom level by 20%");
     resetZoomBtn->setToolTip("Reset to original size (100%)");
+    m_fixZoomButton->setToolTip("Fix current zoom level for image processing");
 
-    // Add buttons to layout
     zoomLayout->addWidget(zoomInBtn);
     zoomLayout->addWidget(zoomOutBtn);
     zoomLayout->addWidget(resetZoomBtn);
+    zoomLayout->addWidget(m_fixZoomButton);
 
     // Connect zoom buttons
     connect(zoomInBtn, &QPushButton::clicked, [this]() {
         m_imageLabel->clearSelection();
-        m_imageProcessor.zoomIn();
+        m_imageProcessor.getZoomManager().zoomIn();
         updateImageDisplay();
-        updateLastAction("Zoom In", QString("%1x").arg(m_imageProcessor.getZoomLevel(), 0, 'f', 2));
+        updateLastAction("Zoom In", QString("%1x").arg(m_imageProcessor.getZoomManager().getZoomLevel(), 0, 'f', 2));
     });
 
     connect(zoomOutBtn, &QPushButton::clicked, [this]() {
         m_imageLabel->clearSelection();
-        m_imageProcessor.zoomOut();
+        m_imageProcessor.getZoomManager().zoomOut();
         updateImageDisplay();
-        updateLastAction("Zoom Out", QString("%1x").arg(m_imageProcessor.getZoomLevel(), 0, 'f', 2));
+        updateLastAction("Zoom Out", QString("%1x").arg(m_imageProcessor.getZoomManager().getZoomLevel(), 0, 'f', 2));
     });
 
     connect(resetZoomBtn, &QPushButton::clicked, [this]() {
         m_imageLabel->clearSelection();
-        m_imageProcessor.resetZoom();
+        m_imageProcessor.getZoomManager().resetZoom();
+        m_fixZoomButton->setChecked(false);
+        m_imageProcessor.getZoomManager().toggleFixedZoom(false);
         updateImageDisplay();
         updateLastAction("Reset Zoom", "1x");
     });
 
-    // Initially hide zoom controls
+    connect(m_fixZoomButton, &QPushButton::toggled, [this](bool checked) {
+        auto& zoomManager = m_imageProcessor.getZoomManager();
+        zoomManager.toggleFixedZoom(checked);
+
+        // Enable/disable zoom controls based on fixed state
+        m_zoomInButton->setEnabled(!checked);
+        m_zoomOutButton->setEnabled(!checked);
+        m_resetZoomButton->setEnabled(!checked);
+
+        m_fixZoomButton->setText(checked ? "Unfix Zoom" : "Fix Zoom");
+        QString status = checked ?
+                             QString("Fixed at %1x").arg(zoomManager.getZoomLevel(), 0, 'f', 2) :
+                             QString("Unfixed at %1x").arg(zoomManager.getZoomLevel(), 0, 'f', 2);
+        updateLastAction("Fix Zoom", status);
+    });
+
     m_zoomControlsGroup->hide();
 }
 
 void ControlPanel::toggleZoomMode(bool active) {
-    if (m_zoomModeActive == active) return;  // No change needed
+    auto& zoomManager = m_imageProcessor.getZoomManager();
+    if (zoomManager.isZoomModeActive() == active) return;
 
-    m_zoomModeActive = active;
+    // If trying to deactivate while zoom is fixed, show warning and return
+    if (!active && zoomManager.isZoomFixed()) {
+        QMessageBox::warning(this, "Warning",
+                             "Cannot deactivate zoom mode while zoom is fixed.\nPlease unfix zoom first.");
+        m_zoomButton->setChecked(true);  // Keep button checked
+        return;
+    }
 
-    if (active) {
-        // Store current zoom level
-        m_preZoomLevel = m_imageProcessor.getZoomLevel();
+    if (!active) {  // Deactivating zoom mode
+        float currentZoom = zoomManager.getZoomLevel();
+        zoomManager.toggleZoomMode(false);
 
-        // Find the Basic Operations group and insert zoom controls after it
+        // Hide zoom controls
+        m_zoomControlsGroup->hide();
+        m_scrollLayout->removeWidget(m_zoomControlsGroup);
+        updateImageDisplay();
+        updateLastAction("Zoom Mode", QString("Deactivated (Maintained %1x)").arg(currentZoom, 0, 'f', 2));
+
+        // Update button state
+        m_zoomButton->setChecked(false);
+        m_zoomButton->setText("Activate Zoom");
+    } else {  // Activating zoom mode
+        zoomManager.toggleZoomMode(true);
+
+        // Insert zoom controls after Basic Operations
         int basicOpIndex = -1;
         for (int i = 0; i < m_scrollLayout->count(); ++i) {
             QGroupBox* box = qobject_cast<QGroupBox*>(m_scrollLayout->itemAt(i)->widget());
@@ -357,20 +401,23 @@ void ControlPanel::toggleZoomMode(bool active) {
         if (basicOpIndex >= 0) {
             m_scrollLayout->insertWidget(basicOpIndex + 1, m_zoomControlsGroup);
         }
+
+        // Show controls and ensure they're enabled (unless fixed)
         m_zoomControlsGroup->show();
+        if (!zoomManager.isZoomFixed()) {
+            m_zoomInButton->setEnabled(true);
+            m_zoomOutButton->setEnabled(true);
+            m_resetZoomButton->setEnabled(true);
+        }
 
-        updateLastAction("Zoom Mode", "Zoom Activated");
-    } else {
-        // Restore pre-zoom state
-        m_imageProcessor.setZoomLevel(m_preZoomLevel);
-        updateImageDisplay();
+        // Update button state
+        m_zoomButton->setChecked(true);
+        m_zoomButton->setText("Deactivate Zoom");
 
-        // Hide and remove zoom controls
-        m_zoomControlsGroup->hide();
-        m_scrollLayout->removeWidget(m_zoomControlsGroup);
-
-        updateLastAction("Zoom Mode", "Zoom Deactivated");
+        updateLastAction("Zoom Mode", "Zoom Mode Activated");
     }
+
+    updateImageDisplay();
 }
 
 void ControlPanel::setupFileOperations()
@@ -436,10 +483,64 @@ void ControlPanel::setupFileOperations()
 
 void ControlPanel::setupBasicOperations()
 {
+    // Create and setup zoom button before creating group box
+    m_zoomButton = new QPushButton("Zoom");
+    m_zoomButton->setCheckable(true);
+    m_zoomButton->setFixedHeight(35);
+
+    // Set up the style sheets for different states
+    m_zoomButton->setStyleSheet(
+        "QPushButton {"
+        "    background-color: #f0f0f0;"
+        "    border: 1px solid #c0c0c0;"
+        "    border-radius: 4px;"
+        "    padding: 5px;"
+        "}"
+        "QPushButton:hover {"
+        "    background-color: #e0e0e0;"
+        "}"
+        "QPushButton:checked {"
+        "    background-color: #ff4444;"  // Red color for fixed state
+        "    color: white;"
+        "    border: 1px solid #cc0000;"
+        "}"
+        "QPushButton:checked:hover {"
+        "    background-color: #ff6666;"
+        "}"
+        );
+
+    // Connect the zoom button signal
+    connect(m_zoomButton, &QPushButton::clicked, this, [this]() {
+        auto& zoomManager = m_imageProcessor.getZoomManager();
+        bool isActive = zoomManager.isZoomModeActive();
+        bool isFixed = zoomManager.isZoomFixed();
+
+        if (!isActive) {
+            // Activating zoom mode
+            toggleZoomMode(true);
+            m_zoomButton->setText("Deactivate Zoom");
+        } else {
+            // Trying to deactivate
+            if (isFixed) {
+                QMessageBox::warning(this, "Warning",
+                                     "Cannot deactivate zoom mode while zoom is fixed.\nPlease unfix zoom first.");
+                return;
+            }
+            toggleZoomMode(false);
+            m_zoomButton->setText("Zoom");
+        }
+
+        // Update button checked state based on fixed state
+        m_zoomButton->setChecked(isFixed);
+    });
+
+    // Connect to fix zoom button to update main zoom button state
+    connect(m_fixZoomButton, &QPushButton::toggled, this, [this](bool checked) {
+        m_zoomButton->setChecked(checked);
+    });
+
     createGroupBox("Basic Operations", {
-                                           {"Zoom", [this]() {
-                                                toggleZoomMode(!m_zoomModeActive);
-                                            }},
+                                           {"Zoom", m_zoomButton},  // Pass the button instead of creating a new one
                                            {"Crop", [this]() {
                                                 if (checkZoomMode()) return;
                                                 m_darkLineInfoLabel->hide();
@@ -456,7 +557,7 @@ void ControlPanel::setupBasicOperations()
                                                         QMessageBox::warning(this, "Crop Error", "Invalid region selected for cropping.");
                                                     }
                                                 } else {
-                                                    QMessageBox::information(this, "Crop Info", "Please select a region to crop first.");
+                                                    QMessageBox::information(this, "Crop Info", "Please select a region first.");
                                                 }
                                             }},
                                            {"Rotate CW", [this]() {
@@ -1088,7 +1189,8 @@ std::pair<double, bool> ControlPanel::showInputDialog(const QString& title, cons
     return std::make_pair(value, ok);
 }
 
-void ControlPanel::createGroupBox(const QString& title, const std::vector<std::pair<QString, std::function<void()>>>& buttons)
+void ControlPanel::createGroupBox(const QString& title,
+                                  const std::vector<std::pair<QString, std::variant<std::function<void()>, QPushButton*>>>& buttons)
 {
     QGroupBox* groupBox = new QGroupBox(title);
     QVBoxLayout* groupLayout = new QVBoxLayout(groupBox);
@@ -1101,12 +1203,22 @@ void ControlPanel::createGroupBox(const QString& title, const std::vector<std::p
     groupBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     for (const auto& button_pair : buttons) {
-        QPushButton* button = new QPushButton(button_pair.first);
-        button->setFixedHeight(buttonHeight);
-        button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-        groupLayout->addWidget(button);
+        QPushButton* button;
+        if (auto* existingButton = std::get_if<QPushButton*>(&button_pair.second)) {
+            // Use existing button
+            button = *existingButton;
+        } else {
+            // Create new button
+            button = new QPushButton(button_pair.first);
+            button->setFixedHeight(buttonHeight);
+            button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
-        connect(button, &QPushButton::clicked, button_pair.second);
+            // Connect the lambda if provided
+            if (auto* func = std::get_if<std::function<void()>>(&button_pair.second)) {
+                connect(button, &QPushButton::clicked, *func);
+            }
+        }
+        groupLayout->addWidget(button);
     }
 
     groupLayout->setSpacing(5);
@@ -1501,12 +1613,19 @@ void ControlPanel::updateImageDisplay() {
         int height = finalImage.size();
         int width = finalImage[0].size();
 
-        // Update image size label
-        m_imageSizeLabel->setText(QString("Image Size: %1 x %2").arg(width).arg(height));
+        // Update image size label with both original and zoomed dimensions
+        const auto& zoomManager = m_imageProcessor.getZoomManager();
+        if (zoomManager.isZoomModeActive() && zoomManager.getZoomLevel() != 1.0f) {
+            QSize zoomedSize = zoomManager.getZoomedSize(QSize(width, height));
+            m_imageSizeLabel->setText(QString("Image Size: %1 x %2 (Zoomed: %3 x %4)")
+                                          .arg(width).arg(height)
+                                          .arg(zoomedSize.width()).arg(zoomedSize.height()));
+        } else {
+            m_imageSizeLabel->setText(QString("Image Size: %1 x %2").arg(width).arg(height));
+        }
 
+        // Create the base image
         QImage image(width, height, QImage::Format_Grayscale16);
-
-        // Copy image data
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 uint16_t pixelValue = finalImage[y][x];
@@ -1514,51 +1633,101 @@ void ControlPanel::updateImageDisplay() {
             }
         }
 
-        // Create base pixmap from image
+        // Create base pixmap and apply zoom if needed
         QPixmap pixmap = QPixmap::fromImage(image);
-
-        // Apply zoom if in zoom mode
-        if (m_zoomModeActive && m_imageProcessor.getZoomLevel() != 1.0f) {
-            QSize zoomedSize = m_imageProcessor.getZoomedImageDimensions();
+        if (zoomManager.isZoomModeActive() && zoomManager.getZoomLevel() != 1.0f) {
+            QSize zoomedSize = zoomManager.getZoomedSize(pixmap.size());
             pixmap = pixmap.scaled(zoomedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
         }
 
-        // Start painting on the pixmap
+        // Start painting overlays
         QPainter painter(&pixmap);
         painter.setRenderHint(QPainter::Antialiasing);
 
-        // Draw detected black lines if any exist
         if (!m_detectedLines.empty()) {
+            float penWidth = zoomManager.isZoomModeActive() ?
+                                 std::max(1.0f, 2.0f * zoomManager.getZoomLevel()) : 2.0f;  // Ensure minimum pen width
+
             for (size_t i = 0; i < m_detectedLines.size(); ++i) {
                 const auto& line = m_detectedLines[i];
                 QColor lineColor = line.inObject ? Qt::blue : Qt::red;
-                painter.setPen(QPen(lineColor, 2, Qt::SolidLine));
+                painter.setPen(QPen(lineColor, penWidth, Qt::SolidLine));
 
                 QString labelText = QString("Line %1 - %2")
                                         .arg(i + 1)
                                         .arg(line.inObject ? "In Object" : "Isolated");
 
+                // Calculate base font size that maintains readability
+                float baseFontSize = painter.font().pointSizeF();
+                float scaledFontSize;
+                float minFontSize = 8.0f;  // Minimum readable font size
+
+                if (zoomManager.isZoomModeActive()) {
+                    if (zoomManager.getZoomLevel() < 1.0f) {
+                        // When zoomed out, maintain minimum readable size
+                        scaledFontSize = std::max(minFontSize, baseFontSize);
+                    } else {
+                        // When zoomed in, scale up normally
+                        scaledFontSize = baseFontSize * zoomManager.getZoomLevel();
+                    }
+                } else {
+                    scaledFontSize = baseFontSize;
+                }
+
+                // Set font size
+                QFont font = painter.font();
+                font.setPointSizeF(scaledFontSize);
+                painter.setFont(font);
+
+                // Calculate label metrics with new font
+                QFontMetrics fm(font);
+                float labelWidth = fm.horizontalAdvance(labelText) + 10;
+                float labelHeight = std::max(20.0f, fm.height() + 4.0f);
+
+                // Calculate label spacing that maintains readability
+                float baseSpacing = 25.0f;
+                float labelSpacing = zoomManager.isZoomModeActive() ?
+                                         std::max(baseSpacing, baseSpacing * zoomManager.getZoomLevel()) : baseSpacing;
+
                 if (line.isVertical) {
+                    // Draw vertical line
                     QRect lineRect(line.x, 0, line.width, height - 1);
+                    if (zoomManager.isZoomModeActive()) {
+                        lineRect = zoomManager.getZoomedRect(lineRect);
+                    }
                     painter.drawRect(lineRect);
 
-                    int labelY = 10 + i * 25;
-                    QFontMetrics fm(painter.font());
-                    int labelWidth = fm.horizontalAdvance(labelText) + 10;
-                    QRect textRect(line.x + line.width + 5, labelY, labelWidth, 20);
+                    // Position label with minimum spacing from line
+                    float minOffset = 5.0f;
+                    float labelX = lineRect.right() + minOffset;
+                    float labelY = 10.0f + i * labelSpacing;
 
+                    // Create semi-transparent background for better readability
+                    QRectF textRect(labelX, labelY, labelWidth, labelHeight);
                     painter.fillRect(textRect, QColor(255, 255, 255, 230));
+
+                    // Draw text
                     painter.setPen(Qt::black);
                     painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, " " + labelText);
+
                 } else {
+                    // Draw horizontal line
                     QRect lineRect(0, line.y, width - 1, line.width);
+                    if (zoomManager.isZoomModeActive()) {
+                        lineRect = zoomManager.getZoomedRect(lineRect);
+                    }
                     painter.drawRect(lineRect);
 
-                    QFontMetrics fm(painter.font());
-                    int labelWidth = fm.horizontalAdvance(labelText) + 10;
-                    QRect textRect(10, line.y + line.width + 5, labelWidth, 20);
+                    // Position label with minimum spacing from line
+                    float minOffset = 5.0f;
+                    float labelX = 10.0f;
+                    float labelY = lineRect.bottom() + minOffset;
 
+                    // Create semi-transparent background for better readability
+                    QRectF textRect(labelX, labelY, labelWidth, labelHeight);
                     painter.fillRect(textRect, QColor(255, 255, 255, 230));
+
+                    // Draw text
                     painter.setPen(Qt::black);
                     painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, " " + labelText);
                 }
@@ -1567,16 +1736,13 @@ void ControlPanel::updateImageDisplay() {
 
         // Draw selection rectangle if exists
         if (m_imageLabel->isRegionSelected()) {
-            painter.setPen(QPen(Qt::blue, 2));
+            float selectionPenWidth = zoomManager.isZoomModeActive() ?
+                                          2.0f * zoomManager.getZoomLevel() : 2.0f;
+            painter.setPen(QPen(Qt::blue, selectionPenWidth));
+
             QRect selectedRegion = m_imageLabel->getSelectedRegion();
-            if (m_zoomModeActive) {
-                float zoomLevel = m_imageProcessor.getZoomLevel();
-                selectedRegion = QRect(
-                    selectedRegion.x() * zoomLevel,
-                    selectedRegion.y() * zoomLevel,
-                    selectedRegion.width() * zoomLevel,
-                    selectedRegion.height() * zoomLevel
-                    );
+            if (zoomManager.isZoomModeActive()) {
+                selectedRegion = zoomManager.getZoomedRect(selectedRegion);
             }
             painter.drawRect(selectedRegion);
         }
@@ -1592,14 +1758,42 @@ void ControlPanel::updateImageDisplay() {
             m_histogram->updateHistogram(finalImage);
         }
     } else {
-        // No image loaded - update labels accordingly
+        // No image loaded - clear display
         m_imageSizeLabel->setText("Image Size: No image loaded");
         m_imageLabel->clear();
-        // Instead of calling clear(), we'll just hide the histogram if it's visible
         if (m_histogram->isVisible()) {
             m_histogram->setVisible(false);
         }
     }
+}
+
+// Helper function to draw line labels with proper zoom scaling
+void ControlPanel :: drawLineLabel(QPainter& painter, const QString& text, const QPointF& pos, const ZoomManager& zoomManager) {
+    QFont font = painter.font();
+    QFontMetrics fm(font);
+
+    // Scale font if zoomed
+    if (zoomManager.isZoomModeActive()) {
+        font.setPointSizeF(font.pointSizeF() * zoomManager.getZoomLevel());
+        painter.setFont(font);
+    }
+
+    // Calculate label dimensions
+    float labelWidth = fm.horizontalAdvance(text) + 10;
+    float labelHeight = 20;
+    if (zoomManager.isZoomModeActive()) {
+        labelWidth *= zoomManager.getZoomLevel();
+        labelHeight *= zoomManager.getZoomLevel();
+    }
+
+    QRectF textRect(pos.x(), pos.y(), labelWidth, labelHeight);
+
+    // Draw label background
+    painter.fillRect(textRect, QColor(255, 255, 255, 230));
+
+    // Draw text
+    painter.setPen(Qt::black);
+    painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, " " + text);
 }
 
 void ControlPanel::updateCalibrationButtonText() {
@@ -1612,4 +1806,3 @@ void ControlPanel::updateCalibrationButtonText() {
         m_calibrationButton->setText("Calibration");
     }
 }
-

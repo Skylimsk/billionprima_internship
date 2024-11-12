@@ -97,7 +97,8 @@ SOURCES = \
     image_processor.cpp \
     histogram.cpp \
     CLAHE.cpp \
-    third_party/qcustomplot/qcustomplot.cpp
+    third_party/qcustomplot/qcustomplot.cpp \
+    zoom.cpp
 
 HEADERS = \
     ThreadLogger.h \
@@ -111,7 +112,8 @@ HEADERS = \
     histogram.h \
     CLAHE.h \
     interlace.h \
-    third_party/qcustomplot/qcustomplot.h
+    third_party/qcustomplot/qcustomplot.h \
+    zoom.h
 
 # Default rules for deployment
 qnx: target.path = /tmp/$${TARGET}/bin

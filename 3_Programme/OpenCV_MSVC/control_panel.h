@@ -1,4 +1,3 @@
-// control_panel.h
 #ifndef CONTROL_PANEL_H
 #define CONTROL_PANEL_H
 
@@ -7,12 +6,14 @@
 #include <QScrollArea>
 #include <QLabel>
 #include <functional>
+#include <variant>
 #include <vector>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include "image_processor.h"
 #include "image_label.h"
 #include "histogram.h"
+#include "zoom.h"
 
 class ControlPanel : public QWidget {
     Q_OBJECT
@@ -35,12 +36,15 @@ private:
     void setupBlackLineDetection();
     void handleRevert();
 
-    // New zoom-related methods
+    // Zoom-related methods
     void setupZoomControls();
     void toggleZoomMode(bool active);
+    bool checkZoomMode();
+    QMessageBox* m_zoomWarningBox;
 
     std::pair<double, bool> showInputDialog(const QString& title, const QString& label, double defaultValue, double min, double max);
-    void createGroupBox(const QString& title, const std::vector<std::pair<QString, std::function<void()>>>& buttons);
+    void createGroupBox(const QString& title,
+                        const std::vector<std::pair<QString, std::variant<std::function<void()>, QPushButton*>>>& buttons);
     void updateImageDisplay();
 
     void updateLineRemovalInfo(const std::vector<size_t>& removedLineIndices, const QString& actionType);
@@ -52,7 +56,7 @@ private:
     ImageLabel* m_imageLabel;
     QLabel* m_pixelInfoLabel;
     QLabel* m_lastActionLabel;
-    QLabel* m_lastActionParamsLabel;  // Added this declaration
+    QLabel* m_lastActionParamsLabel;
     QLabel* m_gpuTimingLabel;
     QLabel* m_cpuTimingLabel;
     double m_lastGpuTime;
@@ -62,15 +66,12 @@ private:
 
     Histogram* m_histogram;
 
+    // Only keep the UI element for zoom controls
     QGroupBox* m_zoomControlsGroup;
-    float m_preZoomLevel;
-    bool m_zoomModeActive;
 
-    bool checkZoomMode();
+    QPushButton* m_fixZoomButton;
 
-    QMessageBox* m_zoomWarningBox;
-
-    using DarkLine = ImageProcessor::DarkLine;  // Add this type alias
+    using DarkLine = ImageProcessor::DarkLine;
 
     void updateLineInfo(const QString& info);
     void resetDetectedLines();
@@ -85,8 +86,15 @@ private:
     QPushButton* m_resetCalibrationButton;
     void updateCalibrationButtonText();
 
-    void updateDarkLineInfoDisplay();
-};
+    void drawLineLabel(QPainter& painter, const QString& text, const QPointF& pos, const ZoomManager& zoomManager);
 
+    void updateDarkLineInfoDisplay();
+
+    QPushButton* m_zoomInButton;
+    QPushButton* m_zoomOutButton;
+    QPushButton* m_resetZoomButton;
+    QPushButton* m_zoomButton;
+
+};
 
 #endif // CONTROL_PANEL_H

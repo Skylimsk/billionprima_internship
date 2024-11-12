@@ -43,7 +43,6 @@ ImageProcessor::ImageProcessor(QLabel* imageLabel)
     regionSelected(false),
     rotationState(0),
     kernelSize(0),
-    currentZoomLevel(1.0f),
     hasCLAHEBeenApplied(false) {
 }
 
@@ -583,23 +582,6 @@ void ImageProcessor::removeDarkLines(const std::vector<DarkLine>& lines) {
     saveCurrentState();
     DarkLineProcessor::removeDarkLines(finalImage, lines);
     clearDetectedLines();
-}
-
-void ImageProcessor::setZoomLevel(float level) {
-    // Clamp zoom level between minimum and maximum values
-    currentZoomLevel = std::clamp(level, MIN_ZOOM_LEVEL, MAX_ZOOM_LEVEL);
-}
-
-QSize ImageProcessor::getZoomedImageDimensions() const {
-    if (finalImage.empty()) {
-        return QSize(0, 0);
-    }
-
-    int width = finalImage[0].size();
-    int height = finalImage.size();
-
-    return QSize(static_cast<int>(width * currentZoomLevel),
-                 static_cast<int>(height * currentZoomLevel));
 }
 
 void ImageProcessor::removeAllDarkLines() {

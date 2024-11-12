@@ -25,6 +25,7 @@
 #include "adjustments.h"
 #include "interlace.h"
 //#include "display_window.h"
+#include "zoom.h"
 
 class ImageProcessor {
 public:
@@ -144,12 +145,8 @@ public:
     void updateAndSaveFinalImage(const std::vector<std::vector<uint16_t>>& newImage);
 
     // Zoom Functions
-    void setZoomLevel(float level);
-    float getZoomLevel() const { return currentZoomLevel; }
-    void zoomIn() { setZoomLevel(currentZoomLevel * ZOOM_STEP); }
-    void zoomOut() { setZoomLevel(currentZoomLevel / ZOOM_STEP); }
-    void resetZoom() { setZoomLevel(1.0f); }
-    QSize getZoomedImageDimensions() const;
+    ZoomManager& getZoomManager() { return m_zoomManager; }
+    const ZoomManager& getZoomManager() const { return m_zoomManager; }
 
     InterlaceProcessor::InterlacedResult processEnhancedInterlacedSections(
         InterlaceProcessor::StartPoint lowEnergyStart,
@@ -212,10 +209,7 @@ private:
     bool hasCLAHEBeenApplied;
 
     // Zoom related
-    float currentZoomLevel;
-    const float MIN_ZOOM_LEVEL = 0.1f;
-    const float MAX_ZOOM_LEVEL = 10.0f;
-    const float ZOOM_STEP = 1.2f;
+    ZoomManager m_zoomManager;
 
     std::vector<DarkLine> m_detectedLines;
     std::vector<size_t> m_lastRemovedLines;
