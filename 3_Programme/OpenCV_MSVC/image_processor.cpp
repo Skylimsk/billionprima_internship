@@ -580,6 +580,7 @@ std::vector<ImageProcessor::DarkLine> ImageProcessor::detectDarkLines() {
 void ImageProcessor::removeDarkLines(const std::vector<DarkLine>& lines) {
     if (lines.empty()) return;
     saveCurrentState();
+    // Now we need to pass the line width when calling findReplacementValue
     DarkLineProcessor::removeDarkLines(finalImage, lines);
     clearDetectedLines();
 }
@@ -640,6 +641,38 @@ void ImageProcessor::removeIsolatedDarkLines() {
     clearDetectedLines();
 }
 
+void ImageProcessor::removeDarkLinesSequential(
+    const std::vector<DarkLine>& selectedLines,
+    bool removeInObject,
+    bool removeIsolated,
+    LineRemovalMethod method) {
+
+    if (selectedLines.empty()) return;
+
+    saveCurrentState();
+
+    DarkLineProcessor::RemovalMethod processorMethod =
+        (method == LineRemovalMethod::DIRECT_STITCH) ?
+            DarkLineProcessor::RemovalMethod::DIRECT_STITCH :
+            DarkLineProcessor::RemovalMethod::NEIGHBOR_VALUES;
+
+    // 处理选中的线条
+    DarkLineProcessor::removeDarkLinesSequential(
+        finalImage,
+        selectedLines,
+        removeInObject,
+        removeIsolated,
+        processorMethod);
+
+    // 更新移除的线条记录
+    m_lastRemovedLines.clear();
+    for (size_t i = 0; i < selectedLines.size(); ++i) {
+        m_lastRemovedLines.push_back(i + 1);
+    }
+
+    clearDetectedLines();
+}
+
 void ImageProcessor::removeDarkLinesSelective(
     bool removeInObject,
     bool removeIsolated,
@@ -655,7 +688,6 @@ void ImageProcessor::removeDarkLinesSelective(
             DarkLineProcessor::RemovalMethod::DIRECT_STITCH :
             DarkLineProcessor::RemovalMethod::NEIGHBOR_VALUES;
 
-    // 直接调用 removeDarkLinesSelective，无需考虑线条宽度
     DarkLineProcessor::removeDarkLinesSelective(
         finalImage,
         m_detectedLines,
@@ -673,41 +705,6 @@ void ImageProcessor::removeDarkLinesSelective(
         }
     }
 
-    clearDetectedLines();
-}
-
-void ImageProcessor::removeDarkLinesSequential(
-    const std::vector<DarkLine>& selectedLines,
-    bool removeInObject,
-    bool removeIsolated,
-    LineRemovalMethod method) {
-
-    if (selectedLines.empty()) return;
-
-    saveCurrentState();
-
-    // 转换移除方法枚举
-    DarkLineProcessor::RemovalMethod processorMethod =
-        (method == LineRemovalMethod::DIRECT_STITCH) ?
-            DarkLineProcessor::RemovalMethod::DIRECT_STITCH :
-            DarkLineProcessor::RemovalMethod::NEIGHBOR_VALUES;
-
-    // 现在使用静态方法调用
-    DarkLineProcessor::removeDarkLinesSequential(
-        finalImage,
-        selectedLines,
-        removeInObject,
-        removeIsolated,
-        processorMethod
-        );
-
-    // 更新移除的线条记录
-    m_lastRemovedLines.clear();
-    for (size_t i = 0; i < selectedLines.size(); ++i) {
-        m_lastRemovedLines.push_back(i + 1);
-    }
-
-    // 清除检测到的线条
     clearDetectedLines();
 }
 

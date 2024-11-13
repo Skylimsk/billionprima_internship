@@ -1,0 +1,4 @@
+#ifndef DARKLINE_POINTER_H
+#define DARKLINE_POINTER_H
+
+#endif // DARKLINE_POINTER_H

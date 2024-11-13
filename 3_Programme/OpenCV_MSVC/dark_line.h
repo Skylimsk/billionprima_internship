@@ -45,16 +45,18 @@ public:
         bool removeIsolated,
         RemovalMethod method = RemovalMethod::NEIGHBOR_VALUES);
 
+    // Modified findReplacementValue function with dynamic search radius
+    static uint16_t findReplacementValue(
+        const std::vector<std::vector<uint16_t>>& image,
+        int x, int y,
+        bool isVertical,
+        int lineWidth);
+
     // Make other helper functions static if they're used by static functions
     static uint16_t findStitchValue(
         const std::vector<std::vector<uint16_t>>& image,
         const DarkLine& line,
         int x, int y);
-
-    static uint16_t findReplacementValue(
-        const std::vector<std::vector<uint16_t>>& image,
-        int x, int y,
-        bool isVertical);
 
     static void removeDarkLinesSequential(
         std::vector<std::vector<uint16_t>>& image,
@@ -62,7 +64,6 @@ public:
         bool removeInObject,
         bool removeIsolated,
         RemovalMethod method = RemovalMethod::NEIGHBOR_VALUES);
-
 
 private:
     // Constants for detection and removal
@@ -72,8 +73,10 @@ private:
     static constexpr int VERTICAL_CHECK_RANGE = 3;
     static constexpr int HORIZONTAL_CHECK_RANGE = 2;
     static constexpr uint16_t WHITE_THRESHOLD = 55000;
-    static constexpr int SEARCH_RADIUS = 20;
     static constexpr uint16_t MIN_BRIGHTNESS = 1000;
+
+    // Helper function to calculate dynamic search radius
+    static int calculateSearchRadius(int lineWidth);
 
     // Helper functions
     static bool isInObject(const std::vector<std::vector<uint16_t>>& image, int pos, int lineWidth, bool isVertical, int threadId);

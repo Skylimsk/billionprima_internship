@@ -68,15 +68,23 @@ bool DarkLineProcessor::isInObject(const std::vector<std::vector<uint16_t>>& ima
     return false;
 }
 
-uint16_t DarkLineProcessor::findReplacementValue(const std::vector<std::vector<uint16_t>>& image, int x, int y, bool isVertical) {
+uint16_t DarkLineProcessor::findReplacementValue(
+    const std::vector<std::vector<uint16_t>>& image,
+    int x, int y,
+    bool isVertical,
+    int lineWidth) {
+
     int height = image.size();
     int width = image[0].size();
     std::vector<uint16_t> validValues;
-    validValues.reserve(SEARCH_RADIUS * 2);
+
+    // Calculate dynamic search radius based on line width
+    int searchRadius = calculateSearchRadius(lineWidth);
+    validValues.reserve(searchRadius * 2);
 
     if (isVertical) {
         // Look left and right
-        for (int offset = 1; offset <= SEARCH_RADIUS; ++offset) {
+        for (int offset = 1; offset <= searchRadius; ++offset) {
             // Check left
             int leftX = x - offset;
             if (leftX >= 0 && image[y][leftX] > MIN_BRIGHTNESS) {
@@ -91,7 +99,7 @@ uint16_t DarkLineProcessor::findReplacementValue(const std::vector<std::vector<u
         }
     } else {
         // Look up and down
-        for (int offset = 1; offset <= SEARCH_RADIUS; ++offset) {
+        for (int offset = 1; offset <= searchRadius; ++offset) {
             // Check up
             int upY = y - offset;
             if (upY >= 0 && image[upY][x] > MIN_BRIGHTNESS) {
@@ -271,7 +279,6 @@ std::vector<DarkLineProcessor::DarkLine> DarkLineProcessor::detectDarkLines(
 
 void DarkLineProcessor::removeDarkLines(std::vector<std::vector<uint16_t>>& image,
                                         const std::vector<DarkLine>& lines) {
-
     if (lines.empty()) return;
 
     std::vector<std::vector<uint16_t>> newImage = image;
@@ -290,7 +297,7 @@ void DarkLineProcessor::removeDarkLines(std::vector<std::vector<uint16_t>>& imag
             for (int x = line.x; x < line.x + line.width; ++x) {
                 for (int y = 0; y < height; ++y) {
                     if (image[y][x] <= MIN_BRIGHTNESS) {
-                        newImage[y][x] = findReplacementValue(image, x, y, true);
+                        newImage[y][x] = findReplacementValue(image, x, y, true, line.width);
                     }
                 }
             }
@@ -299,7 +306,7 @@ void DarkLineProcessor::removeDarkLines(std::vector<std::vector<uint16_t>>& imag
             for (int y = line.y; y < line.y + line.width; ++y) {
                 for (int x = 0; x < width; ++x) {
                     if (image[y][x] <= MIN_BRIGHTNESS) {
-                        newImage[y][x] = findReplacementValue(image, x, y, false);
+                        newImage[y][x] = findReplacementValue(image, x, y, false, line.width);
                     }
                 }
             }
@@ -412,12 +419,12 @@ void DarkLineProcessor::removeDarkLinesSelective(
                 }
             }
         } else {
-            // Original neighbor values method for isolated lines
+            // Original neighbor values method for lines
             if (line.isVertical) {
                 for (int x = line.x; x < line.x + line.width; ++x) {
                     for (int y = 0; y < height; ++y) {
                         if (image[y][x] <= MIN_BRIGHTNESS) {
-                            newImage[y][x] = findReplacementValue(image, x, y, true);
+                            newImage[y][x] = findReplacementValue(image, x, y, true, line.width);
                         }
                     }
                 }
@@ -425,7 +432,7 @@ void DarkLineProcessor::removeDarkLinesSelective(
                 for (int y = line.y; y < line.y + line.width; ++y) {
                     for (int x = 0; x < width; ++x) {
                         if (image[y][x] <= MIN_BRIGHTNESS) {
-                            newImage[y][x] = findReplacementValue(image, x, y, false);
+                            newImage[y][x] = findReplacementValue(image, x, y, false, line.width);
                         }
                     }
                 }
@@ -533,7 +540,7 @@ void DarkLineProcessor::removeDarkLinesSequential(
                 for (int x = line.x; x < line.x + line.width; ++x) {
                     for (int y = 0; y < height; ++y) {
                         if (image[y][x] <= MIN_BRIGHTNESS) {
-                            newImage[y][x] = findReplacementValue(image, x, y, true);
+                            newImage[y][x] = findReplacementValue(image, x, y, true, line.width);
                         }
                     }
                 }
@@ -541,7 +548,7 @@ void DarkLineProcessor::removeDarkLinesSequential(
                 for (int y = line.y; y < line.y + line.width; ++y) {
                     for (int x = 0; x < width; ++x) {
                         if (image[y][x] <= MIN_BRIGHTNESS) {
-                            newImage[y][x] = findReplacementValue(image, x, y, false);
+                            newImage[y][x] = findReplacementValue(image, x, y, false, line.width);
                         }
                     }
                 }
@@ -549,4 +556,16 @@ void DarkLineProcessor::removeDarkLinesSequential(
             image = std::move(newImage);
         }
     }
+}
+
+int DarkLineProcessor::calculateSearchRadius(int lineWidth) {
+    // Base the search radius on the line width
+    // Minimum radius of 10 pixels, maximum of 200 pixels
+    // Use a multiplier of 2 for the line width
+    const int minRadius = 10;
+    const int maxRadius = 200;
+    int radius = lineWidth * 2;
+
+    // Ensure the radius stays within reasonable bounds
+    return std::clamp(radius, minRadius, maxRadius);
 }

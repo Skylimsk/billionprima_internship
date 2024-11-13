@@ -89,6 +89,7 @@ SOURCES = \
     ThreadLogger.cpp \
     adjustments.cpp \
     dark_line.cpp \
+    darkline_pointer.cpp \
     display_window.cpp \
     interlace.cpp \
     main.cpp \
@@ -105,6 +106,7 @@ HEADERS = \
     adjustments.h \
     control_panel.h \
     dark_line.h \
+    darkline_pointer.h \
     display_window.h \
     image_label.h \
     image_processing_params.h \

@@ -1351,155 +1351,180 @@ void ControlPanel::setupBlackLineDetection() {
                                                    updateLastAction("Detect Lines");
                                                }},
 
-                                              {"Remove Lines", [this]() {
-                                                   if (checkZoomMode()) return;
+                                           {"Remove Lines", [this]() {
+                                                if (checkZoomMode()) return;
 
-                                                   if (m_detectedLines.empty()) {
-                                                       QMessageBox::information(this, "Remove Lines", "Please detect lines first.");
-                                                       return;
-                                                   }
+                                                if (m_detectedLines.empty()) {
+                                                    QMessageBox::information(this, "Remove Lines", "Please detect lines first.");
+                                                    return;
+                                                }
 
-                                                   // Store initial line information for comparison
-                                                   std::vector<ImageProcessor::DarkLine> initialLines = m_detectedLines;
+                                                // Store initial line information for comparison
+                                                std::vector<ImageProcessor::DarkLine> initialLines = m_detectedLines;
 
-                                                   // Create main dialog
-                                                   QDialog dialog(this);
-                                                   dialog.setWindowTitle("Remove Lines");
-                                                   dialog.setMinimumWidth(400);
+                                                // Create main dialog
+                                                QDialog dialog(this);
+                                                dialog.setWindowTitle("Remove Lines");
+                                                dialog.setMinimumWidth(400);
 
-                                                   QVBoxLayout* layout = new QVBoxLayout(&dialog);
-                                                   layout->setSpacing(10);
+                                                QVBoxLayout* layout = new QVBoxLayout(&dialog);
+                                                layout->setSpacing(10);
 
-                                                   // Count lines
-                                                   int inObjectCount = 0;
-                                                   int isolatedCount = 0;
-                                                   for (const auto& line : m_detectedLines) {
-                                                       if (line.inObject) inObjectCount++;
-                                                       else isolatedCount++;
-                                                   }
+                                                // Count lines
+                                                int inObjectCount = 0;
+                                                int isolatedCount = 0;
+                                                for (const auto& line : m_detectedLines) {
+                                                    if (line.inObject) inObjectCount++;
+                                                    else isolatedCount++;
+                                                }
 
-                                                   // Line type selection
-                                                   QGroupBox* removalTypeBox = new QGroupBox("Select Lines to Remove");
-                                                   QVBoxLayout* typeLayout = new QVBoxLayout();
+                                                // Line type selection
+                                                QGroupBox* removalTypeBox = new QGroupBox("Select Lines to Remove");
+                                                QVBoxLayout* typeLayout = new QVBoxLayout();
 
-                                                   QRadioButton* inObjectRadio = new QRadioButton(
-                                                       QString("Remove In Object Lines (%1 lines)").arg(inObjectCount));
-                                                   QRadioButton* isolatedRadio = new QRadioButton(
-                                                       QString("Remove Isolated Lines (%1 lines)").arg(isolatedCount));
-                                                   inObjectRadio->setChecked(true);
+                                                QRadioButton* inObjectRadio = new QRadioButton(
+                                                    QString("Remove In Object Lines (%1 lines)").arg(inObjectCount));
+                                                QRadioButton* isolatedRadio = new QRadioButton(
+                                                    QString("Remove Isolated Lines (%1 lines)").arg(isolatedCount));
+                                                inObjectRadio->setChecked(true);
 
-                                                   typeLayout->addWidget(inObjectRadio);
-                                                   typeLayout->addWidget(isolatedRadio);
-                                                   removalTypeBox->setLayout(typeLayout);
-                                                   layout->addWidget(removalTypeBox);
+                                                typeLayout->addWidget(inObjectRadio);
+                                                typeLayout->addWidget(isolatedRadio);
+                                                removalTypeBox->setLayout(typeLayout);
+                                                layout->addWidget(removalTypeBox);
 
-                                                   // Method selection (for In Object Lines)
-                                                   QGroupBox* methodBox = new QGroupBox("Removal Method");
-                                                   QVBoxLayout* methodLayout = new QVBoxLayout();
-                                                   QRadioButton* neighborValuesRadio = new QRadioButton("Use Neighbor Values");
-                                                   QRadioButton* stitchRadio = new QRadioButton("Direct Stitch");
-                                                   neighborValuesRadio->setChecked(true);
-                                                   methodLayout->addWidget(neighborValuesRadio);
-                                                   methodLayout->addWidget(stitchRadio);
-                                                   methodBox->setLayout(methodLayout);
-                                                   layout->addWidget(methodBox);
+                                                // Method selection (for In Object Lines)
+                                                QGroupBox* methodBox = new QGroupBox("Removal Method");
+                                                QVBoxLayout* methodLayout = new QVBoxLayout();
+                                                QRadioButton* neighborValuesRadio = new QRadioButton("Use Neighbor Values");
+                                                QRadioButton* stitchRadio = new QRadioButton("Direct Stitch");
+                                                neighborValuesRadio->setChecked(true);
+                                                methodLayout->addWidget(neighborValuesRadio);
+                                                methodLayout->addWidget(stitchRadio);
+                                                methodBox->setLayout(methodLayout);
+                                                layout->addWidget(methodBox);
 
-                                                   // Line selection list (only for In Object + Direct Stitch)
-                                                   QGroupBox* lineSelectionBox = new QGroupBox("Select Line to Process");
-                                                   QVBoxLayout* selectionLayout = new QVBoxLayout();
-                                                   QListWidget* lineList = new QListWidget();
-                                                   lineList->setSelectionMode(QAbstractItemView::SingleSelection);
+                                                // Line selection list with multi-selection for neighbor values
+                                                QGroupBox* lineSelectionBox = new QGroupBox("Select Lines to Process");
+                                                QVBoxLayout* selectionLayout = new QVBoxLayout();
+                                                QListWidget* lineList = new QListWidget();
 
-                                                   // Add only In Object lines to the list
-                                                   for (size_t i = 0; i < m_detectedLines.size(); ++i) {
-                                                       const auto& line = m_detectedLines[i];
-                                                       if (line.inObject) {
-                                                           QString lineInfo = QString("Line %1: %2 at %3 with width %4")
-                                                           .arg(i + 1)
-                                                               .arg(line.isVertical ? "Vertical" : "Horizontal")
-                                                               .arg(line.isVertical ? QString("x=%1").arg(line.x) : QString("y=%1").arg(line.y))
-                                                               .arg(line.width);
-                                                           QListWidgetItem* item = new QListWidgetItem(lineInfo);
-                                                           item->setData(Qt::UserRole, static_cast<int>(i));
-                                                           lineList->addItem(item);
-                                                       }
-                                                   }
+                                                // Set selection mode based on the method
+                                                lineList->setSelectionMode(QAbstractItemView::ExtendedSelection);  // 默认允许多选
 
-                                                   lineList->setMinimumHeight(100);
-                                                   lineList->setMaximumHeight(200);
-                                                   selectionLayout->addWidget(lineList);
-                                                   lineSelectionBox->setLayout(selectionLayout);
-                                                   layout->addWidget(lineSelectionBox);
+                                                // Add only In Object lines to the list
+                                                for (size_t i = 0; i < m_detectedLines.size(); ++i) {
+                                                    const auto& line = m_detectedLines[i];
+                                                    if (line.inObject) {
+                                                        QString lineInfo = QString("Line %1: %2 at %3 with width %4")
+                                                        .arg(i + 1)
+                                                            .arg(line.isVertical ? "Vertical" : "Horizontal")
+                                                            .arg(line.isVertical ? QString("x=%1").arg(line.x) : QString("y=%1").arg(line.y))
+                                                            .arg(line.width);
+                                                        QListWidgetItem* item = new QListWidgetItem(lineInfo);
+                                                        item->setData(Qt::UserRole, static_cast<int>(i));
+                                                        lineList->addItem(item);
+                                                    }
+                                                }
 
-                                                   // Control visibility logic
-                                                   auto updateVisibility = [&]() {
-                                                       bool isInObject = inObjectRadio->isChecked();
-                                                       methodBox->setVisible(isInObject);
-                                                       lineSelectionBox->setVisible(isInObject && stitchRadio->isChecked());
-                                                       dialog.adjustSize();
-                                                   };
+                                                // Connect stitch radio button to change selection mode
+                                                connect(stitchRadio, &QRadioButton::toggled, [lineList](bool checked) {
+                                                    lineList->setSelectionMode(checked ?
+                                                                                   QAbstractItemView::SingleSelection :
+                                                                                   QAbstractItemView::ExtendedSelection);
+                                                    if (checked && lineList->selectedItems().count() > 1) {
+                                                        // If switching to single selection and multiple items are selected,
+                                                        // keep only the first selection
+                                                        lineList->clearSelection();
+                                                        if (lineList->count() > 0) {
+                                                            lineList->item(0)->setSelected(true);
+                                                        }
+                                                    }
+                                                });
 
-                                                   connect(inObjectRadio, &QRadioButton::toggled, updateVisibility);
-                                                   connect(isolatedRadio, &QRadioButton::toggled, updateVisibility);
-                                                   connect(stitchRadio, &QRadioButton::toggled, updateVisibility);
-                                                   connect(neighborValuesRadio, &QRadioButton::toggled, updateVisibility);
+                                                lineList->setMinimumHeight(200);  // 增加列表高度以便于多选
+                                                lineList->setMaximumHeight(300);
+                                                selectionLayout->addWidget(lineList);
+                                                lineSelectionBox->setLayout(selectionLayout);
+                                                layout->addWidget(lineSelectionBox);
 
-                                                   // Add OK and Cancel buttons
-                                                   QDialogButtonBox* buttonBox = new QDialogButtonBox(
-                                                       QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-                                                   layout->addWidget(buttonBox);
+                                                // Add a select all button for neighbor values mode
+                                                QPushButton* selectAllButton = new QPushButton("Select All Lines");
+                                                selectAllButton->setVisible(!stitchRadio->isChecked());
+                                                connect(selectAllButton, &QPushButton::clicked, lineList, &QListWidget::selectAll);
+                                                layout->addWidget(selectAllButton);
 
-                                                   connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-                                                   connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+                                                // Connect radio buttons to toggle select all button visibility
+                                                connect(stitchRadio, &QRadioButton::toggled, selectAllButton, &QPushButton::setHidden);
+                                                connect(neighborValuesRadio, &QRadioButton::toggled, selectAllButton, &QPushButton::setVisible);
 
-                                                   dialog.setLayout(layout);
-                                                   updateVisibility();
+                                                // Control visibility logic
+                                                auto updateVisibility = [&]() {
+                                                    bool isInObject = inObjectRadio->isChecked();
+                                                    methodBox->setVisible(isInObject);
+                                                    lineSelectionBox->setVisible(isInObject);
+                                                    selectAllButton->setVisible(isInObject && neighborValuesRadio->isChecked());
+                                                    dialog.adjustSize();
+                                                };
 
-                                                   if (dialog.exec() == QDialog::Accepted) {
-                                                       bool removeInObject = inObjectRadio->isChecked();
-                                                       QString methodStr;
-                                                       QString typeStr = removeInObject ? "In-Object Lines" : "Isolated Lines";
+                                                connect(inObjectRadio, &QRadioButton::toggled, updateVisibility);
+                                                connect(isolatedRadio, &QRadioButton::toggled, updateVisibility);
+                                                connect(neighborValuesRadio, &QRadioButton::toggled, updateVisibility);
+                                                connect(stitchRadio, &QRadioButton::toggled, updateVisibility);
 
-                                                       std::vector<ImageProcessor::DarkLine> selectedLines;
+                                                // Add OK and Cancel buttons
+                                                QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                                                    QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                                                layout->addWidget(buttonBox);
 
-                                                       if (removeInObject) {
-                                                           ImageProcessor::LineRemovalMethod method =
-                                                               stitchRadio->isChecked() ?
-                                                                   ImageProcessor::LineRemovalMethod::DIRECT_STITCH :
-                                                                   ImageProcessor::LineRemovalMethod::NEIGHBOR_VALUES;
+                                                connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                                                connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
-                                                           methodStr = stitchRadio->isChecked() ? "Direct Stitch" : "Neighbor Values";
+                                                dialog.setLayout(layout);
+                                                updateVisibility();
 
-                                                           if (method == ImageProcessor::LineRemovalMethod::DIRECT_STITCH) {
-                                                               QListWidgetItem* selectedItem = lineList->currentItem();
-                                                               if (!selectedItem) {
-                                                                   QMessageBox::warning(this, "Warning", "Please select a line for processing.");
-                                                                   return;
-                                                               }
+                                                if (dialog.exec() == QDialog::Accepted) {
+                                                    bool removeInObject = inObjectRadio->isChecked();
+                                                    QString methodStr;
+                                                    QString typeStr = removeInObject ? "In-Object Lines" : "Isolated Lines";
 
-                                                               int index = selectedItem->data(Qt::UserRole).toInt();
-                                                               selectedLines.push_back(m_detectedLines[index]);
+                                                    std::vector<ImageProcessor::DarkLine> selectedLines;
 
-                                                               m_imageProcessor.removeDarkLinesSequential(
-                                                                   selectedLines,
-                                                                   true,   // removeInObject
-                                                                   false,  // removeIsolated
-                                                                   method
-                                                                   );
-                                                           } else {
-                                                               m_imageProcessor.removeDarkLinesSelective(
-                                                                   true,   // removeInObject
-                                                                   false,  // removeIsolated
-                                                                   method
-                                                                   );
-                                                           }
-                                                       } else {
-                                                           methodStr = "Neighbor Values";
-                                                           m_imageProcessor.removeDarkLinesSelective(
-                                                               false,  // removeInObject
-                                                               true,   // removeIsolated
-                                                               ImageProcessor::LineRemovalMethod::NEIGHBOR_VALUES
-                                                               );
+                                                    if (removeInObject) {
+                                                        ImageProcessor::LineRemovalMethod method =
+                                                            stitchRadio->isChecked() ?
+                                                                ImageProcessor::LineRemovalMethod::DIRECT_STITCH :
+                                                                ImageProcessor::LineRemovalMethod::NEIGHBOR_VALUES;
+
+                                                        methodStr = stitchRadio->isChecked() ? "Direct Stitch" : "Neighbor Values";
+
+                                                        // Get selected lines
+                                                        auto selectedItems = lineList->selectedItems();
+                                                        if (selectedItems.isEmpty()) {
+                                                            QMessageBox::warning(this, "Warning", "Please select at least one line for processing.");
+                                                            return;
+                                                        }
+
+                                                        // Collect all selected lines
+                                                        for (QListWidgetItem* item : selectedItems) {
+                                                            int index = item->data(Qt::UserRole).toInt();
+                                                            selectedLines.push_back(m_detectedLines[index]);
+                                                        }
+
+                                                        // Process the selected lines
+                                                        m_imageProcessor.removeDarkLinesSequential(
+                                                            selectedLines,
+                                                            true,   // removeInObject
+                                                            false,  // removeIsolated
+                                                            method
+                                                            );
+                                                    } else {
+                                                        methodStr = "Neighbor Values";
+                                                        m_imageProcessor.removeDarkLinesSelective(
+                                                            false,  // removeInObject
+                                                            true,   // removeIsolated
+                                                            ImageProcessor::LineRemovalMethod::NEIGHBOR_VALUES
+                                                            );
                                                        }
 
                                                        // Get updated lines after removal

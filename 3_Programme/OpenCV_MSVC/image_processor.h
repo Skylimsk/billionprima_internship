@@ -128,8 +128,6 @@ public:
     void removeAllDarkLines();
     void removeInObjectDarkLines();
     void removeIsolatedDarkLines();
-    void removeDarkLinesSelective(bool removeInObject, bool removeIsolated, LineRemovalMethod method = LineRemovalMethod::NEIGHBOR_VALUES);
-    void removeDarkLinesSequential(const std::vector<DarkLine>& selectedLines, bool removeInObject, bool removeIsolated, LineRemovalMethod method);
 
     // State Management
     void saveCurrentState();
@@ -161,30 +159,16 @@ public:
         }
     }
 
+    void removeDarkLinesSequential(
+        const std::vector<DarkLine>& selectedLines,
+        bool removeInObject,
+        bool removeIsolated,
+        LineRemovalMethod method);
+
     void removeDarkLinesSelective(
         bool removeInObject,
         bool removeIsolated,
-        DarkLineProcessor::RemovalMethod method,
-        const std::vector<DarkLine>& specificLines) {
-
-        saveCurrentState();
-
-        if (!specificLines.empty()) {
-            DarkLineProcessor::removeDarkLinesSequential(
-                finalImage,
-                specificLines,
-                removeInObject,
-                removeIsolated,
-                method
-                );
-
-            // Update the last removed lines record
-            m_lastRemovedLines.clear();
-            for (size_t i = 0; i < specificLines.size(); ++i) {
-                m_lastRemovedLines.push_back(i + 1);
-            }
-        }
-    }
+        LineRemovalMethod method = LineRemovalMethod::NEIGHBOR_VALUES);
 
 private:
     std::vector<std::vector<uint16_t>> imgData;
