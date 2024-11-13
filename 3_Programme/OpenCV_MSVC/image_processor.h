@@ -214,7 +214,7 @@ private:
     std::vector<DarkLine> m_detectedLines;
     std::vector<size_t> m_lastRemovedLines;
 
-    static constexpr int SEGMENT_WIDTH = 40;    // Default segment width for processing
+    static constexpr int SEGMENT_WIDTH = 100;    // Default segment width for processing
     static constexpr int WIDTH_THRESHOLD = 50;  // Threshold for using segmented processing
 
 };

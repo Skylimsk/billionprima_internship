@@ -27,9 +27,13 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
     , m_hasGpuClaheTime(false)
     , m_zoomControlsGroup(nullptr)
     , m_zoomWarningBox(nullptr)
+    , m_zoomButton(nullptr)  // Initialize m_zoomButton
 {
     m_mainLayout = new QVBoxLayout(this);
     this->setMinimumWidth(280);
+
+    // Connect the fileLoaded signal to enableButtons slot
+    connect(this, &ControlPanel::fileLoaded, this, &ControlPanel::enableButtons);
 
     setupPixelInfoLabel();
 
@@ -90,11 +94,18 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
     infoLayout->insertWidget(3, darkLineScrollArea);
     infoLayout->insertWidget(3, darkLineScrollArea);
 
-    // Setup other components
+    // Setup zoom warning box before setupBasicOperations
+    m_zoomWarningBox = new QMessageBox(this);
+    m_zoomWarningBox->setIcon(QMessageBox::Warning);
+    m_zoomWarningBox->setWindowTitle("Zoom Mode Active");
+    m_zoomWarningBox->setText("No functions can be applied while in Zoom Mode.\nPlease exit Zoom Mode first.");
+    m_zoomWarningBox->setStandardButtons(QMessageBox::Ok);
+
+    // Setup components in the correct order
     setupFileOperations();
     setupPreProcessingOperations();
+    setupZoomControls();  // Setup zoom controls before basic operations
     setupBasicOperations();
-    setupZoomControls();
     setupFilteringOperations();
     setupAdvancedOperations();
     setupCLAHEOperations();
@@ -109,13 +120,14 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
 
     m_mainLayout->addWidget(m_scrollArea);
     setLayout(m_mainLayout);
+}
 
-    // Setup zoom warning box
-    m_zoomWarningBox = new QMessageBox(this);
-    m_zoomWarningBox->setIcon(QMessageBox::Warning);
-    m_zoomWarningBox->setWindowTitle("Zoom Mode Active");
-    m_zoomWarningBox->setText("No functions can be applied while in Zoom Mode.\nPlease exit Zoom Mode first.");
-    m_zoomWarningBox->setStandardButtons(QMessageBox::Ok);
+void ControlPanel::enableButtons(bool enable) {
+    for (QPushButton* button : m_allButtons) {
+        if (button && button->text() != "Browse") {
+            button->setEnabled(enable);
+        }
+    }
 }
 
 bool ControlPanel::checkZoomMode() {
@@ -184,6 +196,8 @@ void ControlPanel::setupPixelInfoLabel()
 
     QPushButton* toggleHistogramButton = new QPushButton("Show Histogram");
     toggleHistogramButton->setFixedHeight(30);
+    toggleHistogramButton->setEnabled(false);  // Initially disabled
+    m_allButtons.push_back(toggleHistogramButton);
     toggleHistogramButton->setStyleSheet(
         "QPushButton {"
         "    background-color: #f0f0f0;"
@@ -299,6 +313,18 @@ void ControlPanel::setupZoomControls() {
     m_zoomOutButton = zoomOutBtn;
     m_resetZoomButton = resetZoomBtn;
 
+    // Initially disable all zoom buttons
+    zoomInBtn->setEnabled(false);
+    zoomOutBtn->setEnabled(false);
+    resetZoomBtn->setEnabled(false);
+    m_fixZoomButton->setEnabled(false);
+
+    // Add to m_allButtons for automatic enabling/disabling
+    m_allButtons.push_back(zoomInBtn);
+    m_allButtons.push_back(zoomOutBtn);
+    m_allButtons.push_back(resetZoomBtn);
+    m_allButtons.push_back(m_fixZoomButton);
+
     // Set fixed height for buttons
     const int buttonHeight = 35;
     zoomInBtn->setFixedHeight(buttonHeight);
@@ -361,87 +387,93 @@ void ControlPanel::setupZoomControls() {
 }
 
 void ControlPanel::toggleZoomMode(bool active) {
+    if (!m_zoomButton) return;  // Add safety check
+
     auto& zoomManager = m_imageProcessor.getZoomManager();
     if (zoomManager.isZoomModeActive() == active) return;
 
-    // If trying to deactivate while zoom is fixed, show warning and return
     if (!active && zoomManager.isZoomFixed()) {
         QMessageBox::warning(this, "Warning",
                              "Cannot deactivate zoom mode while zoom is fixed.\nPlease unfix zoom first.");
-        m_zoomButton->setChecked(true);  // Keep button checked
+        m_zoomButton->setChecked(true);
         return;
     }
 
-    if (!active) {  // Deactivating zoom mode
+    if (!active) {
         float currentZoom = zoomManager.getZoomLevel();
         zoomManager.toggleZoomMode(false);
 
-        // Hide zoom controls
-        m_zoomControlsGroup->hide();
-        m_scrollLayout->removeWidget(m_zoomControlsGroup);
+        if (m_zoomControlsGroup) {
+            m_zoomControlsGroup->hide();
+            m_scrollLayout->removeWidget(m_zoomControlsGroup);
+        }
+
         updateImageDisplay();
         updateLastAction("Zoom Mode", QString("Deactivated (Maintained %1x)").arg(currentZoom, 0, 'f', 2));
 
-        // Update button state
         m_zoomButton->setChecked(false);
         m_zoomButton->setText("Activate Zoom");
-    } else {  // Activating zoom mode
+        m_zoomButton->setProperty("state", ""); // Clear state property
+    } else {
         zoomManager.toggleZoomMode(true);
 
-        // Insert zoom controls after Basic Operations
-        int basicOpIndex = -1;
-        for (int i = 0; i < m_scrollLayout->count(); ++i) {
-            QGroupBox* box = qobject_cast<QGroupBox*>(m_scrollLayout->itemAt(i)->widget());
-            if (box && box->title() == "Basic Operations") {
-                basicOpIndex = i;
-                break;
+        if (m_zoomControlsGroup) {
+            int basicOpIndex = -1;
+            for (int i = 0; i < m_scrollLayout->count(); ++i) {
+                QGroupBox* box = qobject_cast<QGroupBox*>(m_scrollLayout->itemAt(i)->widget());
+                if (box && box->title() == "Basic Operations") {
+                    basicOpIndex = i;
+                    break;
+                }
             }
+
+            if (basicOpIndex >= 0) {
+                m_scrollLayout->insertWidget(basicOpIndex + 1, m_zoomControlsGroup);
+            }
+
+            m_zoomControlsGroup->show();
         }
 
-        if (basicOpIndex >= 0) {
-            m_scrollLayout->insertWidget(basicOpIndex + 1, m_zoomControlsGroup);
-        }
-
-        // Show controls and ensure they're enabled (unless fixed)
-        m_zoomControlsGroup->show();
-        if (!zoomManager.isZoomFixed()) {
-            m_zoomInButton->setEnabled(true);
-            m_zoomOutButton->setEnabled(true);
-            m_resetZoomButton->setEnabled(true);
-        }
-
-        // Update button state
         m_zoomButton->setChecked(true);
         m_zoomButton->setText("Deactivate Zoom");
+        // Set state based on fixed status
+        m_zoomButton->setProperty("state", zoomManager.isZoomFixed() ? "deactivate-fix" : "deactivate-unfix");
 
         updateLastAction("Zoom Mode", "Zoom Mode Activated");
     }
+
+    m_zoomButton->style()->unpolish(m_zoomButton);
+    m_zoomButton->style()->polish(m_zoomButton);
 
     updateImageDisplay();
 }
 
 void ControlPanel::setupFileOperations()
 {
+    // Initially disable all buttons except Browse
+    connect(this, &ControlPanel::fileLoaded, this, &ControlPanel::enableButtons);
+
     createGroupBox("File Operations", {
-                                          {"Browse", [this]() {
-                                               QString fileName = QFileDialog::getOpenFileName(this, "Open Text File", "", "Text Files (*.txt)");
-                                               if (!fileName.isEmpty()) {
-                                                   try {
-                                                       resetDetectedLines();
-                                                       m_darkLineInfoLabel->hide();
-                                                       m_imageProcessor.loadTxtImage(fileName.toStdString());
-                                                       m_imageLabel->clearSelection();
-                                                       updateImageDisplay();
-                                                       // Extract just the file name without path
-                                                       QFileInfo fileInfo(fileName);
-                                                       updateLastAction("Load Image", fileInfo.fileName());
-                                                       qDebug() << "Image loaded successfully from:" << fileName;
-                                                   } catch (const std::exception& e) {
-                                                       QMessageBox::critical(this, "Error", QString("Failed to load image: %1").arg(e.what()));
-                                                       qDebug() << "Error loading image:" << e.what();
-                                                   }
-                                               }
-                                           }},
+                                       {"Browse", [this]() {
+                                            QString fileName = QFileDialog::getOpenFileName(this, "Open Text File", "", "Text Files (*.txt)");
+                                            if (!fileName.isEmpty()) {
+                                                try {
+                                                    resetDetectedLines();
+                                                    m_darkLineInfoLabel->hide();
+                                                    m_imageProcessor.loadTxtImage(fileName.toStdString());
+                                                    m_imageLabel->clearSelection();
+                                                    updateImageDisplay();
+                                                    // Extract just the file name without path
+                                                    QFileInfo fileInfo(fileName);
+                                                    updateLastAction("Load Image", fileInfo.fileName());
+                                                    emit fileLoaded(true);
+                                                    qDebug() << "Image loaded successfully from:" << fileName;
+                                                } catch (const std::exception& e) {
+                                                    QMessageBox::critical(this, "Error", QString("Failed to load image: %1").arg(e.what()));
+                                                    qDebug() << "Error loading image:" << e.what();
+                                                }
+                                            }
+                                        }},
                                           {"Save", [this]() {
                                                QString filePath = QFileDialog::getSaveFileName(this, "Save Image", "", "PNG Files (*.png)");
                                                if (!filePath.isEmpty()) {
@@ -483,62 +515,70 @@ void ControlPanel::setupFileOperations()
 
 void ControlPanel::setupBasicOperations()
 {
-    // Create and setup zoom button before creating group box
-    m_zoomButton = new QPushButton("Zoom");
-    m_zoomButton->setCheckable(true);
-    m_zoomButton->setFixedHeight(35);
+    if (!m_zoomButton) {
+        m_zoomButton = new QPushButton("Activate Zoom", this);
+        m_zoomButton->setCheckable(true);
+        m_zoomButton->setFixedHeight(35);
+        m_zoomButton->setEnabled(false);  // Initially disabled
+        m_allButtons.push_back(m_zoomButton);
 
-    // Set up the style sheets for different states
-    m_zoomButton->setStyleSheet(
-        "QPushButton {"
-        "    background-color: #f0f0f0;"
-        "    border: 1px solid #c0c0c0;"
-        "    border-radius: 4px;"
-        "    padding: 5px;"
-        "}"
-        "QPushButton:hover {"
-        "    background-color: #e0e0e0;"
-        "}"
-        "QPushButton:checked {"
-        "    background-color: #ff4444;"  // Red color for fixed state
-        "    color: white;"
-        "    border: 1px solid #cc0000;"
-        "}"
-        "QPushButton:checked:hover {"
-        "    background-color: #ff6666;"
-        "}"
-        );
+        m_zoomButton->setStyleSheet(
+            "QPushButton {"
+            "    background-color: #f0f0f0;"
+            "    border: 1px solid #c0c0c0;"
+            "    border-radius: 4px;"
+            "    padding: 5px;"
+            "}"
+            "QPushButton:hover {"
+            "    background-color: #e0e0e0;"
+            "}"
+            "QPushButton[state=\"deactivate-fix\"] {"  // Red background for Deactivate + Fix
+            "    background-color: #ff4444;"
+            "    color: white;"
+            "    border: 1px solid #cc0000;"
+            "}"
+            "QPushButton[state=\"deactivate-fix\"]:hover {"
+            "    background-color: #ff6666;"
+            "}"
+            "QPushButton[state=\"deactivate-unfix\"] {"  // Blue background for Deactivate + Unfix
+            "    background-color: #4444ff;"
+            "    color: white;"
+            "    border: 1px solid #0000cc;"
+            "}"
+            "QPushButton[state=\"deactivate-unfix\"]:hover {"
+            "    background-color: #6666ff;"
+            "}"
+            );
 
-    // Connect the zoom button signal
-    connect(m_zoomButton, &QPushButton::clicked, this, [this]() {
-        auto& zoomManager = m_imageProcessor.getZoomManager();
-        bool isActive = zoomManager.isZoomModeActive();
-        bool isFixed = zoomManager.isZoomFixed();
+        // Connect the zoom button signal
+        if (m_zoomButton) {  // Add null check
+            connect(m_zoomButton, &QPushButton::clicked, this, [this]() {
+                auto& zoomManager = m_imageProcessor.getZoomManager();
+                bool isActive = zoomManager.isZoomModeActive();
+                bool isFixed = zoomManager.isZoomFixed();
 
-        if (!isActive) {
-            // Activating zoom mode
-            toggleZoomMode(true);
-            m_zoomButton->setText("Deactivate Zoom");
-        } else {
-            // Trying to deactivate
-            if (isFixed) {
-                QMessageBox::warning(this, "Warning",
-                                     "Cannot deactivate zoom mode while zoom is fixed.\nPlease unfix zoom first.");
-                return;
-            }
-            toggleZoomMode(false);
-            m_zoomButton->setText("Zoom");
+                if (!isActive) {
+                    toggleZoomMode(true);
+                } else {
+                    if (isFixed) {
+                        QMessageBox::warning(this, "Warning",
+                                             "Cannot deactivate zoom mode while zoom is fixed.\nPlease unfix zoom first.");
+                        return;
+                    }
+                    toggleZoomMode(false);
+                }
+            });
         }
-
-        // Update button checked state based on fixed state
-        m_zoomButton->setChecked(isFixed);
-    });
+    }
 
     // Connect to fix zoom button to update main zoom button state
     connect(m_fixZoomButton, &QPushButton::toggled, this, [this](bool checked) {
-        m_zoomButton->setChecked(checked);
+        if (m_zoomButton && m_zoomButton->text() == "Deactivate Zoom") {
+            m_zoomButton->setProperty("state", checked ? "deactivate-fix" : "deactivate-unfix");
+            m_zoomButton->style()->unpolish(m_zoomButton);
+            m_zoomButton->style()->polish(m_zoomButton);
+        }
     });
-
     createGroupBox("Basic Operations", {
                                            {"Zoom", m_zoomButton},  // Pass the button instead of creating a new one
                                            {"Crop", [this]() {
@@ -591,6 +631,8 @@ void ControlPanel::setupPreProcessingOperations() {
     m_calibrationButton = new QPushButton("Calibration");
     m_calibrationButton->setFixedHeight(35);
     m_calibrationButton->setToolTip("Apply calibration using Y-axis and X-axis parameters");
+    m_calibrationButton->setEnabled(false);  // Initially disabled
+    m_allButtons.push_back(m_calibrationButton);
     layout->addWidget(m_calibrationButton);
 
     // Create reset calibration button
@@ -598,12 +640,15 @@ void ControlPanel::setupPreProcessingOperations() {
     m_resetCalibrationButton->setFixedHeight(35);
     m_resetCalibrationButton->setEnabled(false); // Initially disabled
     m_resetCalibrationButton->setToolTip("Reset stored calibration parameters");
+    m_allButtons.push_back(m_resetCalibrationButton);
     layout->addWidget(m_resetCalibrationButton);
 
     // Create Enhanced Interlace button
     QPushButton* enhancedInterlaceBtn = new QPushButton("Enhanced Interlace");
     enhancedInterlaceBtn->setFixedHeight(35);
     enhancedInterlaceBtn->setToolTip("Process image using enhanced interlacing method");
+    enhancedInterlaceBtn->setEnabled(false);  // Initially disabled
+    m_allButtons.push_back(enhancedInterlaceBtn);
     layout->addWidget(enhancedInterlaceBtn);
 
     // Connect calibration button
@@ -1192,10 +1237,14 @@ std::pair<double, bool> ControlPanel::showInputDialog(const QString& title, cons
 void ControlPanel::createGroupBox(const QString& title,
                                   const std::vector<std::pair<QString, std::variant<std::function<void()>, QPushButton*>>>& buttons)
 {
+    // Clear previous buttons if this is a new setup
+    if (title == "File Operations") {
+        m_allButtons.clear();
+    }
+
     QGroupBox* groupBox = new QGroupBox(title);
     QVBoxLayout* groupLayout = new QVBoxLayout(groupBox);
 
-    // Increase the minimum width of the group box
     const int groupBoxMinWidth = 250;
     const int buttonHeight = 35;
 
@@ -1212,6 +1261,12 @@ void ControlPanel::createGroupBox(const QString& title,
             button = new QPushButton(button_pair.first);
             button->setFixedHeight(buttonHeight);
             button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+            // Store button in the vector and disable if it's not Browse
+            m_allButtons.push_back(button);
+            if (button->text() != "Browse") {
+                button->setEnabled(false);
+            }
 
             // Connect the lambda if provided
             if (auto* func = std::get_if<std::function<void()>>(&button_pair.second)) {

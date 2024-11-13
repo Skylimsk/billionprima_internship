@@ -18,6 +18,9 @@
 class ControlPanel : public QWidget {
     Q_OBJECT
 
+signals:
+    void fileLoaded(bool loaded);
+
 public:
     ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabel, QWidget* parent = nullptr);
     void updatePixelInfo(const QPoint& pos);
@@ -35,6 +38,7 @@ private:
     void setupCLAHEOperations();
     void setupBlackLineDetection();
     void handleRevert();
+    void enableButtons(bool enable);
 
     // Zoom-related methods
     void setupZoomControls();
@@ -65,6 +69,7 @@ private:
     bool m_hasGpuClaheTime;
 
     Histogram* m_histogram;
+    std::vector<QPushButton*> m_allButtons;
 
     // Only keep the UI element for zoom controls
     QGroupBox* m_zoomControlsGroup;
@@ -94,7 +99,6 @@ private:
     QPushButton* m_zoomOutButton;
     QPushButton* m_resetZoomButton;
     QPushButton* m_zoomButton;
-
 };
 
 #endif // CONTROL_PANEL_H
