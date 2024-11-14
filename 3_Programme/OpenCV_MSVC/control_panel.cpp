@@ -2017,606 +2017,227 @@ void ControlPanel::setupPointerProcessing() {
                                                                                     QString("Error in line detection: %1").arg(e.what()));
                                                           }
                                                       }},
-                                                        {"Remove Lines (2D Pointer)", [this]() {
-                                                             if (checkZoomMode()) return;
-
-                                                             if (m_detectedLines.empty()) {
-                                                                 QMessageBox::information(this, "Remove Lines",
-                                                                                          "Please detect lines first using the 2D Pointer method.");
-                                                                 return;
-                                                             }
-
-                                                             try {
-                                                                 // Store initial line information for comparison
-                                                                 std::vector<ImageProcessor::DarkLine> initialLines = m_detectedLines;
-
-                                                                 // Create main dialog with improved styling
-                                                                 QDialog dialog(this);
-                                                                 dialog.setWindowTitle("Remove Lines (2D Pointer)");
-                                                                 dialog.setMinimumWidth(400);
-                                                                 dialog.setStyleSheet(
-                                                                     "QDialog { background-color: #f8f9fa; }"
-                                                                     "QGroupBox { "
-                                                                     "   font-weight: bold; "
-                                                                     "   border: 1px solid #ddd; "
-                                                                     "   border-radius: 4px; "
-                                                                     "   margin-top: 8px; "
-                                                                     "   padding-top: 16px; "
-                                                                     "}"
-                                                                     "QGroupBox::title { "
-                                                                     "   subcontrol-origin: margin; "
-                                                                     "   left: 7px; "
-                                                                     "   padding: 0 3px; "
-                                                                     "}"
-                                                                     "QRadioButton { padding: 2px; }"
-                                                                     "QRadioButton:hover { background-color: #e9ecef; border-radius: 3px; }"
-                                                                     );
-
-                                                                 QVBoxLayout* layout = new QVBoxLayout(&dialog);
-                                                                 layout->setSpacing(10);
-                                                                 layout->setContentsMargins(12, 12, 12, 12);
-
-                                                                 // Count lines by type
-                                                                 int inObjectCount = 0;
-                                                                 int isolatedCount = 0;
-                                                                 for (const auto& line : m_detectedLines) {
-                                                                     if (line.inObject) inObjectCount++;
-                                                                     else isolatedCount++;
-                                                                 }
-
-                                                                 // Create line type selection group with enhanced information
-                                                                 QGroupBox* typeBox = new QGroupBox("Select Lines to Remove");
-                                                                 QVBoxLayout* typeLayout = new QVBoxLayout();
-                                                                 typeLayout->setSpacing(8);
-
-                                                                 // Add informative label
-                                                                 QLabel* infoLabel = new QLabel(QString(
-                                                                                                    "Found %1 total lines:\n"
-                                                                                                    "• %2 in-object lines\n"
-                                                                                                    "• %3 isolated lines")
-                                                                                                    .arg(m_detectedLines.size())
-                                                                                                    .arg(inObjectCount)
-                                                                                                    .arg(isolatedCount));
-                                                                 infoLabel->setStyleSheet(
-                                                                     "QLabel { "
-                                                                     "   color: #495057; "
-                                                                     "   padding: 8px; "
-                                                                     "   background-color: #e9ecef; "
-                                                                     "   border-radius: 4px; "
-                                                                     "   margin-bottom: 8px; "
-                                                                     "}"
-                                                                     );
-                                                                 typeLayout->addWidget(infoLabel);
-
-                                                                 // Create radio buttons with counts
-                                                                 QRadioButton* inObjectRadio = new QRadioButton(
-                                                                     QString("Remove In Object Lines (%1 lines)").arg(inObjectCount));
-                                                                 QRadioButton* isolatedRadio = new QRadioButton(
-                                                                     QString("Remove Isolated Lines (%1 lines)").arg(isolatedCount));
-
-                                                                 inObjectRadio->setChecked(true);
-                                                                 typeLayout->addWidget(inObjectRadio);
-                                                                 typeLayout->addWidget(isolatedRadio);
-
-                                                                 // Add help text
-                                                                 QLabel* helpText = new QLabel(
-                                                                     "In-object lines are parts of larger structures.\n"
-                                                                     "Isolated lines are standalone artifacts.");
-                                                                 helpText->setStyleSheet(
-                                                                     "QLabel { "
-                                                                     "   color: #6c757d; "
-                                                                     "   font-size: 11px; "
-                                                                     "   font-style: italic; "
-                                                                     "   padding: 4px; "
-                                                                     "}"
-                                                                     );
-                                                                 typeLayout->addWidget(helpText);
-
-                                                                 typeBox->setLayout(typeLayout);
-                                                                 layout->addWidget(typeBox);
-                                                                 QGroupBox* methodBox = new QGroupBox("Removal Method");
-                                                                 methodBox->setStyleSheet(methodBox->styleSheet() +
-                                                                                          "QGroupBox { margin-top: 16px; }");
-                                                                 QVBoxLayout* methodLayout = new QVBoxLayout();
-                                                                 methodLayout->setSpacing(8);
-
-                                                                 // Add method description label
-                                                                 QLabel* methodDescription = new QLabel(
-                                                                     "Choose how to process the selected lines:");
-                                                                 methodDescription->setStyleSheet(
-                                                                     "QLabel { "
-                                                                     "   color: #495057; "
-                                                                     "   padding: 4px; "
-                                                                     "   margin-bottom: 4px; "
-                                                                     "}"
-                                                                     );
-                                                                 methodLayout->addWidget(methodDescription);
-
-                                                                 // Create method radio buttons
-                                                                 QRadioButton* neighborValuesRadio = new QRadioButton("Use Neighbor Values");
-                                                                 QRadioButton* stitchRadio = new QRadioButton("Direct Stitch");
-                                                                 neighborValuesRadio->setChecked(true);
-
-                                                                 // Add method explanations
-                                                                 QLabel* neighborExplanation = new QLabel(
-                                                                     "Replaces line pixels using weighted average of nearby values");
-                                                                 QLabel* stitchExplanation = new QLabel(
-                                                                     "Directly connects pixels across the line");
-
-                                                                 QString explanationStyle =
-                                                                     "QLabel { "
-                                                                     "   color: #6c757d; "
-                                                                     "   font-size: 11px; "
-                                                                     "   padding-left: 20px; "
-                                                                     "   font-style: italic; "
-                                                                     "}";
-                                                                 neighborExplanation->setStyleSheet(explanationStyle);
-                                                                 stitchExplanation->setStyleSheet(explanationStyle);
-
-                                                                 methodLayout->addWidget(neighborValuesRadio);
-                                                                 methodLayout->addWidget(neighborExplanation);
-                                                                 methodLayout->addWidget(stitchRadio);
-                                                                 methodLayout->addWidget(stitchExplanation);
-                                                                 methodBox->setLayout(methodLayout);
-                                                                 layout->addWidget(methodBox);
-
-                                                                 // Line selection list with enhanced UI
-                                                                 QGroupBox* lineSelectionBox = new QGroupBox("Select Lines to Process");
-                                                                 lineSelectionBox->setStyleSheet(lineSelectionBox->styleSheet() +
-                                                                                                 "QGroupBox { margin-top: 16px; }");
-                                                                 QVBoxLayout* selectionLayout = new QVBoxLayout();
-
-                                                                 // Add list description
-                                                                 QLabel* listDescription = new QLabel(
-                                                                     "Select the lines you want to process:");
-                                                                 listDescription->setStyleSheet(
-                                                                     "QLabel { "
-                                                                     "   color: #495057; "
-                                                                     "   padding: 4px; "
-                                                                     "   margin-bottom: 4px; "
-                                                                     "}"
-                                                                     );
-                                                                 selectionLayout->addWidget(listDescription);
-
-                                                                 // Create and style the list widget
-                                                                 QListWidget* lineList = new QListWidget();
-                                                                 lineList->setSelectionMode(QAbstractItemView::ExtendedSelection);
-                                                                 lineList->setStyleSheet(
-                                                                     "QListWidget { "
-                                                                     "   border: 1px solid #dee2e6; "
-                                                                     "   border-radius: 4px; "
-                                                                     "   background-color: white; "
-                                                                     "   padding: 2px; "
-                                                                     "}"
-                                                                     "QListWidget::item { "
-                                                                     "   padding: 6px; "
-                                                                     "   border-bottom: 1px solid #f0f0f0; "
-                                                                     "}"
-                                                                     "QListWidget::item:selected { "
-                                                                     "   background-color: #e7f3ff; "
-                                                                     "   color: #000000; "
-                                                                     "}"
-                                                                     "QListWidget::item:hover { "
-                                                                     "   background-color: #f8f9fa; "
-                                                                     "}"
-                                                                     );
-
-                                                                 // Populate the list with lines
-                                                                 for (size_t i = 0; i < m_detectedLines.size(); ++i) {
-                                                                     const auto& line = m_detectedLines[i];
-                                                                     if (line.inObject) {
-                                                                         QString lineInfo;
-                                                                         if (line.isVertical) {
-                                                                             lineInfo = QString("Line %1: Vertical at x=%2 (width: %3, length: %4)")
-                                                                             .arg(i + 1)
-                                                                                 .arg(line.x)
-                                                                                 .arg(line.width)
-                                                                                 .arg(line.endY - line.startY);
-                                                                         } else {
-                                                                             lineInfo = QString("Line %1: Horizontal at y=%2 (width: %3, length: %4)")
-                                                                             .arg(i + 1)
-                                                                                 .arg(line.y)
-                                                                                 .arg(line.width)
-                                                                                 .arg(line.endX - line.startX);
-                                                                         }
-                                                                         QListWidgetItem* item = new QListWidgetItem(lineInfo);
-                                                                         item->setData(Qt::UserRole, static_cast<int>(i));
-                                                                         lineList->addItem(item);
-                                                                     }
-                                                                 }
-
-                                                                 // Selection mode handling
-                                                                 connect(stitchRadio, &QRadioButton::toggled, [this, lineList, neighborValuesRadio](bool checked) {
-                                                                     lineList->setSelectionMode(checked ?
-                                                                                                    QAbstractItemView::SingleSelection :
-                                                                                                    QAbstractItemView::ExtendedSelection);
-
-                                                                     if (checked) {
-                                                                         // Show warning about single selection mode
-                                                                         QLabel* warningLabel = new QLabel(
-                                                                             "⚠️ Direct Stitch mode only allows processing one line at a time");
-                                                                         warningLabel->setStyleSheet(
-                                                                             "QLabel { color: #856404; background-color: #fff3cd; padding: 8px; border-radius: 4px; }");
-                                                                         warningLabel->setWordWrap(true);
-
-                                                                         // Show the warning temporarily
-                                                                         warningLabel->show();
-                                                                         QTimer::singleShot(3000, warningLabel, &QLabel::deleteLater);
-
-                                                                         // Clear multiple selections
-                                                                         if (lineList->selectedItems().count() > 1) {
-                                                                             lineList->clearSelection();
-                                                                             if (lineList->count() > 0) {
-                                                                                 lineList->item(0)->setSelected(true);
-                                                                             }
-                                                                         }
-                                                                     }
-                                                                 });
-
-                                                                 lineList->setMinimumHeight(200);
-                                                                 lineList->setMaximumHeight(300);
-                                                                 selectionLayout->addWidget(lineList);
-
-                                                                 // Add selection helper buttons with improved styling
-                                                                 QHBoxLayout* buttonLayout = new QHBoxLayout();
-
-                                                                 QPushButton* selectAllButton = new QPushButton("Select All");
-                                                                 QPushButton* clearSelectionButton = new QPushButton("Clear Selection");
-
-                                                                 QString buttonStyle =
-                                                                     "QPushButton { "
-                                                                     "   padding: 6px 12px; "
-                                                                     "   border: 1px solid #ced4da; "
-                                                                     "   border-radius: 4px; "
-                                                                     "   background-color: #f8f9fa; "
-                                                                     "}"
-                                                                     "QPushButton:hover { "
-                                                                     "   background-color: #e9ecef; "
-                                                                     "}"
-                                                                     "QPushButton:pressed { "
-                                                                     "   background-color: #dee2e6; "
-                                                                     "}";
-
-                                                                 selectAllButton->setStyleSheet(buttonStyle);
-                                                                 clearSelectionButton->setStyleSheet(buttonStyle);
-
-                                                                 connect(selectAllButton, &QPushButton::clicked, lineList, &QListWidget::selectAll);
-                                                                 connect(clearSelectionButton, &QPushButton::clicked, lineList, &QListWidget::clearSelection);
-
-                                                                 buttonLayout->addWidget(selectAllButton);
-                                                                 buttonLayout->addWidget(clearSelectionButton);
-                                                                 selectionLayout->addLayout(buttonLayout);
-
-                                                                 // Selection count label
-                                                                 QLabel* selectionCountLabel = new QLabel("No lines selected");
-                                                                 selectionCountLabel->setStyleSheet(
-                                                                     "QLabel { color: #6c757d; padding: 4px; }");
-                                                                 selectionLayout->addWidget(selectionCountLabel);
-
-                                                                 // Update selection count when selection changes
-                                                                 connect(lineList, &QListWidget::itemSelectionChanged, [lineList, selectionCountLabel]() {
-                                                                     int count = lineList->selectedItems().count();
-                                                                     selectionCountLabel->setText(QString("%1 line%2 selected")
-                                                                                                      .arg(count)
-                                                                                                      .arg(count != 1 ? "s" : ""));
-                                                                 });
-
-                                                                 lineSelectionBox->setLayout(selectionLayout);
-                                                                 layout->addWidget(lineSelectionBox);
-                                                                 QGroupBox* processingBox = new QGroupBox("Processing Options");
-                                                                 QVBoxLayout* processingLayout = new QVBoxLayout();
-
-                                                                 // Add batch/sequential selection
-                                                                 QLabel* processTypeLabel = new QLabel(
-                                                                     "Choose how to apply the removal:");
-                                                                 processTypeLabel->setStyleSheet(
-                                                                     "QLabel { color: #495057; padding: 4px; }");
-                                                                 processingLayout->addWidget(processTypeLabel);
-
-                                                                 QRadioButton* batchRadio = new QRadioButton("Batch Processing");
-                                                                 QRadioButton* sequentialRadio = new QRadioButton("Sequential Processing");
-                                                                 batchRadio->setChecked(true);
-
-                                                                 // Add explanations for processing types
-                                                                 QLabel* batchExplanation = new QLabel(
-                                                                     "Process all selected lines simultaneously");
-                                                                 QLabel* sequentialExplanation = new QLabel(
-                                                                     "Process lines one by one in selection order");
-
-                                                                 neighborExplanation->setStyleSheet(explanationStyle);
-                                                                 stitchExplanation->setStyleSheet(explanationStyle);
-                                                                 batchExplanation->setStyleSheet(explanationStyle);
-                                                                 sequentialExplanation->setStyleSheet(explanationStyle);
-
-                                                                 processingLayout->addWidget(batchRadio);
-                                                                 processingLayout->addWidget(batchExplanation);
-                                                                 processingLayout->addWidget(sequentialRadio);
-                                                                 processingLayout->addWidget(sequentialExplanation);
-                                                                 processingBox->setLayout(processingLayout);
-                                                                 layout->addWidget(processingBox);
-
-                                                                 // Preview information section
-                                                                 QLabel* previewInfo = new QLabel(
-                                                                     "💡 The changes will be applied to the image and can be reverted "
-                                                                     "using the 'Revert' button if needed.");
-                                                                 previewInfo->setStyleSheet(
-                                                                     "QLabel { "
-                                                                     "   color: #0c5460; "
-                                                                     "   background-color: #d1ecf1; "
-                                                                     "   border: 1px solid #bee5eb; "
-                                                                     "   border-radius: 4px; "
-                                                                     "   padding: 10px; "
-                                                                     "   margin: 8px 0px; "
-                                                                     "}"
-                                                                     );
-                                                                 previewInfo->setWordWrap(true);
-                                                                 layout->addWidget(previewInfo);
-
-                                                                 // Control visibility logic with animation support
-                                                                 auto updateVisibility = [&]() {
-                                                                     bool isInObject = inObjectRadio->isChecked();
-
-                                                                     // Store affected widgets and their target states
-                                                                     QMap<QWidget*, bool> widgetStates;
-                                                                     widgetStates[methodBox] = isInObject;
-                                                                     widgetStates[lineSelectionBox] = isInObject;
-                                                                     widgetStates[processingBox] = isInObject;
-
-                                                                     // Create animation group for smooth transitions
-                                                                     QParallelAnimationGroup* animGroup = new QParallelAnimationGroup(&dialog);
-
-                                                                     for (auto it = widgetStates.begin(); it != widgetStates.end(); ++it) {
-                                                                         QWidget* widget = it.key();
-                                                                         bool targetVisible = it.value();
-
-                                                                         if (widget->isVisible() != targetVisible) {
-                                                                             QPropertyAnimation* heightAnim = new QPropertyAnimation(widget, "maximumHeight");
-                                                                             heightAnim->setDuration(200);
-                                                                             heightAnim->setStartValue(widget->height());
-                                                                             heightAnim->setEndValue(targetVisible ? widget->sizeHint().height() : 0);
-                                                                             heightAnim->setEasingCurve(QEasingCurve::InOutQuad);
-
-                                                                             connect(heightAnim, &QPropertyAnimation::finished, [widget, targetVisible]() {
-                                                                                 widget->setVisible(targetVisible);
-                                                                             });
-
-                                                                             animGroup->addAnimation(heightAnim);
-                                                                         }
-                                                                     }
-
-                                                                     animGroup->start(QAbstractAnimation::DeleteWhenStopped);
-                                                                     dialog.adjustSize();
-                                                                 };
-
-                                                                 // Connect visibility controls
-                                                                 connect(inObjectRadio, &QRadioButton::toggled, updateVisibility);
-                                                                 connect(isolatedRadio, &QRadioButton::toggled, updateVisibility);
-
-                                                                 // Add dialog buttons with enhanced styling
-                                                                 QDialogButtonBox* buttonBox = new QDialogButtonBox(
-                                                                     QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-                                                                 buttonBox->setStyleSheet(
-                                                                     "QPushButton { "
-                                                                     "   padding: 6px 16px; "
-                                                                     "   border-radius: 4px; "
-                                                                     "   min-width: 80px; "
-                                                                     "}"
-                                                                     "QPushButton[text=\"OK\"] { "
-                                                                     "   background-color: #007bff; "
-                                                                     "   color: white; "
-                                                                     "   border: none; "
-                                                                     "}"
-                                                                     "QPushButton[text=\"OK\"]:hover { "
-                                                                     "   background-color: #0056b3; "
-                                                                     "}"
-                                                                     "QPushButton[text=\"Cancel\"] { "
-                                                                     "   background-color: #6c757d; "
-                                                                     "   color: white; "
-                                                                     "   border: none; "
-                                                                     "}"
-                                                                     "QPushButton[text=\"Cancel\"]:hover { "
-                                                                     "   background-color: #545b62; "
-                                                                     "}"
-                                                                     );
-
-                                                                 // Add processing indicator
-                                                                 QLabel* processingLabel = new QLabel("");
-                                                                 processingLabel->setStyleSheet(
-                                                                     "QLabel { color: #28a745; padding: 4px; }");
-
-                                                                 QHBoxLayout* bottomLayout = new QHBoxLayout();
-                                                                 bottomLayout->addWidget(processingLabel);
-                                                                 bottomLayout->addWidget(buttonBox);
-                                                                 layout->addLayout(bottomLayout);
-
-                                                                 // Connect dialog buttons
-                                                                 connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-                                                                 connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-
-                                                                 dialog.setLayout(layout);
-                                                                 updateVisibility();
-                                                                 if (dialog.exec() == QDialog::Accepted) {
-                                                                     try {
-                                                                         // Update processing indicator
-                                                                         processingLabel->setText("Processing...");
-                                                                         QApplication::processEvents();
-
-                                                                         // Convert image to ImageData format
-                                                                         auto imageData = convertToImageData(m_imageProcessor.getFinalImage());
-
-                                                                         // Setup processing parameters
-                                                                         DarkLinePointerProcessor::RemovalMethod method =
-                                                                             neighborValuesRadio->isChecked() ?
-                                                                                 DarkLinePointerProcessor::RemovalMethod::NEIGHBOR_VALUES :
-                                                                                 DarkLinePointerProcessor::RemovalMethod::DIRECT_STITCH;
-
-                                                                         bool processInObject = inObjectRadio->isChecked();
-                                                                         bool processIsolated = isolatedRadio->isChecked();
-
-                                                                         // Get selected lines for processing
-                                                                         std::vector<DarkLinePointerProcessor::DarkLine> selectedLines;
-                                                                         if (processInObject) {
-                                                                             auto selectedItems = lineList->selectedItems();
-                                                                             if (selectedItems.isEmpty() && !isolatedRadio->isChecked()) {
-                                                                                 QMessageBox::warning(this, "Warning",
-                                                                                                      "Please select at least one line for processing.");
-                                                                                 return;
-                                                                             }
-
-                                                                             // Collect selected lines
-                                                                             for (QListWidgetItem* item : selectedItems) {
-                                                                                 int index = item->data(Qt::UserRole).toInt();
-                                                                                 selectedLines.push_back(
-                                                                                     convertToDarkLinePointer(m_detectedLines[index]));
-                                                                             }
-                                                                         }
-
-                                                                         // Process the lines
-                                                                         if (batchRadio->isChecked()) {
-                                                                             // Batch processing
-                                                                             if (processInObject && !selectedLines.empty()) {
-                                                                                 DarkLinePointerProcessor::removeDarkLinesSelective(
-                                                                                     imageData,
-                                                                                     selectedLines,
-                                                                                     true,   // processInObject
-                                                                                     false,  // processIsolated
-                                                                                     method
-                                                                                     );
-                                                                             } else if (processIsolated) {
-                                                                                 DarkLinePointerProcessor::removeDarkLinesSelective(
-                                                                                     imageData,
-                                                                                     convertToDarkLinePointerVector(m_detectedLines),
-                                                                                     false,  // processInObject
-                                                                                     true,   // processIsolated
-                                                                                     method
-                                                                                     );
-                                                                             }
-                                                                         } else {
-                                                                             // Sequential processing
-                                                                             if (processInObject && !selectedLines.empty()) {
-                                                                                 DarkLinePointerProcessor::removeDarkLinesSequential(
-                                                                                     imageData,
-                                                                                     selectedLines,
-                                                                                     true,   // processInObject
-                                                                                     false,  // processIsolated
-                                                                                     method
-                                                                                     );
-                                                                             } else if (processIsolated) {
-                                                                                 DarkLinePointerProcessor::removeDarkLinesSequential(
-                                                                                     imageData,
-                                                                                     convertToDarkLinePointerVector(m_detectedLines),
-                                                                                     false,  // processInObject
-                                                                                     true,   // processIsolated
-                                                                                     method
-                                                                                     );
-                                                                             }
-                                                                         }
-
-                                                                         // Convert back and update image
-                                                                         auto newImage = convertFromImageData(imageData);
-                                                                         m_imageProcessor.updateAndSaveFinalImage(newImage);
-
-                                                                         // Create removal summary
-                                                                         QString removalInfo = "Line Removal Summary:\n\n";
-                                                                         removalInfo += QString("Method: %1\n")
-                                                                                            .arg(neighborValuesRadio->isChecked() ? "Neighbor Values" : "Direct Stitch");
-                                                                         removalInfo += QString("Processing: %1\n")
-                                                                                            .arg(batchRadio->isChecked() ? "Batch" : "Sequential");
-                                                                         removalInfo += QString("Line Type: %1\n\n")
-                                                                                            .arg(inObjectRadio->isChecked() ? "In-Object Lines" : "Isolated Lines");
-
-                                                                         // Add processed lines details
-                                                                         removalInfo += "Processed Lines:\n";
-                                                                         if (processInObject) {
-                                                                             for (const auto& line : selectedLines) {
-                                                                                 QString coordinates;
-                                                                                 if (line.isVertical) {
-                                                                                     coordinates = QString("(%1,%2)-(%1,%3)")
-                                                                                     .arg(line.x)
-                                                                                         .arg(line.startY)
-                                                                                         .arg(line.endY);
-                                                                                 } else {
-                                                                                     coordinates = QString("(%1,%2)-(%3,%2)")
-                                                                                     .arg(line.startX)
-                                                                                         .arg(line.y)
-                                                                                         .arg(line.endX);
-                                                                                 }
-
-                                                                                 removalInfo += QString("• %1 at %2 (width: %3)\n")
-                                                                                                    .arg(line.isVertical ? "Vertical" : "Horizontal")
-                                                                                                    .arg(coordinates)
-                                                                                                    .arg(line.width);
-                                                                             }
-                                                                         } else {
-                                                                             int isolatedProcessed = 0;
-                                                                             for (const auto& line : m_detectedLines) {
-                                                                                 if (!line.inObject) {
-                                                                                     QString coordinates;
-                                                                                     if (line.isVertical) {
-                                                                                         coordinates = QString("(%1,%2)-(%1,%3)")
-                                                                                         .arg(line.x)
-                                                                                             .arg(line.startY)
-                                                                                             .arg(line.endY);
-                                                                                     } else {
-                                                                                         coordinates = QString("(%1,%2)-(%3,%2)")
-                                                                                         .arg(line.startX)
-                                                                                             .arg(line.y)
-                                                                                             .arg(line.endX);
-                                                                                     }
-
-                                                                                     removalInfo += QString("• %1 at %2 (width: %3)\n")
-                                                                                                        .arg(line.isVertical ? "Vertical" : "Horizontal")
-                                                                                                        .arg(coordinates)
-                                                                                                        .arg(line.width);
-                                                                                     isolatedProcessed++;
-                                                                                 }
-                                                                             }
-                                                                             removalInfo += QString("\nTotal isolated lines processed: %1\n")
-                                                                                                .arg(isolatedProcessed);
-                                                                         }
-
-                                                                         // Update the info label
-                                                                         m_darkLineInfoLabel->setText(removalInfo);
-
-                                                                         // Adjust scroll area height
-                                                                         QFontMetrics fm(m_darkLineInfoLabel->font());
-                                                                         int textHeight = fm.lineSpacing() * removalInfo.count('\n') + 40;
-                                                                         int preferredHeight = qMin(textHeight, 300);
-                                                                         preferredHeight = qMax(preferredHeight, 30);
-
-                                                                         QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
-                                                                             qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
-                                                                             );
-                                                                         darkLineScrollArea->setFixedHeight(preferredHeight);
-
-                                                                         // Show the info label and scroll area
-                                                                         m_darkLineInfoLabel->setVisible(true);
-                                                                         darkLineScrollArea->setVisible(true);
-
-                                                                         // Update display
-                                                                         updateImageDisplay();
-                                                                         QString actionStr = QString("Remove Lines (2D Pointer) - %1, %2, %3")
-                                                                                                 .arg(neighborValuesRadio->isChecked() ? "Neighbor Values" : "Direct Stitch")
-                                                                                                 .arg(batchRadio->isChecked() ? "Batch" : "Sequential")
-                                                                                                 .arg(inObjectRadio->isChecked() ? "In-Object Lines" : "Isolated Lines");
-                                                                         updateLastAction(actionStr);
-
-                                                                         // Reset for next operation
-                                                                         resetDetectedLines();
-
-                                                                         QMessageBox::information(this, "Success",
-                                                                                                  "Line removal completed successfully.");
-
-                                                                     } catch (const std::exception& e) {
-                                                                         QMessageBox::critical(this, "Error",
-                                                                                               QString("Error in line removal: %1").arg(e.what()));
-                                                                     }
-                                                                 }
-                                                             } catch (const std::exception& e) {
-                                                                 QMessageBox::critical(this, "Error",
-                                                                                       QString("Error initializing line removal: %1").arg(e.what()));
-                                                             }
-                                                         }}
+                                                     // 在 Remove Lines (2D Pointer) 按钮的回调函数中
+                                                     {"Remove Lines (2D Pointer)", [this]() {
+                                                          if (checkZoomMode()) return;
+
+                                                          if (m_detectedLines.empty()) {
+                                                              QMessageBox::information(this, "Remove Lines", "Please detect lines first.");
+                                                              return;
+                                                          }
+
+                                                          // Create main dialog
+                                                          QDialog dialog(this);
+                                                          dialog.setWindowTitle("Remove Lines");
+                                                          dialog.setMinimumWidth(400);
+
+                                                          QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+                                                          // Count lines
+                                                          int inObjectCount = 0;
+                                                          int isolatedCount = 0;
+                                                          for (const auto& line : m_detectedLines) {
+                                                              if (line.inObject) inObjectCount++;
+                                                              else isolatedCount++;
+                                                          }
+
+                                                          // Line type selection
+                                                          QGroupBox* removalTypeBox = new QGroupBox("Select Lines to Remove");
+                                                          QVBoxLayout* typeLayout = new QVBoxLayout();
+
+                                                          QRadioButton* inObjectRadio = new QRadioButton(
+                                                              QString("Remove In Object Lines (%1 lines)").arg(inObjectCount));
+                                                          QRadioButton* isolatedRadio = new QRadioButton(
+                                                              QString("Remove Isolated Lines (%1 lines)").arg(isolatedCount));
+                                                          inObjectRadio->setChecked(true);
+
+                                                          typeLayout->addWidget(inObjectRadio);
+                                                          typeLayout->addWidget(isolatedRadio);
+                                                          removalTypeBox->setLayout(typeLayout);
+                                                          layout->addWidget(removalTypeBox);
+
+                                                          // Method selection (for In Object Lines)
+                                                          QGroupBox* methodBox = new QGroupBox("Removal Method");
+                                                          QVBoxLayout* methodLayout = new QVBoxLayout();
+                                                          QRadioButton* neighborValuesRadio = new QRadioButton("Use Neighbor Values");
+                                                          QRadioButton* stitchRadio = new QRadioButton("Direct Stitch");
+                                                          neighborValuesRadio->setChecked(true);
+                                                          methodLayout->addWidget(neighborValuesRadio);
+                                                          methodLayout->addWidget(stitchRadio);
+                                                          methodBox->setLayout(methodLayout);
+                                                          layout->addWidget(methodBox);
+
+                                                          // Line selection list
+                                                          QGroupBox* lineSelectionBox = new QGroupBox("Select Lines to Process");
+                                                          QVBoxLayout* selectionLayout = new QVBoxLayout();
+                                                          QListWidget* lineList = new QListWidget();
+                                                          lineList->setSelectionMode(QAbstractItemView::ExtendedSelection);
+
+                                                          // Add only In Object lines to the list
+                                                          for (size_t i = 0; i < m_detectedLines.size(); ++i) {
+                                                              const auto& line = m_detectedLines[i];
+                                                              if (line.inObject) {
+                                                                  QString lineInfo = QString("Line %1: %2 at %3 with width %4")
+                                                                  .arg(i + 1)
+                                                                      .arg(line.isVertical ? "Vertical" : "Horizontal")
+                                                                      .arg(line.isVertical ? QString("x=%1").arg(line.x) : QString("y=%1").arg(line.y))
+                                                                      .arg(line.width);
+                                                                  QListWidgetItem* item = new QListWidgetItem(lineInfo);
+                                                                  item->setData(Qt::UserRole, static_cast<int>(i));
+                                                                  lineList->addItem(item);
+                                                              }
+                                                          }
+
+                                                          // Connect stitch radio button to change selection mode
+                                                          connect(stitchRadio, &QRadioButton::toggled, [lineList](bool checked) {
+                                                              lineList->setSelectionMode(checked ?
+                                                                                             QAbstractItemView::SingleSelection :
+                                                                                             QAbstractItemView::ExtendedSelection);
+                                                              if (checked && lineList->selectedItems().count() > 1) {
+                                                                  lineList->clearSelection();
+                                                                  if (lineList->count() > 0) {
+                                                                      lineList->item(0)->setSelected(true);
+                                                                  }
+                                                              }
+                                                          });
+
+                                                          lineList->setMinimumHeight(200);
+                                                          lineList->setMaximumHeight(300);
+                                                          selectionLayout->addWidget(lineList);
+                                                          lineSelectionBox->setLayout(selectionLayout);
+                                                          layout->addWidget(lineSelectionBox);
+
+                                                          // Add select all button
+                                                          QPushButton* selectAllButton = new QPushButton("Select All Lines");
+                                                          selectAllButton->setVisible(!stitchRadio->isChecked());
+                                                          connect(selectAllButton, &QPushButton::clicked, lineList, &QListWidget::selectAll);
+                                                          layout->addWidget(selectAllButton);
+
+                                                          // Connect radio buttons for visibility
+                                                          connect(stitchRadio, &QRadioButton::toggled, selectAllButton, &QPushButton::setHidden);
+                                                          connect(neighborValuesRadio, &QRadioButton::toggled, selectAllButton, &QPushButton::setVisible);
+
+                                                          // Control visibility logic
+                                                          auto updateVisibility = [&]() {
+                                                              bool isInObject = inObjectRadio->isChecked();
+                                                              methodBox->setVisible(isInObject);
+                                                              lineSelectionBox->setVisible(isInObject);
+                                                              selectAllButton->setVisible(isInObject && neighborValuesRadio->isChecked());
+                                                              dialog.adjustSize();
+                                                          };
+
+                                                          connect(inObjectRadio, &QRadioButton::toggled, updateVisibility);
+                                                          connect(isolatedRadio, &QRadioButton::toggled, updateVisibility);
+                                                          connect(neighborValuesRadio, &QRadioButton::toggled, updateVisibility);
+                                                          connect(stitchRadio, &QRadioButton::toggled, updateVisibility);
+
+                                                          // Add OK and Cancel buttons
+                                                          QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                                                              QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                                                          layout->addWidget(buttonBox);
+
+                                                          connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                                                          connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+                                                          dialog.setLayout(layout);
+                                                          updateVisibility();
+
+                                                          if (dialog.exec() == QDialog::Accepted) {
+                                                              try {
+                                                                  // Convert image to ImageData format
+                                                                  auto imageData = convertToImageData(m_imageProcessor.getFinalImage());
+
+                                                                  DarkLinePointerProcessor::RemovalMethod method =
+                                                                      stitchRadio->isChecked() ?
+                                                                          DarkLinePointerProcessor::RemovalMethod::DIRECT_STITCH :
+                                                                          DarkLinePointerProcessor::RemovalMethod::NEIGHBOR_VALUES;
+
+                                                                  bool processInObject = inObjectRadio->isChecked();
+                                                                  bool processIsolated = isolatedRadio->isChecked();
+
+                                                                  if (processInObject) {
+                                                                      // Get selected lines
+                                                                      auto selectedItems = lineList->selectedItems();
+                                                                      if (selectedItems.isEmpty()) {
+                                                                          QMessageBox::warning(this, "Warning", "Please select at least one line for processing.");
+                                                                          return;
+                                                                      }
+
+                                                                      // Convert selected lines to DarkLinePointerProcessor format
+                                                                      std::vector<DarkLinePointerProcessor::DarkLine> selectedLines;
+                                                                      for (QListWidgetItem* item : selectedItems) {
+                                                                          int index = item->data(Qt::UserRole).toInt();
+                                                                          selectedLines.push_back(convertToDarkLinePointer(m_detectedLines[index]));
+                                                                      }
+
+                                                                      // Use the DarkLinePointerProcessor to remove lines
+                                                                      DarkLinePointerProcessor::removeDarkLinesSelective(
+                                                                          imageData,
+                                                                          selectedLines,
+                                                                          true,   // processInObject
+                                                                          false,  // processIsolated
+                                                                          method
+                                                                          );
+                                                                  } else {
+                                                                      // Process isolated lines using DarkLinePointerProcessor
+                                                                      DarkLinePointerProcessor::removeDarkLinesSelective(
+                                                                          imageData,
+                                                                          convertToDarkLinePointerVector(m_detectedLines),
+                                                                          false,  // processInObject
+                                                                          true,   // processIsolated
+                                                                          method
+                                                                          );
+                                                                  }
+
+                                                                  // Convert back and update image
+                                                                  auto newImage = convertFromImageData(imageData);
+                                                                  m_imageProcessor.updateAndSaveFinalImage(newImage);
+
+                                                                  // Create removal info summary
+                                                                  QString removalInfo = "Line Removal Summary:\n\n";
+                                                                  removalInfo += QString("Method: %1\n")
+                                                                                     .arg(neighborValuesRadio->isChecked() ? "Neighbor Values" : "Direct Stitch");
+                                                                  removalInfo += QString("Type: %1\n\n")
+                                                                                     .arg(inObjectRadio->isChecked() ? "In-Object Lines" : "Isolated Lines");
+
+                                                                  // Add processed lines details
+                                                                  if (processInObject) {
+                                                                      removalInfo += "Processed lines:\n";
+                                                                      for (QListWidgetItem* item : lineList->selectedItems()) {
+                                                                          int index = item->data(Qt::UserRole).toInt();
+                                                                          const auto& line = m_detectedLines[index];
+                                                                          QString coordinates = line.isVertical ?
+                                                                                                    QString("x=%1").arg(line.x) :
+                                                                                                    QString("y=%1").arg(line.y);
+                                                                          removalInfo += QString("Line %1: %2 at %3 with width %4\n")
+                                                                                             .arg(index + 1)
+                                                                                             .arg(line.isVertical ? "Vertical" : "Horizontal")
+                                                                                             .arg(coordinates)
+                                                                                             .arg(line.width);
+                                                                      }
+                                                                  } else {
+                                                                      int isolatedCount = 0;
+                                                                      for (const auto& line : m_detectedLines) {
+                                                                          if (!line.inObject) isolatedCount++;
+                                                                      }
+                                                                      removalInfo += QString("Processed %1 isolated lines\n").arg(isolatedCount);
+                                                                  }
+
+                                                                  // Update UI
+                                                                  m_darkLineInfoLabel->setText(removalInfo);
+                                                                  updateDarkLineInfoDisplay();
+                                                                  updateImageDisplay();
+                                                                  updateLastAction("Remove Lines (2D Pointer)");
+
+                                                                  // Reset for next operation
+                                                                  resetDetectedLines();
+
+                                                              } catch (const std::exception& e) {
+                                                                  QMessageBox::critical(this, "Error",
+                                                                                        QString("Error in line removal: %1").arg(e.what()));
+                                                              }
+                                                          }
+                                                      }}
                                                     });
 }
 
@@ -2631,18 +2252,20 @@ ImageData ControlPanel::convertToImageData(const std::vector<std::vector<uint16_
         imageData.rows = static_cast<int>(image.size());
         imageData.cols = static_cast<int>(image[0].size());
 
-        // Allocate memory for rows
-        imageData.data = new uint16_t*[imageData.rows];
+        // 分配行内存
+        imageData.data = new double*[imageData.rows];
 
-        // Allocate and copy each row
+        // 分配并复制每一行，同时转换为 double 类型
         for (int i = 0; i < imageData.rows; ++i) {
-            imageData.data[i] = new uint16_t[imageData.cols];
+            imageData.data[i] = new double[imageData.cols];
 
-            // Copy data
-            std::copy(image[i].begin(), image[i].end(), imageData.data[i]);
+            // 复制并转换数据类型
+            for (int j = 0; j < imageData.cols; ++j) {
+                imageData.data[i][j] = static_cast<double>(image[i][j]);
+            }
         }
     } catch (const std::exception& e) {
-        // Clean up on error
+        // 错误时清理内存
         if (imageData.data) {
             for (int i = 0; i < imageData.rows; ++i) {
                 delete[] imageData.data[i];
@@ -2668,7 +2291,11 @@ std::vector<std::vector<uint16_t>> ControlPanel::convertFromImageData(const Imag
     result.resize(imageData.rows);
     for (int i = 0; i < imageData.rows; ++i) {
         result[i].resize(imageData.cols);
-        std::copy(imageData.data[i], imageData.data[i] + imageData.cols, result[i].begin());
+        // 转换回 uint16_t 类型，需要进行取整和范围检查
+        for (int j = 0; j < imageData.cols; ++j) {
+            double value = imageData.data[i][j];
+            result[i][j] = static_cast<uint16_t>(std::clamp(std::round(value), 0.0, 65535.0));
+        }
     }
 
     return result;

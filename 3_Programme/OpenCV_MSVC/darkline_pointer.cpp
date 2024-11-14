@@ -10,7 +10,7 @@ bool DarkLinePointerProcessor::isInObject(const ImageData& image, int pos, int l
             // Check left side
             for (int i = 1; i <= VERTICAL_CHECK_RANGE; ++i) {
                 if (pos - i >= 0) {
-                    uint16_t leftPixel = image.data[y][pos - i];
+                    double leftPixel = image.data[y][pos - i];
                     if (leftPixel < WHITE_THRESHOLD) {
                         qDebug() << "Thread" << threadId << "- Vertical line at x=" << pos
                                  << ": left pixel at y=" << y << "value=" << leftPixel;
@@ -22,7 +22,7 @@ bool DarkLinePointerProcessor::isInObject(const ImageData& image, int pos, int l
             // Check right side
             for (int i = 1; i <= VERTICAL_CHECK_RANGE; ++i) {
                 if (pos + lineWidth + i - 1 < image.cols) {
-                    uint16_t rightPixel = image.data[y][pos + lineWidth + i - 1];
+                    double rightPixel = image.data[y][pos + lineWidth + i - 1];
                     if (rightPixel < WHITE_THRESHOLD) {
                         qDebug() << "Thread" << threadId << "- Vertical line at x=" << pos
                                  << ": right pixel at y=" << y << "value=" << rightPixel;
@@ -40,7 +40,7 @@ bool DarkLinePointerProcessor::isInObject(const ImageData& image, int pos, int l
         for (int i = 1; i <= HORIZONTAL_CHECK_RANGE; ++i) {
             if (pos - i >= 0) {
                 for (int x = 0; x < image.cols; x += image.cols/10) {
-                    uint16_t topPixel = image.data[pos - i][x];
+                    double topPixel = image.data[pos - i][x];
                     if (topPixel < WHITE_THRESHOLD) {
                         qDebug() << "Thread" << threadId << "- Found non-white pixel above line at x=" << x;
                         return true;
@@ -53,7 +53,7 @@ bool DarkLinePointerProcessor::isInObject(const ImageData& image, int pos, int l
         for (int i = 1; i <= HORIZONTAL_CHECK_RANGE; ++i) {
             if (pos + lineWidth + i - 1 < image.rows) {
                 for (int x = 0; x < image.cols; x += image.cols/10) {
-                    uint16_t bottomPixel = image.data[pos + lineWidth + i - 1][x];
+                    double bottomPixel = image.data[pos + lineWidth + i - 1][x];
                     if (bottomPixel < WHITE_THRESHOLD) {
                         qDebug() << "Thread" << threadId << "- Found non-white pixel below line at x=" << x;
                         return true;
@@ -65,13 +65,20 @@ bool DarkLinePointerProcessor::isInObject(const ImageData& image, int pos, int l
     return false;
 }
 
-uint16_t DarkLinePointerProcessor::findReplacementValue(
+int DarkLinePointerProcessor::calculateSearchRadius(int lineWidth) {
+    const int minRadius = 10;
+    const int maxRadius = 200;
+    int radius = lineWidth * 2;
+    return std::clamp(radius, minRadius, maxRadius);
+}
+
+double DarkLinePointerProcessor::findReplacementValue(
     const ImageData& image,
     int x, int y,
     bool isVertical,
     int lineWidth) {
 
-    std::vector<uint16_t> validValues;
+    std::vector<double> validValues;
     int searchRadius = calculateSearchRadius(lineWidth);
     validValues.reserve(searchRadius * 2);
 
@@ -116,166 +123,7 @@ uint16_t DarkLinePointerProcessor::findReplacementValue(
     return validValues[validValues.size() / 2];
 }
 
-int DarkLinePointerProcessor::calculateSearchRadius(int lineWidth) {
-    const int minRadius = 10;
-    const int maxRadius = 200;
-    int radius = lineWidth * 2;
-    return std::clamp(radius, minRadius, maxRadius);
-}
-
-std::vector<DarkLinePointerProcessor::DarkLine> DarkLinePointerProcessor::detectDarkLines(
-    const ImageData& image) {
-
-    std::vector<DarkLine> detectedLines;
-    if (!image.data || image.rows == 0 || image.cols == 0) return detectedLines;
-
-    const int numThreads = std::thread::hardware_concurrency();
-    std::mutex detectedLinesMutex;
-
-    // Detect vertical lines using multiple threads
-    std::vector<bool> isBlackColumn(image.cols, false);
-    std::vector<std::thread> verticalThreads;
-    int columnsPerThread = image.cols / numThreads;
-
-    std::cout << "Starting vertical line detection with " << numThreads << " threads" << std::endl;
-
-    for (int t = 0; t < numThreads; ++t) {
-        int startX = t * columnsPerThread;
-        int endX = (t == numThreads - 1) ? image.cols : startX + columnsPerThread;
-
-        verticalThreads.emplace_back([=, &isBlackColumn, &image]() {
-            std::cout << "Thread " << t << " processing columns " << startX << " to " << endX << std::endl;
-            for (int x = startX; x < endX; ++x) {
-                int blackPixelCount = 0;
-                for (int y = 0; y < image.rows; ++y) {
-                    if (image.data[y][x] <= BLACK_THRESHOLD) {
-                        blackPixelCount++;
-                    }
-                }
-                float blackRatio = static_cast<float>(blackPixelCount) / image.rows;
-                if (blackRatio > (1.0f - NOISE_TOLERANCE)) {
-                    isBlackColumn[x] = true;
-                }
-            }
-            std::cout << "Thread " << t << " completed vertical line detection" << std::endl;
-        });
-    }
-
-    for (auto& thread : verticalThreads) {
-        thread.join();
-    }
-
-    // Form vertical lines
-    int startX = -1;
-    for (int x = 0; x < image.cols; ++x) {
-        if (isBlackColumn[x]) {
-            if (startX == -1) startX = x;
-        } else if (startX != -1) {
-            DarkLine line;
-            line.x = startX;
-            line.startY = 0;
-            line.endY = image.rows - 1;
-            line.width = x - startX;
-            line.isVertical = true;
-            line.inObject = isInObject(image, startX, line.width, true, 0);
-
-            if (line.width >= MIN_LINE_WIDTH) {
-                std::lock_guard<std::mutex> lock(detectedLinesMutex);
-                detectedLines.push_back(line);
-            }
-            startX = -1;
-        }
-    }
-    if (startX != -1) {
-        DarkLine line;
-        line.x = startX;
-        line.startY = 0;
-        line.endY = image.rows - 1;
-        line.width = image.cols - startX;
-        line.isVertical = true;
-        line.inObject = isInObject(image, startX, line.width, true, 0);
-
-        if (line.width >= MIN_LINE_WIDTH) {
-            std::lock_guard<std::mutex> lock(detectedLinesMutex);
-            detectedLines.push_back(line);
-        }
-    }
-
-    // Detect horizontal lines using multiple threads
-    std::vector<bool> isBlackRow(image.rows, false);
-    std::vector<std::thread> horizontalThreads;
-    int rowsPerThread = image.rows / numThreads;
-
-    std::cout << "Starting horizontal line detection with " << numThreads << " threads" << std::endl;
-
-    for (int t = 0; t < numThreads; ++t) {
-        int startY = t * rowsPerThread;
-        int endY = (t == numThreads - 1) ? image.rows : startY + rowsPerThread;
-
-        horizontalThreads.emplace_back([=, &isBlackRow, &image]() {
-            std::cout << "Thread " << t << " processing rows " << startY << " to " << endY << std::endl;
-            for (int y = startY; y < endY; ++y) {
-                int blackPixelCount = 0;
-                for (int x = 0; x < image.cols; ++x) {
-                    if (image.data[y][x] <= BLACK_THRESHOLD) {
-                        blackPixelCount++;
-                    }
-                }
-                float blackRatio = static_cast<float>(blackPixelCount) / image.cols;
-                if (blackRatio > (1.0f - NOISE_TOLERANCE)) {
-                    isBlackRow[y] = true;
-                }
-            }
-            std::cout << "Thread " << t << " completed horizontal line detection" << std::endl;
-        });
-    }
-
-    for (auto& thread : horizontalThreads) {
-        thread.join();
-    }
-
-    // Form horizontal lines
-    int startY = -1;
-    for (int y = 0; y < image.rows; ++y) {
-        if (isBlackRow[y]) {
-            if (startY == -1) startY = y;
-        } else if (startY != -1) {
-            DarkLine line;
-            line.y = startY;
-            line.startX = 0;
-            line.endX = image.cols - 1;
-            line.width = y - startY;
-            line.isVertical = false;
-            line.inObject = isInObject(image, startY, line.width, false, 0);
-
-            if (line.width >= MIN_LINE_WIDTH) {
-                std::lock_guard<std::mutex> lock(detectedLinesMutex);
-                detectedLines.push_back(line);
-            }
-            startY = -1;
-        }
-    }
-    if (startY != -1) {
-        DarkLine line;
-        line.y = startY;
-        line.startX = 0;
-        line.endX = image.cols - 1;
-        line.width = image.rows - startY;
-        line.isVertical = false;
-        line.inObject = isInObject(image, startY, line.width, false, 0);
-
-        if (line.width >= MIN_LINE_WIDTH) {
-            std::lock_guard<std::mutex> lock(detectedLinesMutex);
-            detectedLines.push_back(line);
-        }
-    }
-
-    std::cout << "Dark line detection completed. Found " << detectedLines.size() << " lines." << std::endl;
-    return detectedLines;
-}
-
-// Helper function for direct stitching
-uint16_t DarkLinePointerProcessor::findStitchValue(
+double DarkLinePointerProcessor::findStitchValue(
     const ImageData& image,
     const DarkLine& line,
     int x, int y) {
@@ -319,26 +167,183 @@ uint16_t DarkLinePointerProcessor::findStitchValue(
     return image.data[y][x]; // Return original value if no stitch is possible
 }
 
-void DarkLinePointerProcessor::removeDarkLines(ImageData& image, const std::vector<DarkLine>& lines) {
+std::vector<DarkLinePointerProcessor::DarkLine> DarkLinePointerProcessor::detectDarkLines(
+    const ImageData& image) {
+
+    std::vector<DarkLine> detectedLines;
+    if (!image.data || image.rows == 0 || image.cols == 0) return detectedLines;
+
+    const int numThreads = std::thread::hardware_concurrency();
+    std::mutex detectedLinesMutex;
+
+    // Detect vertical lines using multiple threads
+    std::vector<bool> isBlackColumn(image.cols, false);
+    std::vector<std::thread> verticalThreads;
+    int columnsPerThread = image.cols / numThreads;
+
+    std::cout << "Starting vertical line detection with " << numThreads << " threads" << std::endl;
+
+    for (int t = 0; t < numThreads; ++t) {
+        int startX = t * columnsPerThread;
+        int endX = (t == numThreads - 1) ? image.cols : startX + columnsPerThread;
+
+        verticalThreads.emplace_back([=, &isBlackColumn, &image]() {
+            std::cout << "Thread " << t << " processing columns " << startX << " to " << endX << std::endl;
+            for (int x = startX; x < endX; ++x) {
+                int blackPixelCount = 0;
+                for (int y = 0; y < image.rows; ++y) {
+                    if (image.data[y][x] <= BLACK_THRESHOLD) {
+                        blackPixelCount++;
+                    }
+                }
+                double blackRatio = static_cast<double>(blackPixelCount) / image.rows;
+                if (blackRatio > (1.0 - NOISE_TOLERANCE)) {
+                    isBlackColumn[x] = true;
+                }
+            }
+            std::cout << "Thread " << t << " completed vertical line detection" << std::endl;
+        });
+    }
+
+    for (auto& thread : verticalThreads) {
+        thread.join();
+    }
+
+    // Form vertical lines
+    int startX = -1;
+    for (int x = 0; x < image.cols; ++x) {
+        if (isBlackColumn[x]) {
+            if (startX == -1) startX = x;
+        } else if (startX != -1) {
+            DarkLine line;
+            line.x = startX;
+            line.startY = 0;
+            line.endY = image.rows - 1;
+            line.width = x - startX;
+            line.isVertical = true;
+            line.inObject = isInObject(image, startX, line.width, true, 0);
+
+            if (line.width >= MIN_LINE_WIDTH) {
+                std::lock_guard<std::mutex> lock(detectedLinesMutex);
+                detectedLines.push_back(line);
+            }
+            startX = -1;
+        }
+    }
+
+    // Check for line that extends to the edge
+    if (startX != -1) {
+        DarkLine line;
+        line.x = startX;
+        line.startY = 0;
+        line.endY = image.rows - 1;
+        line.width = image.cols - startX;
+        line.isVertical = true;
+        line.inObject = isInObject(image, startX, line.width, true, 0);
+
+        if (line.width >= MIN_LINE_WIDTH) {
+            std::lock_guard<std::mutex> lock(detectedLinesMutex);
+            detectedLines.push_back(line);
+        }
+    }
+
+    // Detect horizontal lines using multiple threads
+    std::vector<bool> isBlackRow(image.rows, false);
+    std::vector<std::thread> horizontalThreads;
+    int rowsPerThread = image.rows / numThreads;
+
+    std::cout << "Starting horizontal line detection with " << numThreads << " threads" << std::endl;
+
+    for (int t = 0; t < numThreads; ++t) {
+        int startY = t * rowsPerThread;
+        int endY = (t == numThreads - 1) ? image.rows : startY + rowsPerThread;
+
+        horizontalThreads.emplace_back([=, &isBlackRow, &image]() {
+            std::cout << "Thread " << t << " processing rows " << startY << " to " << endY << std::endl;
+            for (int y = startY; y < endY; ++y) {
+                int blackPixelCount = 0;
+                for (int x = 0; x < image.cols; ++x) {
+                    if (image.data[y][x] <= BLACK_THRESHOLD) {
+                        blackPixelCount++;
+                    }
+                }
+                double blackRatio = static_cast<double>(blackPixelCount) / image.cols;
+                if (blackRatio > (1.0 - NOISE_TOLERANCE)) {
+                    isBlackRow[y] = true;
+                }
+            }
+            std::cout << "Thread " << t << " completed horizontal line detection" << std::endl;
+        });
+    }
+
+    for (auto& thread : horizontalThreads) {
+        thread.join();
+    }
+
+    // Form horizontal lines
+    int startY = -1;
+    for (int y = 0; y < image.rows; ++y) {
+        if (isBlackRow[y]) {
+            if (startY == -1) startY = y;
+        } else if (startY != -1) {
+            DarkLine line;
+            line.y = startY;
+            line.startX = 0;
+            line.endX = image.cols - 1;
+            line.width = y - startY;
+            line.isVertical = false;
+            line.inObject = isInObject(image, startY, line.width, false, 0);
+
+            if (line.width >= MIN_LINE_WIDTH) {
+                std::lock_guard<std::mutex> lock(detectedLinesMutex);
+                detectedLines.push_back(line);
+            }
+            startY = -1;
+        }
+    }
+
+    if (startY != -1) {
+        DarkLine line;
+        line.y = startY;
+        line.startX = 0;
+        line.endX = image.cols - 1;
+        line.width = image.rows - startY;
+        line.isVertical = false;
+        line.inObject = isInObject(image, startY, line.width, false, 0);
+
+        if (line.width >= MIN_LINE_WIDTH) {
+            std::lock_guard<std::mutex> lock(detectedLinesMutex);
+            detectedLines.push_back(line);
+        }
+    }
+
+    std::cout << "Dark line detection completed. Found " << detectedLines.size() << " lines." << std::endl;
+    return detectedLines;
+}
+
+void DarkLinePointerProcessor::removeDarkLines(
+    ImageData& image,
+    const std::vector<DarkLine>& lines) {
+
     if (lines.empty()) return;
 
-    // Create a new image array for the modified image
-    uint16_t** newData = new uint16_t*[image.rows];
+    // 创建新的图像数组用于修改
+    double** newData = new double*[image.rows];
     for (int i = 0; i < image.rows; i++) {
-        newData[i] = new uint16_t[image.cols];
-        // Copy original data
+        newData[i] = new double[image.cols];
+        // 复制原始数据
         std::copy(image.data[i], image.data[i] + image.cols, newData[i]);
     }
 
-    // Process each line with its exact detected width
+    // 处理每条线
     for (const auto& line : lines) {
-        // Skip lines that are part of objects
+        // 跳过属于对象一部分的线
         if (line.inObject) {
             continue;
         }
 
         if (line.isVertical) {
-            // Process vertical line
+            // 处理垂直线
             for (int x = line.x; x < line.x + line.width; ++x) {
                 for (int y = 0; y < image.rows; ++y) {
                     if (image.data[y][x] <= MIN_BRIGHTNESS) {
@@ -347,7 +352,7 @@ void DarkLinePointerProcessor::removeDarkLines(ImageData& image, const std::vect
                 }
             }
         } else {
-            // Process horizontal line
+            // 处理水平线
             for (int y = line.y; y < line.y + line.width; ++y) {
                 for (int x = 0; x < image.cols; ++x) {
                     if (image.data[y][x] <= MIN_BRIGHTNESS) {
@@ -358,13 +363,13 @@ void DarkLinePointerProcessor::removeDarkLines(ImageData& image, const std::vect
         }
     }
 
-    // Free old data
+    // 释放旧数据
     for (int i = 0; i < image.rows; i++) {
         delete[] image.data[i];
     }
     delete[] image.data;
 
-    // Update image with new data
+    // 更新图像数据
     image.data = newData;
 }
 
@@ -377,52 +382,52 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
 
     if (lines.empty()) return;
 
-    // Process each line sequentially
+    // 处理每条线
     for (const auto& line : lines) {
-        // Skip lines based on selection criteria
+        // 根据选择条件跳过不需要处理的线
         if ((line.inObject && !removeInObject) || (!line.inObject && !removeIsolated)) {
             continue;
         }
 
         if (method == RemovalMethod::DIRECT_STITCH) {
-            // Create new array for current iteration
-            uint16_t** newData;
+            // 创建当前迭代的新数组
+            double** newData;
             int newRows = image.rows;
             int newCols = image.cols;
 
             if (line.isVertical) {
-                // Calculate new dimensions after removing vertical line
+                // 计算移除垂直线后的新尺寸
                 newCols = image.cols - line.width;
-                newData = new uint16_t*[newRows];
+                newData = new double*[newRows];
                 for (int i = 0; i < newRows; i++) {
-                    newData[i] = new uint16_t[newCols];
+                    newData[i] = new double[newCols];
                 }
 
-                // Copy data and stitch
+                // 复制数据并拼接
                 for (int y = 0; y < newRows; ++y) {
-                    // Copy data before the line
+                    // 复制线条前的数据
                     for (int x = 0; x < line.x; ++x) {
                         newData[y][x] = image.data[y][x];
                     }
-                    // Copy data after the line with offset
+                    // 复制线条后的数据（带偏移）
                     for (int x = line.x; x < newCols; ++x) {
                         newData[y][x] = image.data[y][x + line.width];
                     }
                 }
             } else {
-                // Calculate new dimensions after removing horizontal line
+                // 计算移除水平线后的新尺寸
                 newRows = image.rows - line.width;
-                newData = new uint16_t*[newRows];
+                newData = new double*[newRows];
                 for (int i = 0; i < newRows; i++) {
-                    newData[i] = new uint16_t[newCols];
+                    newData[i] = new double[newCols];
                 }
 
-                // Copy data before the line
+                // 复制线条前的数据
                 for (int y = 0; y < line.y; ++y) {
                     std::copy(image.data[y], image.data[y] + newCols, newData[y]);
                 }
 
-                // Copy data after the line with offset
+                // 复制线条后的数据（带偏移）
                 for (int y = line.y; y < newRows; ++y) {
                     std::copy(image.data[y + line.width],
                               image.data[y + line.width] + newCols,
@@ -430,23 +435,22 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
                 }
             }
 
-            // Free old data
+            // 释放旧数据
             for (int i = 0; i < image.rows; i++) {
                 delete[] image.data[i];
             }
             delete[] image.data;
 
-            // Update image dimensions and data
+            // 更新图像尺寸和数据
             image.rows = newRows;
             image.cols = newCols;
             image.data = newData;
 
-        } else {
-            // Using neighbor values method
-            // Create temporary array for current iteration
-            uint16_t** newData = new uint16_t*[image.rows];
+        } else {  // NEIGHBOR_VALUES 方法
+            // 创建当前迭代的临时数组
+            double** newData = new double*[image.rows];
             for (int i = 0; i < image.rows; i++) {
-                newData[i] = new uint16_t[image.cols];
+                newData[i] = new double[image.cols];
                 std::copy(image.data[i], image.data[i] + image.cols, newData[i]);
             }
 
@@ -468,28 +472,16 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
                 }
             }
 
-            // Free old data
+            // 释放旧数据
             for (int i = 0; i < image.rows; i++) {
                 delete[] image.data[i];
             }
             delete[] image.data;
 
-            // Update image with new data
+            // 更新图像数据
             image.data = newData;
         }
     }
-}
-
-void DarkLinePointerProcessor::removeAllDarkLines(ImageData& image, std::vector<DarkLine>& detectedLines) {
-    removeDarkLinesSelective(image, detectedLines, true, true);
-}
-
-void DarkLinePointerProcessor::removeInObjectDarkLines(ImageData& image, std::vector<DarkLine>& detectedLines) {
-    removeDarkLinesSelective(image, detectedLines, true, false);
-}
-
-void DarkLinePointerProcessor::removeIsolatedDarkLines(ImageData& image, std::vector<DarkLine>& detectedLines) {
-    removeDarkLinesSelective(image, detectedLines, false, true);
 }
 
 void DarkLinePointerProcessor::removeDarkLinesSelective(
@@ -501,68 +493,77 @@ void DarkLinePointerProcessor::removeDarkLinesSelective(
 
     if (lines.empty()) return;
 
-    // Create a new image array for modifications
-    uint16_t** newData = new uint16_t*[image.rows];
+    // 创建新的图像数组用于修改
+    double** newData = new double*[image.rows];
     for (int i = 0; i < image.rows; i++) {
-        newData[i] = new uint16_t[image.cols];
+        newData[i] = new double[image.cols];
         std::copy(image.data[i], image.data[i] + image.cols, newData[i]);
     }
 
-    // Process each line
+    // 处理每条线
     for (const auto& line : lines) {
-        // Skip lines based on selection criteria
+        // 根据选择条件跳过不需要处理的线
         if ((line.inObject && !removeInObject) || (!line.inObject && !removeIsolated)) {
             continue;
         }
 
         if (method == RemovalMethod::DIRECT_STITCH) {
-            // Pure direct stitch implementation
+            // 计算新尺寸
+            int newWidth = image.cols;
+            int newHeight = image.rows;
+
             if (line.isVertical) {
-                // Calculate new dimensions after removing the vertical line
-                int newWidth = image.cols - line.width;
-
-                // For vertical lines, shift all content after the line to the left
-                for (int y = 0; y < image.rows; ++y) {
-                    // Copy the content after the line to the left
-                    for (int x = line.x; x < newWidth; ++x) {
-                        newData[y][x] = image.data[y][x + line.width];
-                    }
-                }
-
-                // Resize columns
-                for (int y = 0; y < image.rows; ++y) {
-                    uint16_t* tempRow = new uint16_t[newWidth];
-                    std::copy(newData[y], newData[y] + newWidth, tempRow);
-                    delete[] newData[y];
-                    newData[y] = tempRow;
-                }
-                image.cols = newWidth;
+                newWidth -= line.width;
             } else {
-                // Calculate new dimensions after removing the horizontal line
-                int newHeight = image.rows - line.width;
+                newHeight -= line.width;
+            }
 
-                // For horizontal lines, shift all content after the line upward
-                for (int y = line.y; y < newHeight; ++y) {
-                    for (int x = 0; x < image.cols; ++x) {
-                        newData[y][x] = image.data[y + line.width][x];
+            // 创建临时数组
+            double** tempData = new double*[newHeight];
+            for (int i = 0; i < newHeight; i++) {
+                tempData[i] = new double[newWidth];
+            }
+
+            if (line.isVertical) {
+                // 对于垂直线，向左移动所有内容
+                for (int y = 0; y < newHeight; ++y) {
+                    // 复制线条左侧的内容
+                    for (int x = 0; x < line.x; ++x) {
+                        tempData[y][x] = newData[y][x];
+                    }
+                    // 复制线条右侧的内容（带偏移）
+                    for (int x = line.x; x < newWidth; ++x) {
+                        tempData[y][x] = newData[y][x + line.width];
                     }
                 }
-
-                // Resize rows
-                uint16_t** tempData = new uint16_t*[newHeight];
-                for (int y = 0; y < newHeight; ++y) {
-                    tempData[y] = newData[y];
+            } else {
+                // 对于水平线，向上移动所有内容
+                // 复制线条上方的内容
+                for (int y = 0; y < line.y; ++y) {
+                    for (int x = 0; x < newWidth; ++x) {
+                        tempData[y][x] = newData[y][x];
+                    }
                 }
-                // Delete extra rows
-                for (int y = newHeight; y < image.rows; ++y) {
-                    delete[] newData[y];
+                // 复制线条下方的内容（带偏移）
+                for (int y = line.y; y < newHeight; ++y) {
+                    for (int x = 0; x < newWidth; ++x) {
+                        tempData[y][x] = newData[y + line.width][x];
+                    }
                 }
-                delete[] newData;
-                newData = tempData;
-                image.rows = newHeight;
             }
-        } else {
-            // Neighbor values method
+
+            // 释放当前的 newData
+            for (int i = 0; i < image.rows; i++) {
+                delete[] newData[i];
+            }
+            delete[] newData;
+
+            // 更新 newData 为临时数组
+            newData = tempData;
+            image.rows = newHeight;
+            image.cols = newWidth;
+
+        } else {  // NEIGHBOR_VALUES
             if (line.isVertical) {
                 for (int x = line.x; x < line.x + line.width; ++x) {
                     for (int y = 0; y < image.rows; ++y) {
@@ -583,12 +584,24 @@ void DarkLinePointerProcessor::removeDarkLinesSelective(
         }
     }
 
-    // Free old data
+    // 释放原始数据
     for (int i = 0; i < image.rows; i++) {
         delete[] image.data[i];
     }
     delete[] image.data;
 
-    // Update image with new data
+    // 更新图像为新数据
     image.data = newData;
+}
+
+void DarkLinePointerProcessor::removeAllDarkLines(ImageData& image, std::vector<DarkLine>& detectedLines) {
+    removeDarkLinesSelective(image, detectedLines, true, true);
+}
+
+void DarkLinePointerProcessor::removeInObjectDarkLines(ImageData& image, std::vector<DarkLine>& detectedLines) {
+    removeDarkLinesSelective(image, detectedLines, true, false);
+}
+
+void DarkLinePointerProcessor::removeIsolatedDarkLines(ImageData& image, std::vector<DarkLine>& detectedLines) {
+    removeDarkLinesSelective(image, detectedLines, false, true);
 }

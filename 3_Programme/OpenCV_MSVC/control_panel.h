@@ -48,41 +48,46 @@ protected:
     };
 
 private:
-    // Type definitions and structures
-    struct DarkLineImageData {
-        double** data;
-        int rows;
-        int cols;
+    // // Type definitions and structures
+    // struct DarkLineImageData {
+    //     double** data;
+    //     int rows;
+    //     int cols;
 
-        DarkLineImageData() : data(nullptr), rows(0), cols(0) {}
+    //     DarkLineImageData() : data(nullptr), rows(0), cols(0) {}
 
-        ~DarkLineImageData() {
-            if (data) {
-                for (int i = 0; i < rows; ++i) {
-                    delete[] data[i];
-                }
-                delete[] data;
-            }
-        }
-    };
+    //     ~DarkLineImageData() {
+    //         if (data) {
+    //             for (int i = 0; i < rows; ++i) {
+    //                 delete[] data[i];
+    //             }
+    //             delete[] data;
+    //         }
+    //     }
+    // };
 
-    struct DarkLinePtr {
-        int x;
-        int y;
-        int width;
-        bool isVertical;
-        bool inObject;
-        int startX;
-        int startY;
-        int endX;
-        int endY;
-    };
+    // struct DarkLinePtr {
+    //     int x;
+    //     int y;
+    //     int width;
+    //     bool isVertical;
+    //     bool inObject;
+    //     int startX;
+    //     int startY;
+    //     int endX;
+    //     int endY;
+    // };
 
-    struct DarkLinePtrArray {
-        DarkLinePtr* lines;
-        size_t count;
-        size_t capacity;
-    };
+    // struct DarkLinePtrArray {
+    //     DarkLinePtr* lines;
+    //     size_t count;
+    //     size_t capacity;
+    // };
+
+    // 移除这些前向声明
+    // Forward declarations
+    struct DarkLinePtr;
+    struct DarkLinePtrArray;
 
     // Setup functions
     void setupPixelInfoLabel();
@@ -128,7 +133,7 @@ private:
     // Memory management helpers
     template<typename T>
     std::unique_ptr<T[]> createUniqueArray(size_t size);
-    void cleanupImageData(DarkLineImageData& imageData);
+    //void cleanupImageData(DarkLineImageData& imageData);
 
     // UI helper functions
     std::pair<double, bool> showInputDialog(const QString& title,
