@@ -14,6 +14,7 @@
 #include "image_label.h"
 #include "histogram.h"
 #include "zoom.h"
+#include "darkline_pointer.h"
 
 class ControlPanel : public QWidget {
     Q_OBJECT
@@ -27,6 +28,11 @@ public:
     void updateLastAction(const QString& action, const QString& parameters = QString());
 
 private:
+    // Type definitions for clarity
+    using DarkLinePtrType = DarkLinePtr;
+    using DarkLinePtrArrayType = DarkLinePtrArray;
+
+    // Setup functions
     void setupPixelInfoLabel();
     void setupFileOperations();
     void setupPreProcessingOperations();
@@ -37,22 +43,26 @@ private:
     void setupRegionalAdjustments();
     void setupCLAHEOperations();
     void setupBlackLineDetection();
+    void setupPointerProcessing();
     void handleRevert();
     void enableButtons(bool enable);
+
+    // Conversion functions for DarkLinePointerProcessor integration
+    DarkLineImageData convertToImageData(const std::vector<std::vector<uint16_t>>& image);
+    std::vector<std::vector<uint16_t>> convertFromImageData(const DarkLineImageData& imageData);
 
     // Zoom-related methods
     void setupZoomControls();
     void toggleZoomMode(bool active);
     bool checkZoomMode();
-    QMessageBox* m_zoomWarningBox;
 
     std::pair<double, bool> showInputDialog(const QString& title, const QString& label, double defaultValue, double min, double max);
     void createGroupBox(const QString& title,
                         const std::vector<std::pair<QString, std::variant<std::function<void()>, QPushButton*>>>& buttons);
     void updateImageDisplay();
+    void updateDarkLineInfoDisplay();
 
-    void updateLineRemovalInfo(const std::vector<size_t>& removedLineIndices, const QString& actionType);
-
+    // Member variables
     QVBoxLayout* m_mainLayout;
     QVBoxLayout* m_scrollLayout;
     QScrollArea* m_scrollArea;
@@ -70,35 +80,32 @@ private:
 
     Histogram* m_histogram;
     std::vector<QPushButton*> m_allButtons;
-
-    // Only keep the UI element for zoom controls
     QGroupBox* m_zoomControlsGroup;
-
     QPushButton* m_fixZoomButton;
+    QMessageBox* m_zoomWarningBox;
 
-    using DarkLine = ImageProcessor::DarkLine;
+    // Dark Line related members
+    std::vector<ImageProcessor::DarkLine> m_detectedLines;  // Using original DarkLine from ImageProcessor
+    QLabel* m_darkLineInfoLabel;
+    QLabel* m_imageSizeLabel;
 
     void updateLineInfo(const QString& info);
     void resetDetectedLines();
 
-    std::vector<ImageProcessor::DarkLine> m_detectedLines;
-    QLabel* m_darkLineInfoLabel;
-
-    QLabel* m_imageSizeLabel;
-
-    void setupCalibrationUI();
+    // Calibration related members
     QPushButton* m_calibrationButton;
     QPushButton* m_resetCalibrationButton;
     void updateCalibrationButtonText();
 
+    // Helper drawing functions
     void drawLineLabel(QPainter& painter, const QString& text, const QPointF& pos, const ZoomManager& zoomManager);
 
-    void updateDarkLineInfoDisplay();
-
+    // Zoom related members
     QPushButton* m_zoomInButton;
     QPushButton* m_zoomOutButton;
     QPushButton* m_resetZoomButton;
     QPushButton* m_zoomButton;
+
 };
 
 #endif // CONTROL_PANEL_H
