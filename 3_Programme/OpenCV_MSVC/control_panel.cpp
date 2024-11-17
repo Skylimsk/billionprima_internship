@@ -528,7 +528,8 @@ void ControlPanel::setupFileOperations()
                                           {"Revert", [this]() {
                                                QString revertedAction = m_imageProcessor.revertImage();
                                                if (!revertedAction.isEmpty()) {
-                                                   m_darkLineInfoLabel->hide();
+                                                   //m_darkLineInfoLabel->hide();
+                                                   resetDetectedLines();
                                                    m_imageLabel->clearSelection();
                                                    updateImageDisplay();
                                                    handleRevert();
