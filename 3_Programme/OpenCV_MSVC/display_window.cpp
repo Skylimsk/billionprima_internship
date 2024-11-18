@@ -2,12 +2,13 @@
 #include <QFileDialog>
 #include <QMessageBox>
 
-DisplayWindow::DisplayWindow(const QString& title, QWidget* parent)
+DisplayWindow::DisplayWindow(const QString& title, QWidget* parent, const QPoint& position)
     : QWidget(parent)
     , currentZoom(1.0)
     , originalImage(nullptr) {
     setWindowTitle(title);
     setupUI();
+    move(position);  // Set initial position
 }
 
 void DisplayWindow::setupUI() {
@@ -109,4 +110,8 @@ void DisplayWindow::updateDisplayedImage() {
 
     // Update scroll area if needed
     imageLabel->setMinimumSize(newSize);
+}
+
+void DisplayWindow::setWindowPosition(const QPoint& position) {
+    move(position);
 }

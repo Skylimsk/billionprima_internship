@@ -727,3 +727,4 @@ InterlaceProcessor::InterlacedResult ImageProcessor::processEnhancedInterlacedSe
 
     return result;
 }
+

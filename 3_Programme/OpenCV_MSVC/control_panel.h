@@ -21,10 +21,7 @@
 #include "histogram.h"
 #include "zoom.h"
 #include "darkline_pointer.h"
-
-// Forward declarations
-struct DarkLinePtr;
-struct DarkLinePtrArray;
+#include "display_window.h"
 
 class ControlPanel : public QWidget {
     Q_OBJECT
@@ -34,6 +31,7 @@ signals:
 
 public:
     ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabel, QWidget* parent = nullptr);
+    ~ControlPanel();
     void updatePixelInfo(const QPoint& pos);
     void updateLastAction(const QString& action, const QString& parameters = QString());
 
@@ -48,47 +46,6 @@ protected:
     };
 
 private:
-    // // Type definitions and structures
-    // struct DarkLineImageData {
-    //     double** data;
-    //     int rows;
-    //     int cols;
-
-    //     DarkLineImageData() : data(nullptr), rows(0), cols(0) {}
-
-    //     ~DarkLineImageData() {
-    //         if (data) {
-    //             for (int i = 0; i < rows; ++i) {
-    //                 delete[] data[i];
-    //             }
-    //             delete[] data;
-    //         }
-    //     }
-    // };
-
-    // struct DarkLinePtr {
-    //     int x;
-    //     int y;
-    //     int width;
-    //     bool isVertical;
-    //     bool inObject;
-    //     int startX;
-    //     int startY;
-    //     int endX;
-    //     int endY;
-    // };
-
-    // struct DarkLinePtrArray {
-    //     DarkLinePtr* lines;
-    //     size_t count;
-    //     size_t capacity;
-    // };
-
-    // 移除这些前向声明
-    // Forward declarations
-    struct DarkLinePtr;
-    struct DarkLinePtrArray;
-
     // Setup functions
     void setupPixelInfoLabel();
     void setupFileOperations();
@@ -133,7 +90,6 @@ private:
     // Memory management helpers
     template<typename T>
     std::unique_ptr<T[]> createUniqueArray(size_t size);
-    //void cleanupImageData(DarkLineImageData& imageData);
 
     // UI helper functions
     std::pair<double, bool> showInputDialog(const QString& title,
@@ -150,7 +106,11 @@ private:
     void updateCalibrationButtonText();
     void updateLineInfo(const QString& info);
     void resetDetectedLines();
-    void processDetectedLines(const DarkLinePtrArray* lines);
+
+    // 2D Pointer specific methods
+    void resetDetectedLinesPointer();
+    void updateImageDisplayPointer();
+    void updateDarkLineInfoDisplayPointer();
 
     // Member variables
     QVBoxLayout* m_mainLayout;
@@ -185,7 +145,6 @@ private:
     QPushButton* m_resetCalibrationButton;
 
     QMessageBox* m_zoomWarningBox;
-    std::vector<ImageProcessor::DarkLine> m_detectedLines;
 
     // Constants
     static constexpr int DEFAULT_LABEL_MARGIN = 5;
@@ -193,30 +152,48 @@ private:
     static constexpr int MIN_LINE_WIDTH = 1;
     static constexpr float DEFAULT_ZOOM_STEP = 0.2f;
 
-    DarkLinePointerProcessor::DarkLine convertToDarkLinePointer(const ImageProcessor::DarkLine& line) {
-        DarkLinePointerProcessor::DarkLine pointerLine;
-        pointerLine.x = line.x;
-        pointerLine.y = line.y;
-        pointerLine.startX = line.startX;
-        pointerLine.startY = line.startY;
-        pointerLine.endX = line.endX;
-        pointerLine.endY = line.endY;
-        pointerLine.width = line.width;
-        pointerLine.isVertical = line.isVertical;
-        pointerLine.inObject = line.inObject;
-        return pointerLine;
-    }
+    std::unique_ptr<DisplayWindow> m_lowEnergyWindow;
+    std::unique_ptr<DisplayWindow> m_highEnergyWindow;
+    std::unique_ptr<DisplayWindow> m_finalWindow;
 
-    // Convert vector of ImageProcessor::DarkLine to vector of DarkLinePointerProcessor::DarkLine
-    std::vector<DarkLinePointerProcessor::DarkLine> convertToDarkLinePointerVector(
-        const std::vector<ImageProcessor::DarkLine>& lines) {
-        std::vector<DarkLinePointerProcessor::DarkLine> pointerLines;
-        pointerLines.reserve(lines.size());
-        for (const auto& line : lines) {
-            pointerLines.push_back(convertToDarkLinePointer(line));
-        }
-        return pointerLines;
-    }
+    bool m_showDisplayWindows = false;
+
+    // Dark line detection results storage
+    std::vector<ImageProcessor::DarkLine> m_detectedLines;     // For original implementation
+    DarkLineArray* m_detectedLinesPointer;                    // For 2D pointer implementation
+
+    void validateImageData(const ImageData& imageData);
+    std::vector<std::vector<uint16_t>> createVectorFromImageData(const ImageData& imageData);
+    void convertRowToUint16(const double* sourceRow, std::vector<uint16_t>& destRow, int cols);
+
+    // For vector implementation
+    void drawLineLabelWithCount(QPainter& painter,
+                                const ImageProcessor::DarkLine& line,
+                                int count,
+                                float zoomLevel,
+                                const QSize& imageSize);
+
+    // For pointer implementation
+    // 这样声明是正确的，因为 DarkLine 是全局定义的
+    void drawLineLabelWithCountPointer(QPainter& painter,
+                                       const DarkLine& line,  // 直接使用全局 DarkLine
+                                       int count,
+                                       float zoomLevel,
+                                       const QSize& imageSize);
+    void drawLabelCommon(QPainter& painter,
+                         const QString& labelText,
+                         int labelX,
+                         int labelY,
+                         int labelMargin,
+                         float zoomLevel,
+                         const QSize& imageSize);
+
+    void countLinesInArray(const DarkLineArray* array, int& inObjectCount, int& isolatedCount);
+
+    bool isVectorMethodActive() const { return !m_detectedLines.empty(); }
+    bool isPointerMethodActive() const { return m_detectedLinesPointer != nullptr && m_detectedLinesPointer->rows > 0; }
+
+    void clearAllDetectionResults();
 };
 
 #endif // CONTROL_PANEL_H

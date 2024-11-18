@@ -10,12 +10,14 @@
 #include <QScrollArea>
 #include <memory>
 #include <vector>
+#include <QString>
 
 class DisplayWindow : public QWidget {
     Q_OBJECT
 
 public:
-    explicit DisplayWindow(const QString& title, QWidget* parent = nullptr);
+    explicit DisplayWindow(const QString& title, QWidget* parent = nullptr,
+                           const QPoint& position = QPoint(0, 0));
     void updateImage(const std::vector<std::vector<uint16_t>>& image);
 
 private slots:
@@ -35,6 +37,8 @@ private:
     QLabel* imageLabel;
     double currentZoom;
     std::unique_ptr<std::vector<std::vector<uint16_t>>> originalImage;
+
+    void setWindowPosition(const QPoint& position);
 };
 
 #endif // DISPLAY_WINDOW_H
