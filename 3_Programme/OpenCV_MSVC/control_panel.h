@@ -8,6 +8,9 @@
 #include <QMessageBox>
 #include <QPainter>
 #include <QFontMetrics>
+#include <QRadioButton>
+#include <QListWidget>
+#include <QGroupBox>
 #include <functional>
 #include <variant>
 #include <vector>
@@ -107,10 +110,81 @@ private:
     void updateLineInfo(const QString& info);
     void resetDetectedLines();
 
+    // Helper functions for dark line dialog handling
+    QString generateDarkLineInfo(const DarkLineArray* lines);
+    void handleRemoveLinesDialog();
+    QGroupBox* createRemovalTypeBox(int inObjectCount, int isolatedCount);
+    QGroupBox* createMethodSelectionBox();
+    QGroupBox* createLineSelectionBox(const DarkLineArray* lines);
+    void connectDialogControls(
+        QRadioButton* inObjectRadio,
+        QRadioButton* isolatedRadio,
+        QRadioButton* neighborValuesRadio,
+        QRadioButton* stitchRadio,
+        QPushButton* selectAllButton,
+        QListWidget* lineList,
+        QGroupBox* methodBox,
+        QGroupBox* lineSelectionBox);
+    void updateDialogVisibility(
+        QRadioButton* inObjectRadio,
+        QGroupBox* methodBox,
+        QGroupBox* lineSelectionBox,
+        QPushButton* selectAllButton,
+        QRadioButton* neighborValuesRadio);
+    void handleDialogAccepted(
+        QRadioButton* inObjectRadio,
+        QRadioButton* isolatedRadio,
+        QRadioButton* neighborValuesRadio,
+        QRadioButton* stitchRadio,
+        QListWidget* lineList,
+        const DarkLineArray* initialLines);
+    void updateLineList(QRadioButton* inObjectRadio, QListWidget* lineList);
+
     // 2D Pointer specific methods
     void resetDetectedLinesPointer();
     void updateImageDisplayPointer();
     void updateDarkLineInfoDisplayPointer();
+    void handleNeighborValuesRemoval(
+        DarkLineArray* lines,
+        const std::vector<std::pair<int, int>>& lineIndices,
+        bool isInObject);
+    void handleIsolatedLinesRemoval();
+    void handleDirectStitchRemoval(
+        const DarkLineArray* lines,
+        std::vector<std::pair<int, int>>& lineIndices,
+        bool isInObject);
+    QString generateRemovalSummary(
+        const DarkLineArray* initialLines,
+        const DarkLineArray* finalLines,
+        const std::vector<std::pair<int, int>>& removedIndices,
+        bool removedInObject,
+        const QString& methodStr);
+
+    // Helper functions
+    void validateImageData(const ImageData& imageData);
+    std::vector<std::vector<uint16_t>> createVectorFromImageData(const ImageData& imageData);
+    void convertRowToUint16(const double* sourceRow, std::vector<uint16_t>& destRow, int cols);
+    void drawLineLabelWithCount(QPainter& painter,
+                                const ImageProcessor::DarkLine& line,
+                                int count,
+                                float zoomLevel,
+                                const QSize& imageSize);
+    void drawLineLabelWithCountPointer(QPainter& painter,
+                                       const DarkLine& line,
+                                       int count,
+                                       float zoomLevel,
+                                       const QSize& imageSize);
+    void drawLabelCommon(QPainter& painter,
+                         const QString& labelText,
+                         int labelX,
+                         int labelY,
+                         int labelMargin,
+                         float zoomLevel,
+                         const QSize& imageSize);
+    void countLinesInArray(const DarkLineArray* array, int& inObjectCount, int& isolatedCount);
+    bool isVectorMethodActive() const { return !m_detectedLines.empty(); }
+    bool isPointerMethodActive() const { return m_detectedLinesPointer != nullptr && m_detectedLinesPointer->rows > 0; }
+    void clearAllDetectionResults();
 
     // Member variables
     QVBoxLayout* m_mainLayout;
@@ -161,39 +235,6 @@ private:
     // Dark line detection results storage
     std::vector<ImageProcessor::DarkLine> m_detectedLines;     // For original implementation
     DarkLineArray* m_detectedLinesPointer;                    // For 2D pointer implementation
-
-    void validateImageData(const ImageData& imageData);
-    std::vector<std::vector<uint16_t>> createVectorFromImageData(const ImageData& imageData);
-    void convertRowToUint16(const double* sourceRow, std::vector<uint16_t>& destRow, int cols);
-
-    // For vector implementation
-    void drawLineLabelWithCount(QPainter& painter,
-                                const ImageProcessor::DarkLine& line,
-                                int count,
-                                float zoomLevel,
-                                const QSize& imageSize);
-
-    // For pointer implementation
-    // 这样声明是正确的，因为 DarkLine 是全局定义的
-    void drawLineLabelWithCountPointer(QPainter& painter,
-                                       const DarkLine& line,  // 直接使用全局 DarkLine
-                                       int count,
-                                       float zoomLevel,
-                                       const QSize& imageSize);
-    void drawLabelCommon(QPainter& painter,
-                         const QString& labelText,
-                         int labelX,
-                         int labelY,
-                         int labelMargin,
-                         float zoomLevel,
-                         const QSize& imageSize);
-
-    void countLinesInArray(const DarkLineArray* array, int& inObjectCount, int& isolatedCount);
-
-    bool isVectorMethodActive() const { return !m_detectedLines.empty(); }
-    bool isPointerMethodActive() const { return m_detectedLinesPointer != nullptr && m_detectedLinesPointer->rows > 0; }
-
-    void clearAllDetectionResults();
 };
 
 #endif // CONTROL_PANEL_H

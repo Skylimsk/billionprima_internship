@@ -5,6 +5,8 @@
 #include <thread>
 #include <memory>
 #include <vector>
+#include <sstream>  // Add this include for stringstream
+#include <iomanip>  // Add this for string formatting
 
 // Image data structure using double 2D pointer
 class ImageData {
@@ -209,6 +211,18 @@ public:
     static void destroyDarkLineArray(DarkLineArray* array);
     static void copyDarkLineArray(const DarkLineArray* source, DarkLineArray* destination);
 
+    static void validateNewDimensions(
+        const ImageData& image,
+        const std::vector<std::pair<DarkLine, int>>& lines,
+        bool isVertical,
+        int& newSize);
+
+    static bool prepareImageBuffer(
+        const ImageData& image,
+        const std::vector<std::pair<DarkLine, int>>& lines,
+        ImageData& buffer);
+
+
 private:
     // Helper functions
     static int calculateSearchRadius(int lineWidth);
@@ -233,6 +247,8 @@ private:
     static void resizeImageData(ImageData& image, int newRows, int newCols);
 
     std::vector<DarkLine> selectedLines;
+
+
 };
 
 #endif // DARKLINE_POINTER_H
