@@ -38,8 +38,21 @@ public:
     void updatePixelInfo(const QPoint& pos);
     void updateLastAction(const QString& action, const QString& parameters = QString());
 
+    // Add accessors needed by PointerOperations
+    ImageProcessor& getImageProcessor() { return m_imageProcessor; }
+    DarkLineArray* getDetectedLinesPointer() const { return m_detectedLinesPointer; }
+    void setDetectedLinesPointer(DarkLineArray* pointer) { m_detectedLinesPointer = pointer; }
+    void resetDetectedLinesPointer();
+    void updateDarkLineInfoDisplayPointer();
+
+    // Make these methods public since they're used by PointerOperations
+    ImageData convertToImageData(const std::vector<std::vector<uint16_t>>& image);
+    std::vector<std::vector<uint16_t>> convertFromImageData(const ImageData& imageData);
+
+    QLabel* getDarkLineInfoLabel() { return m_darkLineInfoLabel; }
+    void updateImageDisplay();
+
 protected:
-    // Helper struct for line visualization
     struct LineVisualProperties {
         QColor color;
         float penWidth;
@@ -64,10 +77,7 @@ private:
     void setupZoomControls();
     void handleRevert();
     void enableButtons(bool enable);
-
-    // Conversion functions
-    ImageData convertToImageData(const std::vector<std::vector<uint16_t>>& image);
-    std::vector<std::vector<uint16_t>> convertFromImageData(const ImageData& imageData);
+    void setupResetOperations();
 
     // Drawing helper functions
     LineVisualProperties calculateLineProperties(const ImageProcessor::DarkLine& line,
@@ -104,61 +114,10 @@ private:
                         const std::vector<std::pair<QString,
                                                     std::variant<std::function<void()>,
                                                                  QPushButton*>>>& buttons);
-    void updateImageDisplay();
     void updateDarkLineInfoDisplay();
     void updateCalibrationButtonText();
     void updateLineInfo(const QString& info);
     void resetDetectedLines();
-
-    // Helper functions for dark line dialog handling
-    QString generateDarkLineInfo(const DarkLineArray* lines);
-    void handleRemoveLinesDialog();
-    QGroupBox* createRemovalTypeBox(int inObjectCount, int isolatedCount);
-    QGroupBox* createMethodSelectionBox();
-    QGroupBox* createLineSelectionBox(const DarkLineArray* lines);
-    void connectDialogControls(
-        QRadioButton* inObjectRadio,
-        QRadioButton* isolatedRadio,
-        QRadioButton* neighborValuesRadio,
-        QRadioButton* stitchRadio,
-        QPushButton* selectAllButton,
-        QListWidget* lineList,
-        QGroupBox* methodBox,
-        QGroupBox* lineSelectionBox);
-    void updateDialogVisibility(
-        QRadioButton* inObjectRadio,
-        QGroupBox* methodBox,
-        QGroupBox* lineSelectionBox,
-        QPushButton* selectAllButton,
-        QRadioButton* neighborValuesRadio);
-    void handleDialogAccepted(
-        QRadioButton* inObjectRadio,
-        QRadioButton* isolatedRadio,
-        QRadioButton* neighborValuesRadio,
-        QRadioButton* stitchRadio,
-        QListWidget* lineList,
-        const DarkLineArray* initialLines);
-    void updateLineList(QRadioButton* inObjectRadio, QListWidget* lineList);
-
-    // 2D Pointer specific methods
-    void resetDetectedLinesPointer();
-    void updateImageDisplayPointer();
-    void updateDarkLineInfoDisplayPointer();
-    void handleNeighborValuesRemoval(
-        DarkLineArray* lines,
-        const std::vector<std::pair<int, int>>& lineIndices,
-        bool isInObject);
-    void handleIsolatedLinesRemoval();
-    void handleDirectStitchRemoval(
-        const DarkLineArray* lines,
-        std::vector<std::pair<int, int>>& lineIndices,
-        bool isInObject);
-    QString generateRemovalSummary(
-        const DarkLineArray* initialLines,
-        const DarkLineArray* finalLines,
-        const std::vector<std::pair<int, int>>& removedIndices,
-        bool removedInObject,
-        const QString& methodStr);
 
     // Helper functions
     void validateImageData(const ImageData& imageData);

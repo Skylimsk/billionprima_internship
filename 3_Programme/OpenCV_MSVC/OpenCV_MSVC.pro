@@ -98,6 +98,7 @@ SOURCES = \
     image_processor.cpp \
     histogram.cpp \
     CLAHE.cpp \
+    pointer_operations.cpp \
     third_party/qcustomplot/qcustomplot.cpp \
     zoom.cpp
 
@@ -114,6 +115,7 @@ HEADERS = \
     histogram.h \
     CLAHE.h \
     interlace.h \
+    pointer_operations.h \
     third_party/qcustomplot/qcustomplot.h \
     zoom.h
 

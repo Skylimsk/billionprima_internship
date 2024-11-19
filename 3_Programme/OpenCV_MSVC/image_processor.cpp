@@ -728,3 +728,18 @@ InterlaceProcessor::InterlacedResult ImageProcessor::processEnhancedInterlacedSe
     return result;
 }
 
+void ImageProcessor::resetToOriginal() {
+    if (!originalImg.empty()) {
+        finalImage = originalImg;
+        while (!imageHistory.empty()) imageHistory.pop();
+        while (!actionHistory.empty()) actionHistory.pop();
+    }
+}
+
+void ImageProcessor::clearImage() {
+    originalImg.clear();
+    finalImage.clear();
+    while (!imageHistory.empty()) imageHistory.pop();
+    while (!actionHistory.empty()) actionHistory.pop();
+}
+

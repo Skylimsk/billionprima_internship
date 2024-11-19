@@ -4,9 +4,9 @@
 #include <mutex>
 #include <thread>
 #include <memory>
-#include <vector>
-#include <sstream>  // Add this include for stringstream
-#include <iomanip>  // Add this for string formatting
+#include <sstream>
+#include <iomanip>
+#include <iostream>
 
 // Image data structure using double 2D pointer
 class ImageData {
@@ -62,21 +62,6 @@ struct DarkLine {
     // Constructor
     DarkLine() : x(0), y(0), startY(0), endY(0), startX(0), endX(0),
         width(0), isVertical(false), inObject(false) {}
-};
-
-struct SelectedLines {
-    DarkLine** lines;  // 2D pointer array of selected lines
-    int count;         // Number of selected lines
-
-    SelectedLines() : lines(nullptr), count(0) {}
-
-    ~SelectedLines() {
-        if (lines) {
-            delete[] lines;
-            lines = nullptr;
-        }
-        count = 0;
-    }
 };
 
 // DarkLine Array structure using double pointer
@@ -177,6 +162,13 @@ public:
         DIRECT_STITCH    // Direct stitching
     };
 
+    // Constructor and Destructor
+    DarkLinePointerProcessor() : selectedLines(nullptr), selectedLinesCount(0), selectedLinesCapacity(0) {}
+
+    ~DarkLinePointerProcessor() {
+        delete[] selectedLines;
+    }
+
     // Core detection and removal functions
     static DarkLineArray* detectDarkLines(const ImageData& image);
     static void removeDarkLines(ImageData& image, const DarkLineArray* lines);
@@ -186,7 +178,40 @@ public:
     static void removeInObjectDarkLines(ImageData& image, DarkLineArray* lines);
     static void removeIsolatedDarkLines(ImageData& image, DarkLineArray* lines);
 
-    // Enhanced removal functions with selection and method options
+    // Line management functions
+    void addSelectedLine(const DarkLine& line) {
+        if (selectedLinesCount >= selectedLinesCapacity) {
+            int newCapacity = (selectedLinesCapacity == 0) ? 1 : selectedLinesCapacity * 2;
+            DarkLine* newArray = new DarkLine[newCapacity];
+
+            for (int i = 0; i < selectedLinesCount; i++) {
+                newArray[i] = selectedLines[i];
+            }
+
+            delete[] selectedLines;
+            selectedLines = newArray;
+            selectedLinesCapacity = newCapacity;
+        }
+
+        selectedLines[selectedLinesCount++] = line;
+    }
+
+    void clearSelectedLines() {
+        delete[] selectedLines;
+        selectedLines = nullptr;
+        selectedLinesCount = 0;
+        selectedLinesCapacity = 0;
+    }
+
+    int getSelectedLinesCount() const {
+        return selectedLinesCount;
+    }
+
+    const DarkLine* getSelectedLines() const {
+        return selectedLines;
+    }
+
+    // Enhanced removal functions
     static void removeDarkLinesSelective(
         ImageData& image,
         const DarkLineArray* lines,
@@ -206,24 +231,33 @@ public:
         RemovalMethod method = RemovalMethod::NEIGHBOR_VALUES
         );
 
-    // DarkLineArray helpers - moved to public
+    // Helper functions made public
     static DarkLineArray* createDarkLineArray(int rows, int cols);
     static void destroyDarkLineArray(DarkLineArray* array);
     static void copyDarkLineArray(const DarkLineArray* source, DarkLineArray* destination);
 
+    // 修改这三个函数的声明
     static void validateNewDimensions(
         const ImageData& image,
-        const std::vector<std::pair<DarkLine, int>>& lines,
+        const std::pair<DarkLine, int>** lines,  // 改为 2D pointer
+        int linesCount,                          // 添加数量参数
         bool isVertical,
-        int& newSize);
+        int& newSize
+        );
 
     static bool prepareImageBuffer(
         const ImageData& image,
-        const std::vector<std::pair<DarkLine, int>>& lines,
-        ImageData& buffer);
-
+        const std::pair<DarkLine, int>** lines,  // 改为 2D pointer
+        int linesCount,                          // 添加数量参数
+        ImageData& buffer
+        );
 
 private:
+    // Member variables
+    DarkLine* selectedLines;
+    int selectedLinesCount;
+    int selectedLinesCapacity;
+
     // Helper functions
     static int calculateSearchRadius(int lineWidth);
     static bool isInObject(const ImageData& image, int pos, int lineWidth, bool isVertical, int threadId);
@@ -246,9 +280,19 @@ private:
     static void copyImageData(const ImageData& source, ImageData& destination);
     static void resizeImageData(ImageData& image, int newRows, int newCols);
 
-    std::vector<DarkLine> selectedLines;
+    // 修改 adjustLineCoordinates 函数声明
+    static void adjustLineCoordinates(
+        DarkLine& line,
+        const std::pair<int, int>** verticalSections,   // 改为 2D pointer
+        int verticalCount,                              // 添加数量参数
+        const std::pair<int, int>** horizontalSections, // 改为 2D pointer
+        int horizontalCount,                            // 添加数量参数
+        int newWidth,
+        int newHeight
+        );
 
-
+    static bool validateLineArray(const DarkLineArray* lines, const ImageData& image);
+    static DarkLineArray* createSafeDarkLineArray(int rows, int cols);
 };
 
 #endif // DARKLINE_POINTER_H

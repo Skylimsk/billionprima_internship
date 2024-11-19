@@ -170,6 +170,10 @@ public:
         bool removeIsolated,
         LineRemovalMethod method = LineRemovalMethod::NEIGHBOR_VALUES);
 
+
+    void resetToOriginal();
+    void clearImage();
+
 private:
     std::vector<std::vector<uint16_t>> imgData;
     std::vector<std::vector<uint16_t>> originalImg;
@@ -200,6 +204,7 @@ private:
 
     static constexpr int SEGMENT_WIDTH = 100;    // Default segment width for processing
     static constexpr int WIDTH_THRESHOLD = 50;  // Threshold for using segmented processing
+
 
 };
 
