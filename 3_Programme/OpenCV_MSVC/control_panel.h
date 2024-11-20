@@ -69,11 +69,9 @@ private:
     void setupBasicOperations();
     void setupFilteringOperations();
     void setupAdvancedOperations();
-    void setupGlobalAdjustments();
-    void setupRegionalAdjustments();
+    void setupCombinedAdjustments();
     void setupCLAHEOperations();
     void setupBlackLineDetection();
-    void setupPointerProcessing();
     void setupZoomControls();
     void handleRevert();
     void enableButtons(bool enable);

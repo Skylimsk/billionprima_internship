@@ -743,3 +743,56 @@ void ImageProcessor::clearImage() {
     while (!actionHistory.empty()) actionHistory.pop();
 }
 
+void ImageProcessor::applyEdgeEnhancement(float strength) {
+    if (finalImage.empty() || finalImage[0].empty()) return;
+
+    saveCurrentState();
+
+    int height = finalImage.size();
+    int width = finalImage[0].size();
+
+    // Create Sobel kernels
+    std::vector<std::vector<int>> sobelX = {
+        {-1, 0, 1},
+        {-2, 0, 2},
+        {-1, 0, 1}
+    };
+
+    std::vector<std::vector<int>> sobelY = {
+        {-1, -2, -1},
+        {0, 0, 0},
+        {1, 2, 1}
+    };
+
+    // Create temporary image for edge detection
+    std::vector<std::vector<uint16_t>> edgeImage(height, std::vector<uint16_t>(width));
+
+    // Apply Sobel operators
+    for (int y = 1; y < height - 1; ++y) {
+        for (int x = 1; x < width - 1; ++x) {
+            int gx = 0;
+            int gy = 0;
+
+            // Apply kernels
+            for (int i = -1; i <= 1; ++i) {
+                for (int j = -1; j <= 1; ++j) {
+                    int pixelValue = finalImage[y + i][x + j];
+                    gx += pixelValue * sobelX[i + 1][j + 1];
+                    gy += pixelValue * sobelY[i + 1][j + 1];
+                }
+            }
+
+            // Calculate gradient magnitude
+            float magnitude = std::sqrt(gx * gx + gy * gy);
+            edgeImage[y][x] = static_cast<uint16_t>(std::min(magnitude, 65535.0f));
+        }
+    }
+
+    // Enhance edges by adding weighted edge information to original image
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            float enhancedValue = finalImage[y][x] + strength * edgeImage[y][x];
+            finalImage[y][x] = static_cast<uint16_t>(std::min(enhancedValue, 65535.0f));
+        }
+    }
+}

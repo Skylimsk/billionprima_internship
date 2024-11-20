@@ -174,6 +174,8 @@ public:
     void resetToOriginal();
     void clearImage();
 
+    void applyEdgeEnhancement(float strength);
+
 private:
     std::vector<std::vector<uint16_t>> imgData;
     std::vector<std::vector<uint16_t>> originalImg;
@@ -204,6 +206,8 @@ private:
 
     static constexpr int SEGMENT_WIDTH = 100;    // Default segment width for processing
     static constexpr int WIDTH_THRESHOLD = 50;  // Threshold for using segmented processing
+
+
 
 
 };

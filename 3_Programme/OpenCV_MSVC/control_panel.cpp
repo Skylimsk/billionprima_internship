@@ -117,9 +117,7 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
     setupAdvancedOperations();
     setupCLAHEOperations();
     setupBlackLineDetection();
-    setupPointerProcessing();
-    setupGlobalAdjustments();
-    setupRegionalAdjustments();
+    setupCombinedAdjustments();
     setupResetOperations();
 
     scrollWidget->setLayout(m_scrollLayout);
@@ -1125,6 +1123,25 @@ void ControlPanel::setupFilteringOperations() {
                                                     m_imageLabel->clearSelection();
                                                     updateImageDisplay();
                                                     updateLastAction("High-Pass Filter");
+                                                }},
+                                               {"Edge Enhancement", [this]() {
+                                                    if (checkZoomMode()) return;
+                                                    m_darkLineInfoLabel->hide();
+                                                    resetDetectedLines();
+                                                    resetDetectedLinesPointer();
+
+                                                    auto [strength, ok] = showInputDialog(
+                                                        "Edge Enhancement",
+                                                        "Enter enhancement strength (0.1-2.0):",
+                                                        0.5, 0.1, 2.0);
+
+                                                    if (ok) {
+                                                        m_imageProcessor.applyEdgeEnhancement(strength);
+                                                        m_imageLabel->clearSelection();
+                                                        updateImageDisplay();
+                                                        updateLastAction("Edge Enhancement",
+                                                                         QString("Strength: %1").arg(strength, 0, 'f', 2));
+                                                    }
                                                 }}
                                            });
 }
@@ -1363,109 +1380,6 @@ void ControlPanel::setupCLAHEOperations() {
                                        });
 }
 
-void ControlPanel::setupGlobalAdjustments()
-{
-    createGroupBox("Global Adjustments", {
-                                             {"Overall Gamma", [this]() {
-                                                  if (checkZoomMode()) return;
-                                                  m_darkLineInfoLabel->hide();
-                                                  resetDetectedLines();
-                                                  resetDetectedLinesPointer();
-                                                  auto [gammaValue, ok] = showInputDialog("Overall Gamma", "Enter gamma value:", 1.0, 0.1, 10.0);
-                                                  if (ok) {
-                                                      m_imageProcessor.adjustGammaOverall(gammaValue);  // Use the new wrapper method
-                                                      m_imageLabel->clearSelection();
-                                                      updateImageDisplay();
-                                                      updateLastAction("Overall Gamma", QString::number(gammaValue, 'f', 2));
-                                                  }
-                                              }},
-                                             {"Overall Sharpen", [this]() {
-                                                  if (checkZoomMode()) return;
-                                                  m_darkLineInfoLabel->hide();
-                                                  resetDetectedLines();
-                                                  auto [sharpenStrength, ok] = showInputDialog("Overall Sharpen", "Enter sharpen strength:", 1.0, 0.1, 10.0);
-                                                  if (ok) {
-                                                      m_imageProcessor.sharpenImage(sharpenStrength);  // Use the new wrapper method
-                                                      m_imageLabel->clearSelection();
-                                                      updateImageDisplay();
-                                                      updateLastAction("Overall Sharpen", QString::number(sharpenStrength, 'f', 2));
-                                                  }
-                                              }},
-                                             {"Overall Contrast", [this]() {
-                                                  m_darkLineInfoLabel->hide();
-                                                  resetDetectedLines();
-                                                  resetDetectedLinesPointer();
-                                                  auto [contrastFactor, ok] = showInputDialog("Overall Contrast", "Enter contrast factor:", 1.0, 0.1, 10.0);
-                                                  if (ok) {
-                                                      m_imageProcessor.adjustContrast(contrastFactor);  // Use the new wrapper method
-                                                      m_imageLabel->clearSelection();
-                                                      updateImageDisplay();
-                                                      updateLastAction("Overall Contrast", QString::number(contrastFactor, 'f', 2));
-                                                  }
-                                              }}
-                                         });
-}
-
-void ControlPanel::setupRegionalAdjustments()
-{
-    createGroupBox("Regional Adjustments", {
-                                               {"Region Gamma", [this]() {
-                                                    if (checkZoomMode()) return;
-                                                    m_darkLineInfoLabel->hide();
-                                                    resetDetectedLines();
-                                                    resetDetectedLinesPointer();
-                                                    if (m_imageLabel->isRegionSelected()) {
-                                                        auto [gamma, ok] = showInputDialog("Region Gamma", "Enter gamma value:", 1.0, 0.1, 10.0);
-                                                        if (ok) {
-                                                            QRect selectedRegion = m_imageLabel->getSelectedRegion();
-                                                            m_imageProcessor.adjustGammaForSelectedRegion(gamma, selectedRegion);  // Use the new wrapper method
-                                                            m_imageLabel->clearSelection();
-                                                            updateImageDisplay();
-                                                            updateLastAction("Region Gamma", QString::number(gamma, 'f', 2));
-                                                        }
-                                                    } else {
-                                                        QMessageBox::information(this, "Region Gamma", "Please select a region first.");
-                                                    }
-                                                }},
-                                               {"Region Sharpen", [this]() {
-                                                    if (checkZoomMode()) return;
-                                                    m_darkLineInfoLabel->hide();
-                                                    resetDetectedLines();
-                                                    resetDetectedLinesPointer();
-                                                    if (m_imageLabel->isRegionSelected()) {
-                                                        auto [sharpenStrength, ok] = showInputDialog("Region Sharpen", "Enter sharpen strength:", 0.5, 0.1, 5.0);
-                                                        if (ok) {
-                                                            QRect selectedRegion = m_imageLabel->getSelectedRegion();
-                                                            m_imageProcessor.applySharpenToRegion(sharpenStrength, selectedRegion);  // Use the new wrapper method
-                                                            m_imageLabel->clearSelection();
-                                                            updateImageDisplay();
-                                                            updateLastAction("Region Sharpen", QString::number(sharpenStrength, 'f', 2));
-                                                        }
-                                                    } else {
-                                                        QMessageBox::information(this, "Region Sharpen", "Please select a region first.");
-                                                    }
-                                                }},
-                                               {"Region Contrast", [this]() {
-                                                    if (checkZoomMode()) return;
-                                                    m_darkLineInfoLabel->hide();
-                                                    resetDetectedLines();
-                                                    resetDetectedLinesPointer();
-                                                    if (m_imageLabel->isRegionSelected()) {
-                                                        auto [contrastFactor, ok] = showInputDialog("Region Contrast", "Enter contrast factor:", 1.5, 0.1, 5.0);
-                                                        if (ok) {
-                                                            QRect selectedRegion = m_imageLabel->getSelectedRegion();
-                                                            m_imageProcessor.applyContrastToRegion(contrastFactor, selectedRegion);  // Use the new wrapper method
-                                                            m_imageLabel->clearSelection();
-                                                            updateImageDisplay();
-                                                            updateLastAction("Region Contrast", QString::number(contrastFactor, 'f', 2));
-                                                        }
-                                                    } else {
-                                                        QMessageBox::information(this, "Region Contrast", "Please select a region first.");
-                                                    }
-                                                }}
-                                           });
-}
-
 std::pair<double, bool> ControlPanel::showInputDialog(const QString& title, const QString& label, double defaultValue, double min, double max)
 {
     bool ok;
@@ -1522,12 +1436,16 @@ void ControlPanel::createGroupBox(const QString& title,
 }
 
 void ControlPanel::setupBlackLineDetection() {
+    // Create a unified group box
+    QGroupBox* groupBox = new QGroupBox("Dark Line Operations");
+    QVBoxLayout* layout = new QVBoxLayout(groupBox);
 
-    QPushButton* detectBtn = new QPushButton("Detect Lines");
-    QPushButton* removeBtn = new QPushButton("Remove Lines");
-    QPushButton* resetBtn = new QPushButton("Reset");
+    // Create buttons
+    QPushButton* detectBtn = new QPushButton("Detect Dark Lines");
+    QPushButton* removeBtn = new QPushButton("Remove Dark Lines");
+    QPushButton* resetBtn = new QPushButton("Reset Detection");
 
-    // Store pointers for vector method buttons
+    // Store pointers for access
     m_vectorDetectBtn = detectBtn;
     m_vectorRemoveBtn = removeBtn;
     m_vectorResetBtn = resetBtn;
@@ -1536,420 +1454,345 @@ void ControlPanel::setupBlackLineDetection() {
     removeBtn->setEnabled(false);
     resetBtn->setEnabled(false);
 
-    createGroupBox("Dark Line Detection", {
-                                              {"Detect Lines", [this, detectBtn, removeBtn, resetBtn]() {
-                                                   if (checkZoomMode()) return;
+    // Set fixed height for buttons
+    const int buttonHeight = 35;
+    detectBtn->setFixedHeight(buttonHeight);
+    removeBtn->setFixedHeight(buttonHeight);
+    resetBtn->setFixedHeight(buttonHeight);
 
-                                                   if (isPointerMethodActive()) {
-                                                       QMessageBox::warning(this, "Method Conflict",
-                                                                            "Pointer method is currently active.\nPlease clear the pointer detection results before using vector method.");
-                                                       return;
-                                                   }
+    // Add buttons to layout
+    layout->addWidget(detectBtn);
+    layout->addWidget(removeBtn);
+    layout->addWidget(resetBtn);
 
-                                                   // Clear previous detections first
-                                                   resetDetectedLines();
-                                                   m_imageProcessor.saveCurrentState();
-                                                   m_detectedLines = m_imageProcessor.detectDarkLines();
+    // Connect detect button
+    connect(detectBtn, &QPushButton::clicked, [this, detectBtn, removeBtn, resetBtn]() {
+        if (checkZoomMode()) return;
 
-                                                   // Create detection info summary
-                                                   QString detectionInfo = "Detected Lines:\n\n";
+        // Create method selection dialog
+        QDialog methodDialog(this);
+        methodDialog.setWindowTitle("Select Detection Method");
+        methodDialog.setMinimumWidth(300);
+        QVBoxLayout* dialogLayout = new QVBoxLayout(&methodDialog);
 
-                                                   // Count lines by type
-                                                   int inObjectCount = 0;
-                                                   int isolatedCount = 0;
+        // Create radio buttons for method selection
+        QRadioButton* vectorMethodRadio = new QRadioButton("Vector Method");
+        QRadioButton* pointerMethodRadio = new QRadioButton("2D Pointer Method");
+        vectorMethodRadio->setChecked(true);
 
-                                                   // List all detected lines with details
-                                                   for (size_t i = 0; i < m_detectedLines.size(); ++i) {
-                                                       const auto& line = m_detectedLines[i];
+        // Add explanation labels
+        QLabel* vectorExplanation = new QLabel("Vector Method: Traditional approach suitable for most cases");
+        QLabel* pointerExplanation = new QLabel("2D Pointer Method: Alternative implementation using pointer arrays");
+        vectorExplanation->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+        pointerExplanation->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
 
-                                                       QString coordinates;
-                                                       if (line.isVertical) {
-                                                           coordinates = QString("(%1,0)").arg(line.x);
-                                                       } else {
-                                                           coordinates = QString("(0,%1)").arg(line.y);
-                                                       }
+        // Add widgets to dialog layout
+        dialogLayout->addWidget(vectorMethodRadio);
+        dialogLayout->addWidget(vectorExplanation);
+        dialogLayout->addSpacing(5);
+        dialogLayout->addWidget(pointerMethodRadio);
+        dialogLayout->addWidget(pointerExplanation);
+        dialogLayout->addSpacing(10);
 
-                                                       detectionInfo += QString("Line %1: %2 with width %3 pixels (%4)\n")
-                                                                            .arg(i + 1)
-                                                                            .arg(coordinates)
-                                                                            .arg(line.width)
-                                                                            .arg(line.inObject ? "In Object" : "Isolated");
+        // Add OK/Cancel buttons
+        QDialogButtonBox* buttonBox = new QDialogButtonBox(
+            QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+        dialogLayout->addWidget(buttonBox);
 
-                                                       if (line.inObject) {
-                                                           inObjectCount++;
-                                                       } else {
-                                                           isolatedCount++;
-                                                       }
-                                                   }
+        connect(buttonBox, &QDialogButtonBox::accepted, &methodDialog, &QDialog::accept);
+        connect(buttonBox, &QDialogButtonBox::rejected, &methodDialog, &QDialog::reject);
 
-                                                   // Add summary statistics
-                                                   detectionInfo += QString("\nSummary:\n");
-                                                   detectionInfo += QString("Total Lines: %1\n").arg(m_detectedLines.size());
-                                                   detectionInfo += QString("In-Object Lines: %1\n").arg(inObjectCount);
-                                                   detectionInfo += QString("Isolated Lines: %1\n").arg(isolatedCount);
+        if (methodDialog.exec() == QDialog::Accepted) {
+            // Clear previous detections
+            resetDetectedLines();
+            resetDetectedLinesPointer();
+            m_darkLineInfoLabel->hide();
 
-                                                   // Update the info label and adjust its height
-                                                   m_darkLineInfoLabel->setText(detectionInfo);
+            if (vectorMethodRadio->isChecked()) {
+                // Vector method implementation
+                m_imageProcessor.saveCurrentState();
+                m_detectedLines = m_imageProcessor.detectDarkLines();
 
-                                                   // Adjust scroll area height based on content
-                                                   QFontMetrics fm(m_darkLineInfoLabel->font());
-                                                   int textHeight = fm.lineSpacing() * detectionInfo.count('\n') + 40;
-                                                   int preferredHeight = qMin(textHeight, 300);
-                                                   preferredHeight = qMax(preferredHeight, 30);
+                // Generate detection info
+                QString detectionInfo = "Detected Lines (Vector Method):\n\n";
+                int inObjectCount = 0;
+                int isolatedCount = 0;
 
-                                                   QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
-                                                       qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
-                                                       );
-                                                   darkLineScrollArea->setFixedHeight(preferredHeight);
+                for (size_t i = 0; i < m_detectedLines.size(); ++i) {
+                    const auto& line = m_detectedLines[i];
+                    QString coordinates = line.isVertical ?
+                                              QString("(%1,0)").arg(line.x) :
+                                              QString("(0,%1)").arg(line.y);
 
-                                                   // Show the info label and scroll area
-                                                   m_darkLineInfoLabel->setVisible(true);
-                                                   darkLineScrollArea->setVisible(true);
+                    detectionInfo += QString("Line %1: %2 with width %3 pixels (%4)\n")
+                                         .arg(i + 1)
+                                         .arg(coordinates)
+                                         .arg(line.width)
+                                         .arg(line.inObject ? "In Object" : "Isolated");
 
-                                                   // Enable/disable appropriate buttons
-                                                   removeBtn->setEnabled(!m_detectedLines.empty());
-                                                   resetBtn->setEnabled(!m_detectedLines.empty());
+                    if (line.inObject) inObjectCount++;
+                    else isolatedCount++;
+                }
 
-                                                   // Disable pointer method buttons
-                                                   if (m_pointerDetectBtn) m_pointerDetectBtn->setEnabled(false);
-                                                   if (m_pointerRemoveBtn) m_pointerRemoveBtn->setEnabled(false);
-                                                   if (m_pointerResetBtn) m_pointerResetBtn->setEnabled(false);
+                detectionInfo += QString("\nSummary:\n");
+                detectionInfo += QString("Total Lines: %1\n").arg(m_detectedLines.size());
+                detectionInfo += QString("In-Object Lines: %1\n").arg(inObjectCount);
+                detectionInfo += QString("Isolated Lines: %1\n").arg(isolatedCount);
 
-                                                   updateImageDisplay();
-                                                   updateLastAction("Detect Lines");
-                                               }},
+                m_darkLineInfoLabel->setText(detectionInfo);
+                updateDarkLineInfoDisplay();
 
-                                              {"Remove Lines", [this, removeBtn, resetBtn]() {
-                                                   if (checkZoomMode()) return;
+            } else {
+                // Pointer method implementation
+                try {
+                    auto imageData = convertToImageData(m_imageProcessor.getFinalImage());
+                    m_imageProcessor.saveCurrentState();
+                    m_detectedLinesPointer = DarkLinePointerProcessor::detectDarkLines(imageData);
 
-                                                   if (m_detectedLines.empty()) {
-                                                       QMessageBox::information(this, "Remove Lines", "Please detect lines first.");
-                                                       return;
-                                                   }
+                    if (m_detectedLinesPointer && m_detectedLinesPointer->rows > 0) {
+                        QString detectionInfo = PointerOperations::generateDarkLineInfo(m_detectedLinesPointer);
+                        m_darkLineInfoLabel->setText(detectionInfo);
+                        updateDarkLineInfoDisplayPointer();
+                    } else {
+                        QMessageBox::information(this, "Detection Result",
+                                                 "No dark lines detected using pointer method.");
+                        return;
+                    }
+                } catch (const std::exception& e) {
+                    QMessageBox::critical(this, "Error",
+                                          QString("Error in line detection: %1").arg(e.what()));
+                    return;
+                }
+            }
 
-                                                   // Store initial line information for comparison
-                                                   std::vector<ImageProcessor::DarkLine> initialLines = m_detectedLines;
+            // Enable remove and reset buttons
+            removeBtn->setEnabled(true);
+            resetBtn->setEnabled(true);
+            updateImageDisplay();
+            updateLastAction("Detect Lines",
+                             vectorMethodRadio->isChecked() ? "Vector Method" : "2D Pointer Method");
+        }
+    });
+    // Connect remove button
+    connect(removeBtn, &QPushButton::clicked, [this, removeBtn, resetBtn]() {
+        if (checkZoomMode()) return;
 
-                                                   // Create main dialog
-                                                   QDialog dialog(this);
-                                                   dialog.setWindowTitle("Remove Lines");
-                                                   dialog.setMinimumWidth(400);
+        if (m_detectedLines.empty() && (!m_detectedLinesPointer || m_detectedLinesPointer->rows == 0)) {
+            QMessageBox::information(this, "Remove Lines", "Please detect lines first.");
+            return;
+        }
 
-                                                   QVBoxLayout* layout = new QVBoxLayout(&dialog);
-                                                   layout->setSpacing(10);
+        // Determine which method was used for detection
+        bool vectorMethodActive = !m_detectedLines.empty();
+        bool pointerMethodActive = m_detectedLinesPointer && m_detectedLinesPointer->rows > 0;
 
-                                                   // Count lines
-                                                   int inObjectCount = 0;
-                                                   int isolatedCount = 0;
-                                                   for (const auto& line : m_detectedLines) {
-                                                       if (line.inObject) inObjectCount++;
-                                                       else isolatedCount++;
-                                                   }
+        if (vectorMethodActive) {
+            // Create removal dialog
+            QDialog dialog(this);
+            dialog.setWindowTitle("Remove Lines (Vector Method)");
+            dialog.setMinimumWidth(400);
 
-                                                   // Line type selection
-                                                   QGroupBox* removalTypeBox = new QGroupBox("Select Lines to Remove");
-                                                   QVBoxLayout* typeLayout = new QVBoxLayout();
+            QVBoxLayout* layout = new QVBoxLayout(&dialog);
+            layout->setSpacing(10);
 
-                                                   QRadioButton* inObjectRadio = new QRadioButton(
-                                                       QString("Remove In Object Lines (%1 lines)").arg(inObjectCount));
-                                                   QRadioButton* isolatedRadio = new QRadioButton(
-                                                       QString("Remove Isolated Lines (%1 lines)").arg(isolatedCount));
-                                                   inObjectRadio->setChecked(true);
+            // Count lines
+            int inObjectCount = 0;
+            int isolatedCount = 0;
+            for (const auto& line : m_detectedLines) {
+                if (line.inObject) inObjectCount++;
+                else isolatedCount++;
+            }
 
-                                                   typeLayout->addWidget(inObjectRadio);
-                                                   typeLayout->addWidget(isolatedRadio);
-                                                   removalTypeBox->setLayout(typeLayout);
-                                                   layout->addWidget(removalTypeBox);
+            // Line type selection
+            QGroupBox* removalTypeBox = new QGroupBox("Select Lines to Remove");
+            QVBoxLayout* typeLayout = new QVBoxLayout();
 
-                                                   // Method selection (for In Object Lines)
-                                                   QGroupBox* methodBox = new QGroupBox("Removal Method");
-                                                   QVBoxLayout* methodLayout = new QVBoxLayout();
-                                                   QRadioButton* neighborValuesRadio = new QRadioButton("Use Neighbor Values");
-                                                   QRadioButton* stitchRadio = new QRadioButton("Direct Stitch");
-                                                   neighborValuesRadio->setChecked(true);
-                                                   methodLayout->addWidget(neighborValuesRadio);
-                                                   methodLayout->addWidget(stitchRadio);
-                                                   methodBox->setLayout(methodLayout);
-                                                   layout->addWidget(methodBox);
+            QRadioButton* inObjectRadio = new QRadioButton(
+                QString("Remove In Object Lines (%1 lines)").arg(inObjectCount));
+            QRadioButton* isolatedRadio = new QRadioButton(
+                QString("Remove Isolated Lines (%1 lines)").arg(isolatedCount));
+            inObjectRadio->setChecked(true);
 
-                                                   // Line selection list with multi-selection for neighbor values
-                                                   QGroupBox* lineSelectionBox = new QGroupBox("Select Lines to Process");
-                                                   QVBoxLayout* selectionLayout = new QVBoxLayout();
-                                                   QListWidget* lineList = new QListWidget();
+            typeLayout->addWidget(inObjectRadio);
+            typeLayout->addWidget(isolatedRadio);
+            removalTypeBox->setLayout(typeLayout);
+            layout->addWidget(removalTypeBox);
 
-                                                   // Set selection mode based on the method
-                                                   lineList->setSelectionMode(QAbstractItemView::ExtendedSelection);  // 默认允许多选
+            // Method selection (for In Object Lines)
+            QGroupBox* methodBox = new QGroupBox("Removal Method");
+            QVBoxLayout* methodLayout = new QVBoxLayout();
+            QRadioButton* neighborValuesRadio = new QRadioButton("Use Neighbor Values");
+            QRadioButton* stitchRadio = new QRadioButton("Direct Stitch");
+            neighborValuesRadio->setChecked(true);
+            methodLayout->addWidget(neighborValuesRadio);
+            methodLayout->addWidget(stitchRadio);
+            methodBox->setLayout(methodLayout);
+            layout->addWidget(methodBox);
 
-                                                   // Add only In Object lines to the list
-                                                   for (size_t i = 0; i < m_detectedLines.size(); ++i) {
-                                                       const auto& line = m_detectedLines[i];
-                                                       if (line.inObject) {
-                                                           QString lineInfo = QString("Line %1: %2 at %3 with width %4")
-                                                           .arg(i + 1)
-                                                               .arg(line.isVertical ? "Vertical" : "Horizontal")
-                                                               .arg(line.isVertical ? QString("x=%1").arg(line.x) : QString("y=%1").arg(line.y))
-                                                               .arg(line.width);
-                                                           QListWidgetItem* item = new QListWidgetItem(lineInfo);
-                                                           item->setData(Qt::UserRole, static_cast<int>(i));
-                                                           lineList->addItem(item);
-                                                       }
-                                                   }
+            // Line selection list
+            QGroupBox* lineSelectionBox = new QGroupBox("Select Lines to Process");
+            QVBoxLayout* selectionLayout = new QVBoxLayout();
+            QListWidget* lineList = new QListWidget();
+            lineList->setSelectionMode(QAbstractItemView::ExtendedSelection);
 
-                                                   // Connect stitch radio button to change selection mode
-                                                   connect(stitchRadio, &QRadioButton::toggled, [lineList](bool checked) {
-                                                       lineList->setSelectionMode(checked ?
-                                                                                      QAbstractItemView::SingleSelection :
-                                                                                      QAbstractItemView::ExtendedSelection);
-                                                       if (checked && lineList->selectedItems().count() > 1) {
-                                                           // If switching to single selection and multiple items are selected,
-                                                           // keep only the first selection
-                                                           lineList->clearSelection();
-                                                           if (lineList->count() > 0) {
-                                                               lineList->item(0)->setSelected(true);
-                                                           }
-                                                       }
-                                                   });
+            // Add lines to the list
+            for (size_t i = 0; i < m_detectedLines.size(); ++i) {
+                const auto& line = m_detectedLines[i];
+                if (line.inObject) {
+                    QString lineInfo = QString("Line %1: %2 at %3 with width %4")
+                    .arg(i + 1)
+                        .arg(line.isVertical ? "Vertical" : "Horizontal")
+                        .arg(line.isVertical ? QString("x=%1").arg(line.x) : QString("y=%1").arg(line.y))
+                        .arg(line.width);
+                    QListWidgetItem* item = new QListWidgetItem(lineInfo);
+                    item->setData(Qt::UserRole, static_cast<int>(i));
+                    lineList->addItem(item);
+                }
+            }
 
-                                                   lineList->setMinimumHeight(200);  // 增加列表高度以便于多选
-                                                   lineList->setMaximumHeight(300);
-                                                   selectionLayout->addWidget(lineList);
-                                                   lineSelectionBox->setLayout(selectionLayout);
-                                                   layout->addWidget(lineSelectionBox);
+            // Connect stitch radio button to change selection mode
+            connect(stitchRadio, &QRadioButton::toggled, [lineList](bool checked) {
+                lineList->setSelectionMode(checked ?
+                                               QAbstractItemView::SingleSelection :
+                                               QAbstractItemView::ExtendedSelection);
+                if (checked && lineList->selectedItems().count() > 1) {
+                    lineList->clearSelection();
+                    if (lineList->count() > 0) {
+                        lineList->item(0)->setSelected(true);
+                    }
+                }
+            });
 
-                                                   // Add a select all button for neighbor values mode
-                                                   QPushButton* selectAllButton = new QPushButton("Select All Lines");
-                                                   selectAllButton->setVisible(!stitchRadio->isChecked());
-                                                   connect(selectAllButton, &QPushButton::clicked, lineList, &QListWidget::selectAll);
-                                                   layout->addWidget(selectAllButton);
+            lineList->setMinimumHeight(200);
+            lineList->setMaximumHeight(300);
+            selectionLayout->addWidget(lineList);
+            lineSelectionBox->setLayout(selectionLayout);
+            layout->addWidget(lineSelectionBox);
 
-                                                   // Connect radio buttons to toggle select all button visibility
-                                                   connect(stitchRadio, &QRadioButton::toggled, selectAllButton, &QPushButton::setHidden);
-                                                   connect(neighborValuesRadio, &QRadioButton::toggled, selectAllButton, &QPushButton::setVisible);
+            // Add select all button for neighbor values mode
+            QPushButton* selectAllButton = new QPushButton("Select All Lines");
+            selectAllButton->setVisible(!stitchRadio->isChecked());
+            connect(selectAllButton, &QPushButton::clicked, lineList, &QListWidget::selectAll);
+            layout->addWidget(selectAllButton);
 
-                                                   // Control visibility logic
-                                                   auto updateVisibility = [&]() {
-                                                       bool isInObject = inObjectRadio->isChecked();
-                                                       methodBox->setVisible(isInObject);
-                                                       lineSelectionBox->setVisible(isInObject);
-                                                       selectAllButton->setVisible(isInObject && neighborValuesRadio->isChecked());
-                                                       dialog.adjustSize();
-                                                   };
+            // Connect radio buttons to update UI
+            connect(stitchRadio, &QRadioButton::toggled, selectAllButton, &QPushButton::setHidden);
+            connect(neighborValuesRadio, &QRadioButton::toggled, selectAllButton, &QPushButton::setVisible);
 
-                                                   connect(inObjectRadio, &QRadioButton::toggled, updateVisibility);
-                                                   connect(isolatedRadio, &QRadioButton::toggled, updateVisibility);
-                                                   connect(neighborValuesRadio, &QRadioButton::toggled, updateVisibility);
-                                                   connect(stitchRadio, &QRadioButton::toggled, updateVisibility);
+            // Control visibility logic
+            auto updateVisibility = [&]() {
+                bool isInObject = inObjectRadio->isChecked();
+                methodBox->setVisible(isInObject);
+                lineSelectionBox->setVisible(isInObject);
+                selectAllButton->setVisible(isInObject && neighborValuesRadio->isChecked());
+                dialog.adjustSize();
+            };
 
-                                                   // Add OK and Cancel buttons
-                                                   QDialogButtonBox* buttonBox = new QDialogButtonBox(
-                                                       QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-                                                   layout->addWidget(buttonBox);
+            connect(inObjectRadio, &QRadioButton::toggled, updateVisibility);
+            connect(isolatedRadio, &QRadioButton::toggled, updateVisibility);
 
-                                                   connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-                                                   connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+            // Add OK and Cancel buttons
+            QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+            layout->addWidget(buttonBox);
 
-                                                   dialog.setLayout(layout);
-                                                   updateVisibility();
+            connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+            connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
-                                                   if (dialog.exec() == QDialog::Accepted) {
-                                                       bool removeInObject = inObjectRadio->isChecked();
-                                                       QString methodStr;
-                                                       QString typeStr = removeInObject ? "In-Object Lines" : "Isolated Lines";
+            dialog.setLayout(layout);
+            updateVisibility();
 
-                                                       std::vector<ImageProcessor::DarkLine> selectedLines;
+            if (dialog.exec() == QDialog::Accepted) {
+                bool removeInObject = inObjectRadio->isChecked();
+                QString methodStr;
+                QString typeStr = removeInObject ? "In-Object Lines" : "Isolated Lines";
 
-                                                       if (removeInObject) {
-                                                           ImageProcessor::LineRemovalMethod method =
-                                                               stitchRadio->isChecked() ?
+                if (removeInObject) {
+                    ImageProcessor::LineRemovalMethod method = stitchRadio->isChecked() ?
                                                                    ImageProcessor::LineRemovalMethod::DIRECT_STITCH :
                                                                    ImageProcessor::LineRemovalMethod::NEIGHBOR_VALUES;
 
-                                                           methodStr = stitchRadio->isChecked() ? "Direct Stitch" : "Neighbor Values";
+                    methodStr = stitchRadio->isChecked() ? "Direct Stitch" : "Neighbor Values";
 
-                                                           // Get selected lines
-                                                           auto selectedItems = lineList->selectedItems();
-                                                           if (selectedItems.isEmpty()) {
-                                                               QMessageBox::warning(this, "Warning", "Please select at least one line for processing.");
-                                                               return;
-                                                           }
+                    // Process selected lines
+                    auto selectedItems = lineList->selectedItems();
+                    if (selectedItems.isEmpty()) {
+                        QMessageBox::warning(this, "Warning", "Please select at least one line for processing.");
+                        return;
+                    }
 
-                                                           // Collect all selected lines
-                                                           for (QListWidgetItem* item : selectedItems) {
-                                                               int index = item->data(Qt::UserRole).toInt();
-                                                               selectedLines.push_back(m_detectedLines[index]);
-                                                           }
+                    std::vector<ImageProcessor::DarkLine> selectedLines;
+                    for (QListWidgetItem* item : selectedItems) {
+                        int index = item->data(Qt::UserRole).toInt();
+                        selectedLines.push_back(m_detectedLines[index]);
+                    }
 
-                                                           // Process the selected lines
-                                                           m_imageProcessor.removeDarkLinesSequential(
-                                                               selectedLines,
-                                                               true,   // removeInObject
-                                                               false,  // removeIsolated
-                                                               method
-                                                               );
-                                                       } else {
-                                                           methodStr = "Neighbor Values";
-                                                           m_imageProcessor.removeDarkLinesSelective(
-                                                               false,  // removeInObject
-                                                               true,   // removeIsolated
-                                                               ImageProcessor::LineRemovalMethod::NEIGHBOR_VALUES
-                                                               );
-                                                       }
+                    m_imageProcessor.removeDarkLinesSequential(
+                        selectedLines,
+                        true,   // removeInObject
+                        false,  // removeIsolated
+                        method
+                        );
+                } else {
+                    methodStr = "Neighbor Values";
+                    m_imageProcessor.removeDarkLinesSelective(
+                        false,  // removeInObject
+                        true,   // removeIsolated
+                        ImageProcessor::LineRemovalMethod::NEIGHBOR_VALUES
+                        );
+                }
 
-                                                       // Get updated lines after removal
-                                                       std::vector<ImageProcessor::DarkLine> remainingLines = m_imageProcessor.detectDarkLines();
+                // Update detected lines and display
+                m_detectedLines = m_imageProcessor.detectDarkLines();
+                updateImageDisplay();
+                updateLastAction("Remove Lines", QString("%1 - %2").arg(typeStr).arg(methodStr));
 
-                                                       // Create removal info summary
-                                                       QString removalInfo = "Line Removal Summary:\n\n";
-                                                       removalInfo += QString("Method Used: %1\n").arg(methodStr);
-                                                       removalInfo += QString("Type: %1\n\n").arg(typeStr);
+                if (m_detectedLines.empty()) {
+                    removeBtn->setEnabled(false);
+                    resetBtn->setEnabled(false);
+                }
+            }
+        } else if (pointerMethodActive) {
+            // Handle pointer method removal
+            PointerOperations::handleRemoveLinesDialog(this);
+        }
+    });
+    // Connect reset button
+    connect(resetBtn, &QPushButton::clicked, [this, detectBtn, removeBtn, resetBtn]() {
+        if (checkZoomMode()) return;
 
-                                                       removalInfo += "Initial Lines:\n";
-                                                       int initialInObjectCount = 0;
-                                                       int initialIsolatedCount = 0;
+        QMessageBox::StandardButton reply = QMessageBox::question(this,
+                                                                  "Reset Detection",
+                                                                  "Are you sure you want to reset all detected lines?",
+                                                                  QMessageBox::Yes | QMessageBox::No);
 
-                                                       for (const auto& line : initialLines) {
-                                                           if (line.inObject) initialInObjectCount++;
-                                                           else initialIsolatedCount++;
-                                                       }
+        if (reply == QMessageBox::Yes) {
+            // Reset both methods' results
+            resetDetectedLines();
+            resetDetectedLinesPointer();
 
-                                                       removalInfo += QString("Total Lines: %1\n").arg(initialLines.size());
-                                                       removalInfo += QString("In-Object Lines: %1\n").arg(initialInObjectCount);
-                                                       removalInfo += QString("Isolated Lines: %1\n\n").arg(initialIsolatedCount);
+            // Reset button states
+            detectBtn->setEnabled(true);
+            removeBtn->setEnabled(false);
+            resetBtn->setEnabled(false);
 
-                                                       // Add removed lines info
-                                                       removalInfo += "Removed Lines:\n";
-                                                       if (stitchRadio->isChecked() && removeInObject) {
-                                                           // For direct stitch, only show specifically selected lines
-                                                           for (const auto& line : selectedLines) {
-                                                               QString coordinates;
-                                                               if (line.isVertical) {
-                                                                   coordinates = QString("(%1,0)").arg(line.x);
-                                                               } else {
-                                                                   coordinates = QString("(0,%1)").arg(line.y);
-                                                               }
+            updateImageDisplay();
+            updateLastAction("Reset Detection");
+        }
+    });
 
-                                                               removalInfo += QString("Line at %1 with width %2 pixels (%3)\n")
-                                                                                  .arg(coordinates)
-                                                                                  .arg(line.width)
-                                                                                  .arg(line.inObject ? "In Object" : "Isolated");
-                                                           }
-                                                       } else {
-                                                           // For neighbor values method or isolated lines, show all removed lines
-                                                           for (const auto& line : initialLines) {
-                                                               bool wasRemoved = true;
-                                                               for (const auto& remainingLine : remainingLines) {
-                                                                   if ((line.isVertical == remainingLine.isVertical) &&
-                                                                       (line.isVertical ? (line.x == remainingLine.x) : (line.y == remainingLine.y)) &&
-                                                                       (line.width == remainingLine.width)) {
-                                                                       wasRemoved = false;
-                                                                       break;
-                                                                   }
-                                                               }
-
-                                                               if (wasRemoved) {
-                                                                   QString coordinates;
-                                                                   if (line.isVertical) {
-                                                                       coordinates = QString("(%1,0)").arg(line.x);
-                                                                   } else {
-                                                                       coordinates = QString("(0,%1)").arg(line.y);
-                                                                   }
-
-                                                                   removalInfo += QString("Line at %1 with width %2 pixels (%3)\n")
-                                                                                      .arg(coordinates)
-                                                                                      .arg(line.width)
-                                                                                      .arg(line.inObject ? "In Object" : "Isolated");
-                                                               }
-                                                           }
-                                                       }
-
-                                                       // Add remaining lines summary with detailed info
-                                                       int remainingInObjectCount = 0;
-                                                       int remainingIsolatedCount = 0;
-
-                                                       removalInfo += QString("\nRemaining Lines:\n");
-
-                                                       // Show detailed information for each remaining line
-                                                       for (size_t i = 0; i < remainingLines.size(); ++i) {
-                                                           const auto& line = remainingLines[i];
-                                                           if (line.inObject) remainingInObjectCount++;
-                                                           else remainingIsolatedCount++;
-
-                                                           QString coordinates;
-                                                           if (line.isVertical) {
-                                                               coordinates = QString("(%1,0)").arg(line.x);
-                                                           } else {
-                                                               coordinates = QString("(0,%1)").arg(line.y);
-                                                           }
-
-                                                           removalInfo += QString("Line %1: %2 with width %3 pixels (%4)\n")
-                                                                              .arg(i + 1)
-                                                                              .arg(coordinates)
-                                                                              .arg(line.width)
-                                                                              .arg(line.inObject ? "In Object" : "Isolated");
-                                                       }
-
-                                                       removalInfo += QString("\nSummary of Remaining Lines:\n");
-                                                       removalInfo += QString("Total Lines: %1\n").arg(remainingLines.size());
-                                                       removalInfo += QString("In-Object Lines: %1\n").arg(remainingInObjectCount);
-                                                       removalInfo += QString("Isolated Lines: %1\n").arg(remainingIsolatedCount);
-
-                                                       // Update the info label and adjust its height
-                                                       m_darkLineInfoLabel->setText(removalInfo);
-
-                                                       // Adjust scroll area height based on content
-                                                       QFontMetrics fm(m_darkLineInfoLabel->font());
-                                                       int textHeight = fm.lineSpacing() * removalInfo.count('\n') + 40;
-                                                       int preferredHeight = qMin(textHeight, 300);
-                                                       preferredHeight = qMax(preferredHeight, 30);
-
-                                                       QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
-                                                           qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
-                                                           );
-                                                       darkLineScrollArea->setFixedHeight(preferredHeight);
-
-                                                       // Show the info label and scroll area
-                                                       m_darkLineInfoLabel->setVisible(true);
-                                                       darkLineScrollArea->setVisible(true);
-
-                                                       // Update detected lines with remaining lines
-                                                       m_detectedLines = remainingLines;
-
-                                                       // Update image display
-                                                       updateImageDisplay();
-
-                                                       // Update last action without parameters
-                                                       updateLastAction("Remove Lines");
-
-                                                       // Update button states if no lines remain
-                                                       if (m_detectedLines.empty()) {
-                                                           removeBtn->setEnabled(false);
-                                                           resetBtn->setEnabled(false);
-                                                       }
-                                                   }
-                                               }},
-                                           {"Reset", [this, detectBtn, removeBtn, resetBtn]() {
-                                                if (checkZoomMode()) return;
-
-                                                resetDetectedLines();
-
-                                                // Enable detect button and disable remove/reset
-                                                detectBtn->setEnabled(true);
-                                                removeBtn->setEnabled(false);
-                                                resetBtn->setEnabled(false);
-
-                                                // Re-enable pointer method buttons
-                                                if (m_pointerDetectBtn) m_pointerDetectBtn->setEnabled(true);
-                                                if (m_pointerRemoveBtn) m_pointerRemoveBtn->setEnabled(false);
-                                                if (m_pointerResetBtn) m_pointerResetBtn->setEnabled(false);
-
-                                                updateImageDisplay();
-                                                updateLastAction("Reset Detected Lines");
-                                            }}
-                                          });
-
+    // Add buttons to the list for general enable/disable management
     m_allButtons.push_back(detectBtn);
     m_allButtons.push_back(removeBtn);
     m_allButtons.push_back(resetBtn);
+
+    // Set tooltips
+    detectBtn->setToolTip("Detect dark lines using vector or pointer method");
+    removeBtn->setToolTip("Remove detected dark lines");
+    resetBtn->setToolTip("Reset all detected lines");
+
+    // Add the group box to the main layout
+    m_scrollLayout->addWidget(groupBox);
 }
 
 void ControlPanel::resetDetectedLines() {
@@ -2001,35 +1844,6 @@ void ControlPanel::updateDarkLineInfoDisplay() {
 
     m_darkLineInfoLabel->setVisible(true);
     darkLineScrollArea->setVisible(true);
-}
-
-// Helper function to draw line labels with proper zoom scaling
-void ControlPanel :: drawLineLabel(QPainter& painter, const QString& text, const QPointF& pos, const ZoomManager& zoomManager) {
-    QFont font = painter.font();
-    QFontMetrics fm(font);
-
-    // Scale font if zoomed
-    if (zoomManager.isZoomModeActive()) {
-        font.setPointSizeF(font.pointSizeF() * zoomManager.getZoomLevel());
-        painter.setFont(font);
-    }
-
-    // Calculate label dimensions
-    float labelWidth = fm.horizontalAdvance(text) + 10;
-    float labelHeight = 20;
-    if (zoomManager.isZoomModeActive()) {
-        labelWidth *= zoomManager.getZoomLevel();
-        labelHeight *= zoomManager.getZoomLevel();
-    }
-
-    QRectF textRect(pos.x(), pos.y(), labelWidth, labelHeight);
-
-    // Draw label background
-    painter.fillRect(textRect, QColor(255, 255, 255, 230));
-
-    // Draw text
-    painter.setPen(Qt::black);
-    painter.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, " " + text);
 }
 
 void ControlPanel::updateCalibrationButtonText() {
@@ -2395,110 +2209,6 @@ void ControlPanel::clearAllDetectionResults() {
 }
 
 
-void ControlPanel::setupPointerProcessing() {
-    QPushButton* detectBtn = new QPushButton("Detect Lines (2D Pointer)");
-    QPushButton* removeBtn = new QPushButton("Remove Lines (2D Pointer)");
-    QPushButton* resetBtn = new QPushButton("Reset");
-
-    // Store button pointers for access in other methods
-    m_pointerDetectBtn = detectBtn;
-    m_pointerRemoveBtn = removeBtn;
-    m_pointerResetBtn = resetBtn;
-
-    // Initially disable remove and reset buttons
-    removeBtn->setEnabled(false);
-    resetBtn->setEnabled(false);
-
-    createGroupBox("Process via Double 2D Pointer", {
-                                                        {"Detect Lines (2D Pointer)", [this, detectBtn, removeBtn, resetBtn]() {
-                                                             if (checkZoomMode()) return;
-
-                                                             try {
-                                                                 qDebug() << "Starting dark line detection with 2D pointer";
-                                                                 m_darkLineInfoLabel->hide();
-                                                                 resetDetectedLinesPointer();
-
-                                                                 // Convert image to ImageData format
-                                                                 auto imageData = convertToImageData(m_imageProcessor.getFinalImage());
-
-                                                                 // Save current state for undo functionality
-                                                                 m_imageProcessor.saveCurrentState();
-
-                                                                 // Detect lines using pointer implementation
-                                                                 m_detectedLinesPointer = DarkLinePointerProcessor::detectDarkLines(imageData);
-
-                                                                 if (!m_detectedLinesPointer || m_detectedLinesPointer->rows == 0) {
-                                                                     QMessageBox::information(this, "Detection Result", "No dark lines detected.");
-                                                                     return;
-                                                                 }
-
-                                                                 // Enable/disable appropriate buttons
-                                                                 removeBtn->setEnabled(true);
-                                                                 resetBtn->setEnabled(true);
-
-                                                                 // Disable vector method buttons
-                                                                 for (auto* btn : m_allButtons) {
-                                                                     if (btn->text() == "Detect Lines" ||
-                                                                         btn->text() == "Remove Lines" ||
-                                                                         btn->text() == "Reset") {
-                                                                         btn->setEnabled(false);
-                                                                     }
-                                                                 }
-
-                                                                 // Generate detection summary
-                                                                 QString detectionInfo = PointerOperations::generateDarkLineInfo(m_detectedLinesPointer);
-                                                                 m_darkLineInfoLabel->setText(detectionInfo);
-                                                                 updateDarkLineInfoDisplayPointer();
-
-                                                                 updateImageDisplay();
-                                                                 updateLastAction("Detect Lines (2D Pointer)");
-
-                                                             } catch (const std::exception& e) {
-                                                                 QMessageBox::critical(this, "Error",
-                                                                                       QString("Error in line detection: %1").arg(e.what()));
-                                                             }
-                                                         }},
-
-                                                        {"Remove Lines (2D Pointer)", [this, removeBtn]() {
-                                                             if (checkZoomMode()) return;
-
-                                                             if (!m_detectedLinesPointer || m_detectedLinesPointer->rows == 0) {
-                                                                 QMessageBox::information(this, "Remove Lines",
-                                                                                          "Please detect lines first using 2D Pointer method.");
-                                                                 return;
-                                                             }
-
-                                                             PointerOperations::handleRemoveLinesDialog(this);
-                                                         }},
-
-                                                        {"Reset (2D Pointer)", [this, detectBtn, removeBtn, resetBtn]() {
-                                                             if (checkZoomMode()) return;
-
-                                                             resetDetectedLinesPointer();
-
-                                                             // Enable detect button and disable remove/reset
-                                                             detectBtn->setEnabled(true);
-                                                             removeBtn->setEnabled(false);
-                                                             resetBtn->setEnabled(false);
-
-                                                             // Re-enable vector method buttons
-                                                             for (auto* btn : m_allButtons) {
-                                                                 if (btn->text() == "Detect Lines") {
-                                                                     btn->setEnabled(true);
-                                                                 }
-                                                             }
-
-                                                             updateImageDisplay();
-                                                             updateLastAction("Reset Detected Lines (2D Pointer)");
-                                                         }}
-                                                    });
-
-    // Add buttons to the list of all buttons for general enable/disable management
-    m_allButtons.push_back(detectBtn);
-    m_allButtons.push_back(removeBtn);
-    m_allButtons.push_back(resetBtn);
-}
-
 void ControlPanel::setupResetOperations() {
     createGroupBox("Reset Operations", {
                                            {"Reset Detection", [this]() {
@@ -2552,4 +2262,213 @@ void ControlPanel::setupResetOperations() {
                                                 }
                                             }}
                                        });
+}
+
+void ControlPanel::setupCombinedAdjustments() {
+    createGroupBox("Image Adjustments", {
+                                            {"Gamma Adjustment", [this]() {
+                                                 if (checkZoomMode()) return;
+
+                                                 // Create dialog
+                                                 QDialog dialog(this);
+                                                 dialog.setWindowTitle("Gamma Adjustment");
+                                                 dialog.setMinimumWidth(300);
+
+                                                 // Create layout
+                                                 QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+                                                 // Create mode selection
+                                                 QGroupBox* modeBox = new QGroupBox("Adjustment Mode");
+                                                 QVBoxLayout* modeLayout = new QVBoxLayout(modeBox);
+                                                 QRadioButton* overallRadio = new QRadioButton("Overall Adjustment");
+                                                 QRadioButton* regionalRadio = new QRadioButton("Regional Adjustment");
+                                                 overallRadio->setChecked(true);
+
+                                                 modeLayout->addWidget(overallRadio);
+                                                 modeLayout->addWidget(regionalRadio);
+                                                 layout->addWidget(modeBox);
+
+                                                 // Create gamma value input
+                                                 QLabel* gammaLabel = new QLabel("Gamma Value:");
+                                                 QDoubleSpinBox* gammaSpinBox = new QDoubleSpinBox();
+                                                 gammaSpinBox->setRange(0.1, 10.0);
+                                                 gammaSpinBox->setValue(1.0);
+                                                 gammaSpinBox->setSingleStep(0.1);
+
+                                                 layout->addWidget(gammaLabel);
+                                                 layout->addWidget(gammaSpinBox);
+
+                                                 // Create region selection info label
+                                                 QLabel* regionLabel = new QLabel("For regional adjustment, select the region in the image first.");
+                                                 regionLabel->setWordWrap(true);
+                                                 regionLabel->setVisible(false);
+                                                 layout->addWidget(regionLabel);
+
+                                                 // Connect radio buttons to show/hide region label
+                                                 connect(regionalRadio, &QRadioButton::toggled, regionLabel, &QLabel::setVisible);
+
+                                                 // Add buttons
+                                                 QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                                                     QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                                                 layout->addWidget(buttonBox);
+
+                                                 connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                                                 connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+                                                 if (dialog.exec() == QDialog::Accepted) {
+                                                     float gamma = gammaSpinBox->value();
+
+                                                     if (regionalRadio->isChecked()) {
+                                                         if (!m_imageLabel->isRegionSelected()) {
+                                                             QMessageBox::information(this, "Region Selection",
+                                                                                      "Please select a region first, then try again.");
+                                                             return;
+                                                         }
+                                                         QRect selectedRegion = m_imageLabel->getSelectedRegion();
+                                                         m_imageProcessor.adjustGammaForSelectedRegion(gamma, selectedRegion);
+                                                         m_imageLabel->clearSelection();
+                                                         updateImageDisplay();
+                                                         updateLastAction("Regional Gamma", QString::number(gamma, 'f', 2));
+                                                     } else {
+                                                         m_imageProcessor.adjustGammaOverall(gamma);
+                                                         updateImageDisplay();
+                                                         updateLastAction("Overall Gamma", QString::number(gamma, 'f', 2));
+                                                     }
+                                                 }
+                                             }},
+
+                                            {"Contrast Adjustment", [this]() {
+                                                 if (checkZoomMode()) return;
+
+                                                 QDialog dialog(this);
+                                                 dialog.setWindowTitle("Contrast Adjustment");
+                                                 dialog.setMinimumWidth(300);
+
+                                                 QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+                                                 // Mode selection
+                                                 QGroupBox* modeBox = new QGroupBox("Adjustment Mode");
+                                                 QVBoxLayout* modeLayout = new QVBoxLayout(modeBox);
+                                                 QRadioButton* overallRadio = new QRadioButton("Overall Adjustment");
+                                                 QRadioButton* regionalRadio = new QRadioButton("Regional Adjustment");
+                                                 overallRadio->setChecked(true);
+
+                                                 modeLayout->addWidget(overallRadio);
+                                                 modeLayout->addWidget(regionalRadio);
+                                                 layout->addWidget(modeBox);
+
+                                                 // Contrast factor input
+                                                 QLabel* contrastLabel = new QLabel("Contrast Factor:");
+                                                 QDoubleSpinBox* contrastSpinBox = new QDoubleSpinBox();
+                                                 contrastSpinBox->setRange(0.1, 10.0);
+                                                 contrastSpinBox->setValue(1.0);
+                                                 contrastSpinBox->setSingleStep(0.1);
+
+                                                 layout->addWidget(contrastLabel);
+                                                 layout->addWidget(contrastSpinBox);
+
+                                                 // Region selection info
+                                                 QLabel* regionLabel = new QLabel("For regional adjustment, select the region in the image first.");
+                                                 regionLabel->setWordWrap(true);
+                                                 regionLabel->setVisible(false);
+                                                 layout->addWidget(regionLabel);
+
+                                                 connect(regionalRadio, &QRadioButton::toggled, regionLabel, &QLabel::setVisible);
+
+                                                 QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                                                     QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                                                 layout->addWidget(buttonBox);
+
+                                                 connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                                                 connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+                                                 if (dialog.exec() == QDialog::Accepted) {
+                                                     float contrast = contrastSpinBox->value();
+
+                                                     if (regionalRadio->isChecked()) {
+                                                         if (!m_imageLabel->isRegionSelected()) {
+                                                             QMessageBox::information(this, "Region Selection",
+                                                                                      "Please select a region first, then try again.");
+                                                             return;
+                                                         }
+                                                         QRect selectedRegion = m_imageLabel->getSelectedRegion();
+                                                         m_imageProcessor.applyContrastToRegion(contrast, selectedRegion);
+                                                         m_imageLabel->clearSelection();
+                                                         updateImageDisplay();
+                                                         updateLastAction("Regional Contrast", QString::number(contrast, 'f', 2));
+                                                     } else {
+                                                         m_imageProcessor.adjustContrast(contrast);
+                                                         updateImageDisplay();
+                                                         updateLastAction("Overall Contrast", QString::number(contrast, 'f', 2));
+                                                     }
+                                                 }
+                                             }},
+
+                                            {"Sharpen Adjustment", [this]() {
+                                                 if (checkZoomMode()) return;
+
+                                                 QDialog dialog(this);
+                                                 dialog.setWindowTitle("Sharpen Adjustment");
+                                                 dialog.setMinimumWidth(300);
+
+                                                 QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+                                                 // Mode selection
+                                                 QGroupBox* modeBox = new QGroupBox("Adjustment Mode");
+                                                 QVBoxLayout* modeLayout = new QVBoxLayout(modeBox);
+                                                 QRadioButton* overallRadio = new QRadioButton("Overall Adjustment");
+                                                 QRadioButton* regionalRadio = new QRadioButton("Regional Adjustment");
+                                                 overallRadio->setChecked(true);
+
+                                                 modeLayout->addWidget(overallRadio);
+                                                 modeLayout->addWidget(regionalRadio);
+                                                 layout->addWidget(modeBox);
+
+                                                 // Sharpen strength input
+                                                 QLabel* sharpenLabel = new QLabel("Sharpen Strength:");
+                                                 QDoubleSpinBox* sharpenSpinBox = new QDoubleSpinBox();
+                                                 sharpenSpinBox->setRange(0.1, 10.0);
+                                                 sharpenSpinBox->setValue(1.0);
+                                                 sharpenSpinBox->setSingleStep(0.1);
+
+                                                 layout->addWidget(sharpenLabel);
+                                                 layout->addWidget(sharpenSpinBox);
+
+                                                 // Region selection info
+                                                 QLabel* regionLabel = new QLabel("For regional adjustment, select the region in the image first.");
+                                                 regionLabel->setWordWrap(true);
+                                                 regionLabel->setVisible(false);
+                                                 layout->addWidget(regionLabel);
+
+                                                 connect(regionalRadio, &QRadioButton::toggled, regionLabel, &QLabel::setVisible);
+
+                                                 QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                                                     QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                                                 layout->addWidget(buttonBox);
+
+                                                 connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                                                 connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+                                                 if (dialog.exec() == QDialog::Accepted) {
+                                                     float strength = sharpenSpinBox->value();
+
+                                                     if (regionalRadio->isChecked()) {
+                                                         if (!m_imageLabel->isRegionSelected()) {
+                                                             QMessageBox::information(this, "Region Selection",
+                                                                                      "Please select a region first, then try again.");
+                                                             return;
+                                                         }
+                                                         QRect selectedRegion = m_imageLabel->getSelectedRegion();
+                                                         m_imageProcessor.applySharpenToRegion(strength, selectedRegion);
+                                                         m_imageLabel->clearSelection();
+                                                         updateImageDisplay();
+                                                         updateLastAction("Regional Sharpen", QString::number(strength, 'f', 2));
+                                                     } else {
+                                                         m_imageProcessor.sharpenImage(strength);
+                                                         updateImageDisplay();
+                                                         updateLastAction("Overall Sharpen", QString::number(strength, 'f', 2));
+                                                     }
+                                                 }
+                                             }}
+                                        });
 }

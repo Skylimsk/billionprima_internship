@@ -103,6 +103,7 @@ SOURCES = \
     zoom.cpp
 
 HEADERS = \
+    Control_Panel/control_panel_utils.h \
     ThreadLogger.h \
     adjustments.h \
     control_panel.h \
