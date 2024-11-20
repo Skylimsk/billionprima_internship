@@ -144,6 +144,7 @@ private:
     bool isVectorMethodActive() const { return !m_detectedLines.empty(); }
     bool isPointerMethodActive() const { return m_detectedLinesPointer != nullptr && m_detectedLinesPointer->rows > 0; }
     void clearAllDetectionResults();
+    void updateLastActionLabelSize();
 
     // Member variables
     QVBoxLayout* m_mainLayout;
@@ -194,6 +195,13 @@ private:
     // Dark line detection results storage
     std::vector<ImageProcessor::DarkLine> m_detectedLines;     // For original implementation
     DarkLineArray* m_detectedLinesPointer;                    // For 2D pointer implementation
+
+    QPushButton* m_pointerDetectBtn = nullptr;
+    QPushButton* m_pointerRemoveBtn = nullptr;
+    QPushButton* m_pointerResetBtn = nullptr;
+    QPushButton* m_vectorDetectBtn = nullptr;
+    QPushButton* m_vectorRemoveBtn = nullptr;
+    QPushButton* m_vectorResetBtn = nullptr;
 };
 
 #endif // CONTROL_PANEL_H

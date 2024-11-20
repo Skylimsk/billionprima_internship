@@ -164,8 +164,7 @@ bool ControlPanel::checkZoomMode() {
     return (zoomManager.isZoomModeActive() && !zoomManager.isZoomFixed());
 }
 
-void ControlPanel::setupPixelInfoLabel()
-{
+void ControlPanel::setupPixelInfoLabel() {
     QVBoxLayout* infoLayout = new QVBoxLayout();
 
     // Add image size label
@@ -177,14 +176,28 @@ void ControlPanel::setupPixelInfoLabel()
     m_pixelInfoLabel->setFixedHeight(30);
     infoLayout->addWidget(m_pixelInfoLabel);
 
+    // Update last action label setup
     m_lastActionLabel = new QLabel("Last Action: None");
-    m_lastActionLabel->setFixedHeight(25);
+    m_lastActionLabel->setMinimumHeight(25);
+    m_lastActionLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    m_lastActionLabel->setWordWrap(true);
     infoLayout->addWidget(m_lastActionLabel);
 
+    // Update last action parameters label setup
     m_lastActionParamsLabel = new QLabel("");
-    m_lastActionParamsLabel->setFixedHeight(25);
-    m_lastActionParamsLabel->setStyleSheet("color: black;");
+    m_lastActionParamsLabel->setMinimumHeight(25);
+    m_lastActionParamsLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     m_lastActionParamsLabel->setWordWrap(true);
+    m_lastActionParamsLabel->setStyleSheet(
+        "QLabel {"
+        "    color: black;"
+        "    background-color: #f8f8f8;"
+        "    border: 1px solid #ddd;"
+        "    border-radius: 4px;"
+        "    padding: 4px 8px;"
+        "    margin: 2px 0px;"
+        "}"
+        );
     infoLayout->addWidget(m_lastActionParamsLabel);
 
     m_darkLineInfoLabel = new QLabel("");
@@ -266,9 +279,9 @@ void ControlPanel::setupPixelInfoLabel()
     m_lastCpuTime = -1;
 }
 
-void ControlPanel::updateLastAction(const QString& action, const QString& parameters)
-{
+void ControlPanel::updateLastAction(const QString& action, const QString& parameters) {
     m_lastActionLabel->setText("Last Action: " + action);
+
     if (parameters.isEmpty()) {
         m_lastActionParamsLabel->clear();
         m_lastActionParamsLabel->setVisible(false);
@@ -278,11 +291,11 @@ void ControlPanel::updateLastAction(const QString& action, const QString& parame
             prefix = "File Name: ";
         } else if (action == "Detect Black Lines" || action == "Remove Black Lines") {
             prefix = "Line Info: ";
-        } else if (action ==  "Split & Merge"){
+        } else if (action == "Split & Merge") {
             prefix = "";
-        } else if (action == "Zoom In" || action == "Zoom Out" || action == "Reset Zoom"){
+        } else if (action == "Zoom In" || action == "Zoom Out" || action == "Reset Zoom") {
             prefix = "Zoom Factor: ";
-        } else if (action == "Zoom Mode"){
+        } else if (action == "Zoom Mode") {
             prefix = "Status: ";
         } else {
             prefix = "Parameters: ";
@@ -290,7 +303,44 @@ void ControlPanel::updateLastAction(const QString& action, const QString& parame
         m_lastActionParamsLabel->setText(prefix + parameters);
         m_lastActionParamsLabel->setVisible(true);
     }
+
+    updateLastActionLabelSize();
     m_imageProcessor.setLastAction(action, parameters);
+}
+
+void ControlPanel::updateLastActionLabelSize() {
+    // Calculate required height for action label
+    QFontMetrics fmAction(m_lastActionLabel->font());
+    int actionTextWidth = m_lastActionLabel->width() - 10; // Subtract margin
+    QRect actionBounds = fmAction.boundingRect(
+        QRect(0, 0, actionTextWidth, 0),
+        Qt::TextWordWrap,
+        m_lastActionLabel->text()
+        );
+
+    // Calculate required height for parameters label if visible
+    int paramsHeight = 0;
+    if (m_lastActionParamsLabel->isVisible()) {
+        QFontMetrics fmParams(m_lastActionParamsLabel->font());
+        int paramsTextWidth = m_lastActionParamsLabel->width() - 20; // Subtract padding
+        QRect paramsBounds = fmParams.boundingRect(
+            QRect(0, 0, paramsTextWidth, 0),
+            Qt::TextWordWrap,
+            m_lastActionParamsLabel->text()
+            );
+        paramsHeight = paramsBounds.height() + 10; // Add padding
+    }
+
+    // Set minimum heights with some padding
+    m_lastActionLabel->setMinimumHeight(actionBounds.height() + 8);
+    if (m_lastActionParamsLabel->isVisible()) {
+        m_lastActionParamsLabel->setMinimumHeight(paramsHeight);
+    }
+
+    // Adjust layout if needed
+    m_lastActionLabel->updateGeometry();
+    m_lastActionParamsLabel->updateGeometry();
+    layout()->activate();
 }
 
 void ControlPanel::handleRevert() {
@@ -307,6 +357,83 @@ void ControlPanel::handleRevert() {
         m_cpuTimingLabel->setVisible(true);
     } else {
         m_cpuTimingLabel->setVisible(false);
+    }
+
+    // Check if we're reverting to a state with detected lines
+    QString lastAction = m_imageProcessor.getLastActionRecord().action;
+    if (lastAction == "Detect Lines" || lastAction == "Detect Lines (2D Pointer)") {
+        // Re-detect lines based on the current image state
+        if (lastAction == "Detect Lines") {
+            m_detectedLines = m_imageProcessor.detectDarkLines();
+
+            // Generate detection info summary
+            QString detectionInfo = "Detected Lines:\n\n";
+            int inObjectCount = 0;
+            int isolatedCount = 0;
+
+            for (size_t i = 0; i < m_detectedLines.size(); ++i) {
+                const auto& line = m_detectedLines[i];
+
+                QString coordinates;
+                if (line.isVertical) {
+                    coordinates = QString("(%1,0)").arg(line.x);
+                } else {
+                    coordinates = QString("(0,%1)").arg(line.y);
+                }
+
+                detectionInfo += QString("Line %1: %2 with width %3 pixels (%4)\n")
+                                     .arg(i + 1)
+                                     .arg(coordinates)
+                                     .arg(line.width)
+                                     .arg(line.inObject ? "In Object" : "Isolated");
+
+                if (line.inObject) {
+                    inObjectCount++;
+                } else {
+                    isolatedCount++;
+                }
+            }
+
+            detectionInfo += QString("\nSummary:\n");
+            detectionInfo += QString("Total Lines: %1\n").arg(m_detectedLines.size());
+            detectionInfo += QString("In-Object Lines: %1\n").arg(inObjectCount);
+            detectionInfo += QString("Isolated Lines: %1\n").arg(isolatedCount);
+
+            // Update the info label
+            m_darkLineInfoLabel->setText(detectionInfo);
+            updateDarkLineInfoDisplay();
+
+            // Update button states
+            if (m_vectorRemoveBtn) m_vectorRemoveBtn->setEnabled(!m_detectedLines.empty());
+            if (m_vectorResetBtn) m_vectorResetBtn->setEnabled(!m_detectedLines.empty());
+            if (m_pointerDetectBtn) m_pointerDetectBtn->setEnabled(false);
+            if (m_pointerRemoveBtn) m_pointerRemoveBtn->setEnabled(false);
+            if (m_pointerResetBtn) m_pointerResetBtn->setEnabled(false);
+
+        } else if (lastAction == "Detect Lines (2D Pointer)") {
+            // Convert image to ImageData format and detect lines using pointer implementation
+            auto imageData = convertToImageData(m_imageProcessor.getFinalImage());
+            m_detectedLinesPointer = DarkLinePointerProcessor::detectDarkLines(imageData);
+
+            if (m_detectedLinesPointer && m_detectedLinesPointer->rows > 0) {
+                QString detectionInfo = PointerOperations::generateDarkLineInfo(m_detectedLinesPointer);
+                m_darkLineInfoLabel->setText(detectionInfo);
+                updateDarkLineInfoDisplayPointer();
+
+                // Update button states
+                if (m_pointerRemoveBtn) m_pointerRemoveBtn->setEnabled(true);
+                if (m_pointerResetBtn) m_pointerResetBtn->setEnabled(true);
+                if (m_vectorDetectBtn) m_vectorDetectBtn->setEnabled(false);
+                if (m_vectorRemoveBtn) m_vectorRemoveBtn->setEnabled(false);
+                if (m_vectorResetBtn) m_vectorResetBtn->setEnabled(false);
+            }
+        }
+    } else {
+        // If we're not reverting to a detection state, clear any existing detection info
+        resetDetectedLines();
+        resetDetectedLinesPointer();
+        m_darkLineInfoLabel->clear();
+        m_darkLineInfoLabel->setVisible(false);
     }
 }
 
@@ -527,6 +654,7 @@ void ControlPanel::setupFileOperations()
                                                if (!fileName.isEmpty()) {
                                                    try {
                                                        resetDetectedLines();
+                                                       resetDetectedLinesPointer();
                                                        m_darkLineInfoLabel->hide();
                                                        m_imageProcessor.loadTxtImage(fileName.toStdString());
                                                        m_imageLabel->clearSelection();
@@ -556,6 +684,7 @@ void ControlPanel::setupFileOperations()
                                                if (!revertedAction.isEmpty()) {
                                                    //m_darkLineInfoLabel->hide();
                                                    resetDetectedLines();
+                                                   resetDetectedLinesPointer();
                                                    m_imageLabel->clearSelection();
                                                    updateImageDisplay();
                                                    handleRevert();
@@ -673,6 +802,7 @@ void ControlPanel::setupBasicOperations()
                                                 if (checkZoomMode()) return;
                                                 m_darkLineInfoLabel->hide();
                                                 resetDetectedLines();
+                                                resetDetectedLinesPointer();
                                                 auto rotatedImage = m_imageProcessor.rotateImage(m_imageProcessor.getFinalImage(), 90);
                                                 m_imageProcessor.updateAndSaveFinalImage(rotatedImage);
                                                 m_imageLabel->clearSelection();
@@ -683,6 +813,7 @@ void ControlPanel::setupBasicOperations()
                                                 if (checkZoomMode()) return;
                                                 m_darkLineInfoLabel->hide();
                                                 resetDetectedLines();
+                                                resetDetectedLinesPointer();
                                                 auto rotatedImage = m_imageProcessor.rotateImage(m_imageProcessor.getFinalImage(), 270);
                                                 m_imageProcessor.updateAndSaveFinalImage(rotatedImage);
                                                 m_imageLabel->clearSelection();
@@ -776,6 +907,7 @@ void ControlPanel::setupPreProcessingOperations() {
         if (checkZoomMode()) return;
         m_darkLineInfoLabel->hide();
         resetDetectedLines();
+        resetDetectedLinesPointer();
 
         // Create dialog for options
         QDialog dialog(this);
@@ -973,6 +1105,7 @@ void ControlPanel::setupFilteringOperations() {
                                                     if (checkZoomMode()) return;
                                                     m_darkLineInfoLabel->hide();
                                                     resetDetectedLines();
+                                                    resetDetectedLinesPointer();
                                                     auto [filterKernelSize, ok] = showInputDialog("Median Filter", "Enter kernel size:", 3, 1, 21);
                                                     if (ok) {
                                                         m_imageProcessor.applyMedianFilter(
@@ -1003,6 +1136,7 @@ void ControlPanel::setupAdvancedOperations()
                                                    if (checkZoomMode()) return;
                                                    m_darkLineInfoLabel->hide();
                                                    resetDetectedLines();
+                                                   resetDetectedLinesPointer();
 
                                                    // Create dialog for stretch options
                                                    QDialog dialog(this);
@@ -1062,6 +1196,7 @@ void ControlPanel::setupAdvancedOperations()
                                               {"Padding", [this]() {
                                                    if (checkZoomMode()) return;
                                                    m_darkLineInfoLabel->hide();
+                                                   resetDetectedLinesPointer();
                                                    resetDetectedLines();
                                                    auto [paddingSize, ok] = showInputDialog("Padding Size", "Enter padding size:", 10, 1, 1000);
                                                    if (ok) {
@@ -1076,6 +1211,7 @@ void ControlPanel::setupAdvancedOperations()
                                                    if (checkZoomMode()) return;
                                                    m_darkLineInfoLabel->hide();
                                                    resetDetectedLines();
+                                                   resetDetectedLinesPointer();
                                                    QStringList directions = {"Left", "Right", "Top", "Bottom"};
                                                    bool ok;
                                                    QString selectedDirection = QInputDialog::getItem(this, "Distortion Direction", "Select direction:", directions, 0, false, &ok);
@@ -1099,6 +1235,7 @@ void ControlPanel::setupCLAHEOperations() {
                                                 if (checkZoomMode()) return;
                                                 m_darkLineInfoLabel->hide();
                                                 resetDetectedLines();
+                                                resetDetectedLinesPointer();
                                                 auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 1000);
                                                 if (!clipOk) return;
 
@@ -1128,6 +1265,7 @@ void ControlPanel::setupCLAHEOperations() {
                                                 if (checkZoomMode()) return;
                                                 m_darkLineInfoLabel->hide();
                                                 resetDetectedLines();
+                                                resetDetectedLinesPointer();
                                                 auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 1000);
                                                 if (!clipOk) return;
 
@@ -1157,6 +1295,7 @@ void ControlPanel::setupCLAHEOperations() {
                                                 if (checkZoomMode()) return;
                                                 m_darkLineInfoLabel->hide();
                                                 resetDetectedLines();
+                                                resetDetectedLinesPointer();
                                                 auto [threshold, thresholdOk] = showInputDialog("Threshold", "Enter threshold value:", 5000, 0, 65535);
                                                 if (!thresholdOk) return;
 
@@ -1191,6 +1330,7 @@ void ControlPanel::setupCLAHEOperations() {
                                                 if (checkZoomMode()) return;
                                                 m_darkLineInfoLabel->hide();
                                                 resetDetectedLines();
+                                                resetDetectedLinesPointer();
                                                 auto [threshold, thresholdOk] = showInputDialog("Threshold", "Enter threshold value:", 5000, 0, 65535);
                                                 if (!thresholdOk) return;
 
@@ -1230,6 +1370,7 @@ void ControlPanel::setupGlobalAdjustments()
                                                   if (checkZoomMode()) return;
                                                   m_darkLineInfoLabel->hide();
                                                   resetDetectedLines();
+                                                  resetDetectedLinesPointer();
                                                   auto [gammaValue, ok] = showInputDialog("Overall Gamma", "Enter gamma value:", 1.0, 0.1, 10.0);
                                                   if (ok) {
                                                       m_imageProcessor.adjustGammaOverall(gammaValue);  // Use the new wrapper method
@@ -1253,6 +1394,7 @@ void ControlPanel::setupGlobalAdjustments()
                                              {"Overall Contrast", [this]() {
                                                   m_darkLineInfoLabel->hide();
                                                   resetDetectedLines();
+                                                  resetDetectedLinesPointer();
                                                   auto [contrastFactor, ok] = showInputDialog("Overall Contrast", "Enter contrast factor:", 1.0, 0.1, 10.0);
                                                   if (ok) {
                                                       m_imageProcessor.adjustContrast(contrastFactor);  // Use the new wrapper method
@@ -1271,6 +1413,7 @@ void ControlPanel::setupRegionalAdjustments()
                                                     if (checkZoomMode()) return;
                                                     m_darkLineInfoLabel->hide();
                                                     resetDetectedLines();
+                                                    resetDetectedLinesPointer();
                                                     if (m_imageLabel->isRegionSelected()) {
                                                         auto [gamma, ok] = showInputDialog("Region Gamma", "Enter gamma value:", 1.0, 0.1, 10.0);
                                                         if (ok) {
@@ -1288,6 +1431,7 @@ void ControlPanel::setupRegionalAdjustments()
                                                     if (checkZoomMode()) return;
                                                     m_darkLineInfoLabel->hide();
                                                     resetDetectedLines();
+                                                    resetDetectedLinesPointer();
                                                     if (m_imageLabel->isRegionSelected()) {
                                                         auto [sharpenStrength, ok] = showInputDialog("Region Sharpen", "Enter sharpen strength:", 0.5, 0.1, 5.0);
                                                         if (ok) {
@@ -1305,6 +1449,7 @@ void ControlPanel::setupRegionalAdjustments()
                                                     if (checkZoomMode()) return;
                                                     m_darkLineInfoLabel->hide();
                                                     resetDetectedLines();
+                                                    resetDetectedLinesPointer();
                                                     if (m_imageLabel->isRegionSelected()) {
                                                         auto [contrastFactor, ok] = showInputDialog("Region Contrast", "Enter contrast factor:", 1.5, 0.1, 5.0);
                                                         if (ok) {
@@ -1377,8 +1522,22 @@ void ControlPanel::createGroupBox(const QString& title,
 }
 
 void ControlPanel::setupBlackLineDetection() {
+
+    QPushButton* detectBtn = new QPushButton("Detect Lines");
+    QPushButton* removeBtn = new QPushButton("Remove Lines");
+    QPushButton* resetBtn = new QPushButton("Reset");
+
+    // Store pointers for vector method buttons
+    m_vectorDetectBtn = detectBtn;
+    m_vectorRemoveBtn = removeBtn;
+    m_vectorResetBtn = resetBtn;
+
+    // Initially disable remove and reset buttons
+    removeBtn->setEnabled(false);
+    resetBtn->setEnabled(false);
+
     createGroupBox("Dark Line Detection", {
-                                              {"Detect Lines", [this]() {
+                                              {"Detect Lines", [this, detectBtn, removeBtn, resetBtn]() {
                                                    if (checkZoomMode()) return;
 
                                                    if (isPointerMethodActive()) {
@@ -1447,11 +1606,20 @@ void ControlPanel::setupBlackLineDetection() {
                                                    m_darkLineInfoLabel->setVisible(true);
                                                    darkLineScrollArea->setVisible(true);
 
+                                                   // Enable/disable appropriate buttons
+                                                   removeBtn->setEnabled(!m_detectedLines.empty());
+                                                   resetBtn->setEnabled(!m_detectedLines.empty());
+
+                                                   // Disable pointer method buttons
+                                                   if (m_pointerDetectBtn) m_pointerDetectBtn->setEnabled(false);
+                                                   if (m_pointerRemoveBtn) m_pointerRemoveBtn->setEnabled(false);
+                                                   if (m_pointerResetBtn) m_pointerResetBtn->setEnabled(false);
+
                                                    updateImageDisplay();
                                                    updateLastAction("Detect Lines");
                                                }},
 
-                                              {"Remove Lines", [this]() {
+                                              {"Remove Lines", [this, removeBtn, resetBtn]() {
                                                    if (checkZoomMode()) return;
 
                                                    if (m_detectedLines.empty()) {
@@ -1751,13 +1919,42 @@ void ControlPanel::setupBlackLineDetection() {
 
                                                        // Update last action without parameters
                                                        updateLastAction("Remove Lines");
+
+                                                       // Update button states if no lines remain
+                                                       if (m_detectedLines.empty()) {
+                                                           removeBtn->setEnabled(false);
+                                                           resetBtn->setEnabled(false);
+                                                       }
                                                    }
-                                               }}
+                                               }},
+                                           {"Reset", [this, detectBtn, removeBtn, resetBtn]() {
+                                                if (checkZoomMode()) return;
+
+                                                resetDetectedLines();
+
+                                                // Enable detect button and disable remove/reset
+                                                detectBtn->setEnabled(true);
+                                                removeBtn->setEnabled(false);
+                                                resetBtn->setEnabled(false);
+
+                                                // Re-enable pointer method buttons
+                                                if (m_pointerDetectBtn) m_pointerDetectBtn->setEnabled(true);
+                                                if (m_pointerRemoveBtn) m_pointerRemoveBtn->setEnabled(false);
+                                                if (m_pointerResetBtn) m_pointerResetBtn->setEnabled(false);
+
+                                                updateImageDisplay();
+                                                updateLastAction("Reset Detected Lines");
+                                            }}
                                           });
+
+    m_allButtons.push_back(detectBtn);
+    m_allButtons.push_back(removeBtn);
+    m_allButtons.push_back(resetBtn);
 }
 
 void ControlPanel::resetDetectedLines() {
     m_detectedLines.clear();
+    // Remove the incorrect line: m_detectedLinesPointer->clear();
     m_imageProcessor.clearDetectedLines();
 
     QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
@@ -2199,28 +2396,35 @@ void ControlPanel::clearAllDetectionResults() {
 
 
 void ControlPanel::setupPointerProcessing() {
-    createGroupBox("Process via Double 2D Pointer", {
-                                                        {"Detect Lines (2D Pointer)", [this]() {
-                                                             if (checkZoomMode()) return;
+    QPushButton* detectBtn = new QPushButton("Detect Lines (2D Pointer)");
+    QPushButton* removeBtn = new QPushButton("Remove Lines (2D Pointer)");
+    QPushButton* resetBtn = new QPushButton("Reset");
 
-                                                             if (isVectorMethodActive()) {
-                                                                 QMessageBox::warning(this, "Method Conflict",
-                                                                                      "Vector method is currently active.\nPlease clear the vector detection results before using pointer method.");
-                                                                 return;
-                                                             }
+    // Store button pointers for access in other methods
+    m_pointerDetectBtn = detectBtn;
+    m_pointerRemoveBtn = removeBtn;
+    m_pointerResetBtn = resetBtn;
+
+    // Initially disable remove and reset buttons
+    removeBtn->setEnabled(false);
+    resetBtn->setEnabled(false);
+
+    createGroupBox("Process via Double 2D Pointer", {
+                                                        {"Detect Lines (2D Pointer)", [this, detectBtn, removeBtn, resetBtn]() {
+                                                             if (checkZoomMode()) return;
 
                                                              try {
                                                                  qDebug() << "Starting dark line detection with 2D pointer";
                                                                  m_darkLineInfoLabel->hide();
                                                                  resetDetectedLinesPointer();
 
-                                                                 // 转换图像为 ImageData 格式
+                                                                 // Convert image to ImageData format
                                                                  auto imageData = convertToImageData(m_imageProcessor.getFinalImage());
 
-                                                                 // 储存初始状态用于撤销功能
+                                                                 // Save current state for undo functionality
                                                                  m_imageProcessor.saveCurrentState();
 
-                                                                 // 使用指针实现检测线条
+                                                                 // Detect lines using pointer implementation
                                                                  m_detectedLinesPointer = DarkLinePointerProcessor::detectDarkLines(imageData);
 
                                                                  if (!m_detectedLinesPointer || m_detectedLinesPointer->rows == 0) {
@@ -2228,7 +2432,20 @@ void ControlPanel::setupPointerProcessing() {
                                                                      return;
                                                                  }
 
-                                                                 // 生成检测信息摘要
+                                                                 // Enable/disable appropriate buttons
+                                                                 removeBtn->setEnabled(true);
+                                                                 resetBtn->setEnabled(true);
+
+                                                                 // Disable vector method buttons
+                                                                 for (auto* btn : m_allButtons) {
+                                                                     if (btn->text() == "Detect Lines" ||
+                                                                         btn->text() == "Remove Lines" ||
+                                                                         btn->text() == "Reset") {
+                                                                         btn->setEnabled(false);
+                                                                     }
+                                                                 }
+
+                                                                 // Generate detection summary
                                                                  QString detectionInfo = PointerOperations::generateDarkLineInfo(m_detectedLinesPointer);
                                                                  m_darkLineInfoLabel->setText(detectionInfo);
                                                                  updateDarkLineInfoDisplayPointer();
@@ -2242,7 +2459,7 @@ void ControlPanel::setupPointerProcessing() {
                                                              }
                                                          }},
 
-                                                        {"Remove Lines (2D Pointer)", [this]() {
+                                                        {"Remove Lines (2D Pointer)", [this, removeBtn]() {
                                                              if (checkZoomMode()) return;
 
                                                              if (!m_detectedLinesPointer || m_detectedLinesPointer->rows == 0) {
@@ -2252,8 +2469,34 @@ void ControlPanel::setupPointerProcessing() {
                                                              }
 
                                                              PointerOperations::handleRemoveLinesDialog(this);
+                                                         }},
+
+                                                        {"Reset (2D Pointer)", [this, detectBtn, removeBtn, resetBtn]() {
+                                                             if (checkZoomMode()) return;
+
+                                                             resetDetectedLinesPointer();
+
+                                                             // Enable detect button and disable remove/reset
+                                                             detectBtn->setEnabled(true);
+                                                             removeBtn->setEnabled(false);
+                                                             resetBtn->setEnabled(false);
+
+                                                             // Re-enable vector method buttons
+                                                             for (auto* btn : m_allButtons) {
+                                                                 if (btn->text() == "Detect Lines") {
+                                                                     btn->setEnabled(true);
+                                                                 }
+                                                             }
+
+                                                             updateImageDisplay();
+                                                             updateLastAction("Reset Detected Lines (2D Pointer)");
                                                          }}
                                                     });
+
+    // Add buttons to the list of all buttons for general enable/disable management
+    m_allButtons.push_back(detectBtn);
+    m_allButtons.push_back(removeBtn);
+    m_allButtons.push_back(resetBtn);
 }
 
 void ControlPanel::setupResetOperations() {
