@@ -72,210 +72,7 @@ ImageData& ImageData::operator=(ImageData&& other) noexcept {
     return *this;
 }
 
-// DarkLinePointerProcessor helper functions implementation
-std::unique_ptr<ImageData> DarkLinePointerProcessor::createImageCopy(const ImageData& source) {
-    auto newImage = std::make_unique<ImageData>();
-    newImage->rows = source.rows;
-    newImage->cols = source.cols;
-    newImage->data = new double*[source.rows];
-
-    for (int i = 0; i < source.rows; i++) {
-        newImage->data[i] = new double[source.cols];
-        std::copy(source.data[i], source.data[i] + source.cols, newImage->data[i]);
-    }
-
-    return newImage;
-}
-
-void DarkLinePointerProcessor::copyImageData(const ImageData& source, ImageData& destination) {
-    // Clean up existing destination data
-    if (destination.data) {
-        for (int i = 0; i < destination.rows; i++) {
-            delete[] destination.data[i];
-        }
-        delete[] destination.data;
-    }
-
-    destination.rows = source.rows;
-    destination.cols = source.cols;
-    destination.data = new double*[source.rows];
-
-    for (int i = 0; i < source.rows; i++) {
-        destination.data[i] = new double[source.cols];
-        std::copy(source.data[i], source.data[i] + source.cols, destination.data[i]);
-    }
-}
-
-void DarkLinePointerProcessor::resizeImageData(ImageData& image, int newRows, int newCols) {
-    if (newRows <= 0 || newCols <= 0) {
-        throw std::invalid_argument("Invalid dimensions for image resize");
-    }
-
-    // Create new data array with new dimensions
-    double** newData = new double*[newRows];
-    for (int i = 0; i < newRows; i++) {
-        newData[i] = new double[newCols];
-        // Initialize with zeros
-        std::fill(newData[i], newData[i] + newCols, 0.0);
-    }
-
-    // Copy existing data within bounds
-    int copyRows = std::min(image.rows, newRows);
-    int copyCols = std::min(image.cols, newCols);
-
-    for (int i = 0; i < copyRows; i++) {
-        std::copy(image.data[i], image.data[i] + copyCols, newData[i]);
-    }
-
-    // Clean up old data
-    for (int i = 0; i < image.rows; i++) {
-        delete[] image.data[i];
-    }
-    delete[] image.data;
-
-    // Update image with new data
-    image.data = newData;
-    image.rows = newRows;
-    image.cols = newCols;
-}
-
-// DarkLineArray helper functions
-DarkLineArray* DarkLinePointerProcessor::createDarkLineArray(int rows, int cols) {
-    std::cout << "Creating DarkLineArray with dimensions: " << rows << "x" << cols << std::endl;
-
-    if (rows <= 0 || cols <= 0) {
-        std::cout << "Creating empty array for invalid dimensions" << std::endl;
-        DarkLineArray* emptyArray = new DarkLineArray();
-        emptyArray->rows = 0;
-        emptyArray->cols = 0;
-        emptyArray->lines = nullptr;
-        return emptyArray;
-    }
-
-    try {
-        return createSafeDarkLineArray(rows, cols);
-    } catch (const std::exception& e) {
-        std::cerr << "Error in createDarkLineArray: " << e.what() << std::endl;
-        return nullptr;
-    }
-}
-
-void DarkLinePointerProcessor::destroyDarkLineArray(DarkLineArray* array) {
-    if (array) {
-        if (array->lines) {
-            for (int i = 0; i < array->rows; i++) {
-                delete[] array->lines[i];
-            }
-            delete[] array->lines;
-            array->lines = nullptr;
-        }
-        array->rows = 0;
-        array->cols = 0;
-        delete array;
-    }
-}
-
-void DarkLinePointerProcessor::copyDarkLineArray(const DarkLineArray* source, DarkLineArray* destination) {
-    if (!source || !destination) {
-        throw std::invalid_argument("Invalid source or destination for DarkLineArray copy");
-    }
-
-    // Clean up existing destination data
-    if (destination->lines) {
-        for (int i = 0; i < destination->rows; i++) {
-            delete[] destination->lines[i];
-        }
-        delete[] destination->lines;
-    }
-
-    destination->rows = source->rows;
-    destination->cols = source->cols;
-
-    if (source->lines) {
-        destination->lines = new DarkLine*[source->rows];
-        for (int i = 0; i < source->rows; i++) {
-            destination->lines[i] = new DarkLine[source->cols];
-            for (int j = 0; j < source->cols; j++) {
-                destination->lines[i][j] = source->lines[i][j];
-            }
-        }
-    } else {
-        destination->lines = nullptr;
-    }
-}
-
-// Basic helper functions
-int DarkLinePointerProcessor::calculateSearchRadius(int lineWidth) {
-    return std::clamp(lineWidth * 2, MIN_SEARCH_RADIUS, MAX_SEARCH_RADIUS);
-}
-
-bool DarkLinePointerProcessor::isInObject(
-    const ImageData& image,
-    int pos,
-    int lineWidth,
-    bool isVertical,
-    int threadId) {
-
-    if (isVertical) {
-        std::cout << "Thread " << threadId << " checking vertical line at x=" << pos << std::endl;
-
-        for (int y = 0; y < image.rows; ++y) {
-            // Check left side
-            for (int i = 1; i <= VERTICAL_CHECK_RANGE; ++i) {
-                if (pos - i >= 0) {
-                    double leftPixel = image.data[y][pos - i];
-                    if (leftPixel < WHITE_THRESHOLD) {
-                        qDebug() << "Thread" << threadId << "- Vertical line at x=" << pos
-                                 << ": left pixel at y=" << y << "value=" << leftPixel;
-                        return true;
-                    }
-                }
-            }
-
-            // Check right side
-            for (int i = 1; i <= VERTICAL_CHECK_RANGE; ++i) {
-                if (pos + lineWidth + i - 1 < image.cols) {
-                    double rightPixel = image.data[y][pos + lineWidth + i - 1];
-                    if (rightPixel < WHITE_THRESHOLD) {
-                        qDebug() << "Thread" << threadId << "- Vertical line at x=" << pos
-                                 << ": right pixel at y=" << y << "value=" << rightPixel;
-                        return true;
-                    }
-                }
-            }
-        }
-    } else {
-        std::cout << "Thread " << threadId << " checking horizontal line at y=" << pos << std::endl;
-
-        // Sample pixels above the line
-        for (int i = 1; i <= HORIZONTAL_CHECK_RANGE; ++i) {
-            if (pos - i >= 0) {
-                // Sample at regular intervals across the width
-                for (int x = 0; x < image.cols; x += image.cols/10) {
-                    double topPixel = image.data[pos - i][x];
-                    if (topPixel < WHITE_THRESHOLD) {
-                        qDebug() << "Thread" << threadId << "- Found dark pixel above line at x=" << x;
-                        return true;
-                    }
-                }
-            }
-        }
-
-        // Sample pixels below the line
-        for (int i = 1; i <= HORIZONTAL_CHECK_RANGE; ++i) {
-            if (pos + lineWidth + i - 1 < image.rows) {
-                for (int x = 0; x < image.cols; x += image.cols/10) {
-                    double bottomPixel = image.data[pos + lineWidth + i - 1][x];
-                    if (bottomPixel < WHITE_THRESHOLD) {
-                        qDebug() << "Thread" << threadId << "- Found dark pixel below line at x=" << x;
-                        return true;
-                    }
-                }
-            }
-        }
-    }
-    return false;
-}
+//Process 1: Detecting Line : For detecting dark lines horizontally and vertically in an image
 
 DarkLineArray* DarkLinePointerProcessor::detectDarkLines(const ImageData& image) {
     // 1. Validate input parameters
@@ -461,205 +258,196 @@ DarkLineArray* DarkLinePointerProcessor::detectDarkLines(const ImageData& image)
     }
 }
 
-double DarkLinePointerProcessor::findReplacementValue(
-    const ImageData& image,
-    int x, int y,
-    bool isVertical,
-    int lineWidth) {
+//Process 2: Helper function for Line Detected
 
-    int searchRadius = calculateSearchRadius(lineWidth);
-    double* validValues = new double[searchRadius * 2]();
-    int validCount = 0;
+// Helper function for Determines if a line is within a dark object.
+bool DarkLinePointerProcessor::isInObject(
+    const ImageData& image,
+    int pos,
+    int lineWidth,
+    bool isVertical,
+    int threadId) {
 
     if (isVertical) {
-        for (int offset = 1; offset <= searchRadius; ++offset) {
-            int leftX = x - offset;
-            if (leftX >= 0 && image.data[y][leftX] > MIN_BRIGHTNESS) {
-                validValues[validCount++] = image.data[y][leftX];
+        std::cout << "Thread " << threadId << " checking vertical line at x=" << pos << std::endl;
+
+        for (int y = 0; y < image.rows; ++y) {
+            // Check left side
+            for (int i = 1; i <= VERTICAL_CHECK_RANGE; ++i) {
+                if (pos - i >= 0) {
+                    double leftPixel = image.data[y][pos - i];
+                    if (leftPixel < WHITE_THRESHOLD) {
+                        qDebug() << "Thread" << threadId << "- Vertical line at x=" << pos
+                                 << ": left pixel at y=" << y << "value=" << leftPixel;
+                        return true;
+                    }
+                }
             }
 
-            int rightX = x + offset;
-            if (rightX < image.cols && image.data[y][rightX] > MIN_BRIGHTNESS) {
-                validValues[validCount++] = image.data[y][rightX];
-            }
-        }
-    } else {
-        for (int offset = 1; offset <= searchRadius; ++offset) {
-            int upY = y - offset;
-            if (upY >= 0 && image.data[upY][x] > MIN_BRIGHTNESS) {
-                validValues[validCount++] = image.data[upY][x];
-            }
-
-            int downY = y + offset;
-            if (downY < image.rows && image.data[downY][x] > MIN_BRIGHTNESS) {
-                validValues[validCount++] = image.data[downY][x];
-            }
-        }
-    }
-
-    double result;
-    if (validCount > 0) {
-        // Sort the valid values using bubble sort
-        for (int i = 0; i < validCount - 1; i++) {
-            for (int j = 0; j < validCount - i - 1; j++) {
-                if (validValues[j] > validValues[j + 1]) {
-                    double temp = validValues[j];
-                    validValues[j] = validValues[j + 1];
-                    validValues[j + 1] = temp;
+            // Check right side
+            for (int i = 1; i <= VERTICAL_CHECK_RANGE; ++i) {
+                if (pos + lineWidth + i - 1 < image.cols) {
+                    double rightPixel = image.data[y][pos + lineWidth + i - 1];
+                    if (rightPixel < WHITE_THRESHOLD) {
+                        qDebug() << "Thread" << threadId << "- Vertical line at x=" << pos
+                                 << ": right pixel at y=" << y << "value=" << rightPixel;
+                        return true;
+                    }
                 }
             }
         }
-        result = validValues[validCount / 2]; // Median value
     } else {
-        result = image.data[y][x]; // Keep original if no valid replacements found
-    }
+        std::cout << "Thread " << threadId << " checking horizontal line at y=" << pos << std::endl;
 
-    delete[] validValues;
-    return result;
-}
-
-double DarkLinePointerProcessor::findStitchValue(
-    const ImageData& image,
-    const DarkLine& line,
-    int x, int y) {
-
-    if (line.isVertical) {
-        int leftX = line.x - 1;
-        int rightX = line.x + line.width;
-
-        if (leftX >= 0 && rightX < image.cols) {
-            // Use weighted average based on position within the line
-            double relativePos = static_cast<double>(x - line.x) / line.width;
-            return (1.0 - relativePos) * image.data[y][leftX] +
-                   relativePos * image.data[y][rightX];
-        } else if (leftX >= 0) {
-            return image.data[y][leftX];
-        } else if (rightX < image.cols) {
-            return image.data[y][rightX];
+        // Sample pixels above the line
+        for (int i = 1; i <= HORIZONTAL_CHECK_RANGE; ++i) {
+            if (pos - i >= 0) {
+                // Sample at regular intervals across the width
+                for (int x = 0; x < image.cols; x += image.cols/10) {
+                    double topPixel = image.data[pos - i][x];
+                    if (topPixel < WHITE_THRESHOLD) {
+                        qDebug() << "Thread" << threadId << "- Found dark pixel above line at x=" << x;
+                        return true;
+                    }
+                }
+            }
         }
-    } else {
-        int topY = line.y - 1;
-        int bottomY = line.y + line.width;
 
-        if (topY >= 0 && bottomY < image.rows) {
-            // Use weighted average based on position within the line
-            double relativePos = static_cast<double>(y - line.y) / line.width;
-            return (1.0 - relativePos) * image.data[topY][x] +
-                   relativePos * image.data[bottomY][x];
-        } else if (topY >= 0) {
-            return image.data[topY][x];
-        } else if (bottomY < image.rows) {
-            return image.data[bottomY][x];
+        // Sample pixels below the line
+        for (int i = 1; i <= HORIZONTAL_CHECK_RANGE; ++i) {
+            if (pos + lineWidth + i - 1 < image.rows) {
+                for (int x = 0; x < image.cols; x += image.cols/10) {
+                    double bottomPixel = image.data[pos + lineWidth + i - 1][x];
+                    if (bottomPixel < WHITE_THRESHOLD) {
+                        qDebug() << "Thread" << threadId << "- Found dark pixel below line at x=" << x;
+                        return true;
+                    }
+                }
+            }
         }
     }
-
-    return image.data[y][x]; // Return original value if no stitch is possible
+    return false;
 }
 
-void DarkLinePointerProcessor::removeDarkLines(ImageData& image, const DarkLineArray* lines) {
-    if (!lines || !lines->lines || lines->rows == 0) {
-        return;
+//Helper function for Creates a new array for storing dark lines.
+DarkLineArray* DarkLinePointerProcessor::createDarkLineArray(int rows, int cols) {
+    std::cout << "Creating DarkLineArray with dimensions: " << rows << "x" << cols << std::endl;
+
+    if (rows <= 0 || cols <= 0) {
+        std::cout << "Creating empty array for invalid dimensions" << std::endl;
+        DarkLineArray* emptyArray = new DarkLineArray();
+        emptyArray->rows = 0;
+        emptyArray->cols = 0;
+        emptyArray->lines = nullptr;
+        return emptyArray;
     }
 
     try {
-        // Create new image array for modifications
-        auto tempImage = createImageCopy(image);
-        bool modificationsApplied = false;
+        return createSafeDarkLineArray(rows, cols);
+    } catch (const std::exception& e) {
+        std::cerr << "Error in createDarkLineArray: " << e.what() << std::endl;
+        return nullptr;
+    }
+}
 
-        // Process each line in the array
-        for (int i = 0; i < lines->rows; i++) {
-            for (int j = 0; j < lines->cols; j++) {
-                const DarkLine& line = lines->lines[i][j];
+//Helper function for Properly deallocates DarkLineArray memory
 
-                // Skip lines that are part of objects
-                if (line.inObject) continue;
+void DarkLinePointerProcessor::destroyDarkLineArray(DarkLineArray* array) {
+    if (array) {
+        if (array->lines) {
+            for (int i = 0; i < array->rows; i++) {
+                delete[] array->lines[i];
+            }
+            delete[] array->lines;
+            array->lines = nullptr;
+        }
+        array->rows = 0;
+        array->cols = 0;
+        delete array;
+    }
+}
 
-                if (line.isVertical) {
-                    // Process vertical lines
-                    for (int x = line.x; x < std::min(line.x + line.width, image.cols); ++x) {
-                        for (int y = line.startY; y <= line.endY && y < image.rows; ++y) {
-                            if (image.data[y][x] <= MIN_BRIGHTNESS) {
-                                tempImage->data[y][x] = findReplacementValue(image, x, y, true, line.width);
-                                modificationsApplied = true;
-                            }
-                        }
-                    }
-                } else {
-                    // Process horizontal lines
-                    for (int y = line.y; y < std::min(line.y + line.width, image.rows); ++y) {
-                        for (int x = line.startX; x <= line.endX && x < image.cols; ++x) {
-                            if (image.data[y][x] <= MIN_BRIGHTNESS) {
-                                tempImage->data[y][x] = findReplacementValue(image, x, y, false, line.width);
-                                modificationsApplied = true;
-                            }
-                        }
-                    }
+//Helper function for Creates deep copy of DarkLineArray
+
+void DarkLinePointerProcessor::copyDarkLineArray(const DarkLineArray* source, DarkLineArray* destination) {
+    if (!source || !destination) {
+        throw std::invalid_argument("Invalid source or destination for DarkLineArray copy");
+    }
+
+    // Clean up existing destination data
+    if (destination->lines) {
+        for (int i = 0; i < destination->rows; i++) {
+            delete[] destination->lines[i];
+        }
+        delete[] destination->lines;
+    }
+
+    destination->rows = source->rows;
+    destination->cols = source->cols;
+
+    if (source->lines) {
+        destination->lines = new DarkLine*[source->rows];
+        for (int i = 0; i < source->rows; i++) {
+            destination->lines[i] = new DarkLine[source->cols];
+            for (int j = 0; j < source->cols; j++) {
+                destination->lines[i][j] = source->lines[i][j];
+            }
+        }
+    } else {
+        destination->lines = nullptr;
+    }
+}
+
+DarkLineArray* DarkLinePointerProcessor::createSafeDarkLineArray(int rows, int cols) {
+    std::cout << "Creating safe dark line array with dimensions: " << rows << "x" << cols << std::endl;
+
+    try {
+        auto newArray = new DarkLineArray();
+
+        if (rows <= 0 || cols <= 0) {
+            std::cout << "Creating empty array" << std::endl;
+            newArray->rows = 0;
+            newArray->cols = 0;
+            newArray->lines = nullptr;
+            return newArray;
+        }
+
+        newArray->rows = rows;
+        newArray->cols = cols;
+        newArray->lines = new DarkLine*[rows];
+
+        if (!newArray->lines) {
+            throw std::bad_alloc();
+        }
+
+        std::memset(newArray->lines, 0, rows * sizeof(DarkLine*));
+
+        for (int i = 0; i < rows; i++) {
+            newArray->lines[i] = new DarkLine[cols];
+            if (!newArray->lines[i]) {
+                for (int j = 0; j < i; j++) {
+                    delete[] newArray->lines[j];
                 }
+                delete[] newArray->lines;
+                delete newArray;
+                throw std::bad_alloc();
+            }
+            for (int j = 0; j < cols; j++) {
+                newArray->lines[i][j] = DarkLine();
             }
         }
 
-        // Only update the original image if modifications were made
-        if (modificationsApplied) {
-            copyImageData(*tempImage, image);
-        }
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Error in removeDarkLines: " << e.what() << std::endl;
+        return newArray;
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error in createSafeDarkLineArray: " << e.what() << std::endl;
         throw;
     }
 }
 
-void DarkLinePointerProcessor::removeAllDarkLines(ImageData& image, DarkLineArray* lines) {
-    if (!lines || !lines->lines || lines->rows == 0) {
-        return;
-    }
+//Process 3: Remove Line Function (Calling according to line type and method)
 
-    try {
-        // Create temporary image for processing
-        auto tempImage = createImageCopy(image);
-        bool modificationsApplied = false;
-
-        // Process all lines in the array
-        for (int i = 0; i < lines->rows; i++) {
-            for (int j = 0; j < lines->cols; j++) {
-                const DarkLine& line = lines->lines[i][j];
-
-                if (line.isVertical) {
-                    for (int x = line.x; x < std::min(line.x + line.width, image.cols); ++x) {
-                        for (int y = line.startY; y <= line.endY && y < image.rows; ++y) {
-                            if (image.data[y][x] <= MIN_BRIGHTNESS) {
-                                tempImage->data[y][x] = findReplacementValue(image, x, y, true, line.width);
-                                modificationsApplied = true;
-                            }
-                        }
-                    }
-                } else {
-                    for (int y = line.y; y < std::min(line.y + line.width, image.rows); ++y) {
-                        for (int x = line.startX; x <= line.endX && x < image.cols; ++x) {
-                            if (image.data[y][x] <= MIN_BRIGHTNESS) {
-                                tempImage->data[y][x] = findReplacementValue(image, x, y, false, line.width);
-                                modificationsApplied = true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Update original image if modifications were made
-        if (modificationsApplied) {
-            copyImageData(*tempImage, image);
-
-            // Clear the lines array
-            destroyDarkLineArray(lines);
-            lines = createDarkLineArray(0, 0);
-        }
-    }
-    catch (const std::exception& e) {
-        std::cerr << "Error in removeAllDarkLines: " << e.what() << std::endl;
-        throw;
-    }
-}
+//Process 3A: removeDarkLinesSelective - Mainly use for remove isolated lines
 
 void DarkLinePointerProcessor::removeDarkLinesSelective(
     ImageData& image,
@@ -764,167 +552,43 @@ void DarkLinePointerProcessor::removeDarkLinesSelective(
     }
 }
 
-void DarkLinePointerProcessor::removeInObjectDarkLines(
-    ImageData& image,
-    DarkLineArray* lines) {
+//Process 3A - 1: Helper function for removeDarkLinesSelective
 
-    if (!lines || !lines->lines || lines->rows == 0) {
-        return;
+// DarkLinePointerProcessor helper functions implementation
+std::unique_ptr<ImageData> DarkLinePointerProcessor::createImageCopy(const ImageData& source) {
+    auto newImage = std::make_unique<ImageData>();
+    newImage->rows = source.rows;
+    newImage->cols = source.cols;
+    newImage->data = new double*[source.rows];
+
+    for (int i = 0; i < source.rows; i++) {
+        newImage->data[i] = new double[source.cols];
+        std::copy(source.data[i], source.data[i] + source.cols, newImage->data[i]);
     }
 
-    try {
-        auto tempImage = createImageCopy(image);
-        bool modificationsApplied = false;
+    return newImage;
+}
 
-        // Create array to track which lines to keep
-        bool* keepLine = new bool[lines->rows]();
-        int remainingLines = 0;
-
-        // Process and count remaining lines
-        for (int i = 0; i < lines->rows; i++) {
-            for (int j = 0; j < lines->cols; j++) {
-                const DarkLine& line = lines->lines[i][j];
-                if (!line.inObject) {
-                    // Keep non-object lines
-                    keepLine[i] = true;
-                    remainingLines++;
-                    continue;
-                }
-
-                // Process in-object lines
-                if (line.isVertical) {
-                    for (int x = line.x; x < std::min(line.x + line.width, image.cols); ++x) {
-                        for (int y = line.startY; y <= line.endY && y < image.rows; ++y) {
-                            if (image.data[y][x] <= MIN_BRIGHTNESS) {
-                                tempImage->data[y][x] = findReplacementValue(image, x, y, true, line.width);
-                                modificationsApplied = true;
-                            }
-                        }
-                    }
-                } else {
-                    for (int y = line.y; y < std::min(line.y + line.width, image.rows); ++y) {
-                        for (int x = line.startX; x <= line.endX && x < image.cols; ++x) {
-                            if (image.data[y][x] <= MIN_BRIGHTNESS) {
-                                tempImage->data[y][x] = findReplacementValue(image, x, y, false, line.width);
-                                modificationsApplied = true;
-                            }
-                        }
-                    }
-                }
-            }
+void DarkLinePointerProcessor::copyImageData(const ImageData& source, ImageData& destination) {
+    // Clean up existing destination data
+    if (destination.data) {
+        for (int i = 0; i < destination.rows; i++) {
+            delete[] destination.data[i];
         }
+        delete[] destination.data;
+    }
 
-        // Update the original image if modifications were made
-        if (modificationsApplied) {
-            copyImageData(*tempImage, image);
+    destination.rows = source.rows;
+    destination.cols = source.cols;
+    destination.data = new double*[source.rows];
 
-            // Create new array with only remaining lines
-            DarkLineArray* newLines = createDarkLineArray(remainingLines, lines->cols);
-            int newIndex = 0;
-
-            for (int i = 0; i < lines->rows; i++) {
-                if (keepLine[i]) {
-                    for (int j = 0; j < lines->cols; j++) {
-                        newLines->lines[newIndex][j] = lines->lines[i][j];
-                    }
-                    newIndex++;
-                }
-            }
-
-            // Replace old lines array with new one
-            destroyDarkLineArray(lines);
-            *lines = *newLines;
-            newLines = nullptr;  // Ownership transferred
-        }
-
-        delete[] keepLine;
-
-    } catch (const std::exception& e) {
-        std::cerr << "Error in removeInObjectDarkLines: " << e.what() << std::endl;
-        throw;
+    for (int i = 0; i < source.rows; i++) {
+        destination.data[i] = new double[source.cols];
+        std::copy(source.data[i], source.data[i] + source.cols, destination.data[i]);
     }
 }
 
-void DarkLinePointerProcessor::removeIsolatedDarkLines(
-    ImageData& image,
-    DarkLineArray* lines) {
-
-    if (!lines || !lines->lines || lines->rows == 0) {
-        return;
-    }
-
-    try {
-        auto tempImage = createImageCopy(image);
-        bool modificationsApplied = false;
-
-        // Create array to track which lines to keep
-        bool* keepLine = new bool[lines->rows]();
-        int remainingLines = 0;
-
-        // Process and count remaining lines
-        for (int i = 0; i < lines->rows; i++) {
-            for (int j = 0; j < lines->cols; j++) {
-                const DarkLine& line = lines->lines[i][j];
-                if (line.inObject) {
-                    // Keep in-object lines
-                    keepLine[i] = true;
-                    remainingLines++;
-                    continue;
-                }
-
-                // Process isolated lines
-                if (line.isVertical) {
-                    for (int x = line.x; x < std::min(line.x + line.width, image.cols); ++x) {
-                        for (int y = line.startY; y <= line.endY && y < image.rows; ++y) {
-                            if (image.data[y][x] <= MIN_BRIGHTNESS) {
-                                tempImage->data[y][x] = findReplacementValue(image, x, y, true, line.width);
-                                modificationsApplied = true;
-                            }
-                        }
-                    }
-                } else {
-                    for (int y = line.y; y < std::min(line.y + line.width, image.rows); ++y) {
-                        for (int x = line.startX; x <= line.endX && x < image.cols; ++x) {
-                            if (image.data[y][x] <= MIN_BRIGHTNESS) {
-                                tempImage->data[y][x] = findReplacementValue(image, x, y, false, line.width);
-                                modificationsApplied = true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Update the original image if modifications were made
-        if (modificationsApplied) {
-            copyImageData(*tempImage, image);
-
-            // Create new array with only remaining lines
-            DarkLineArray* newLines = createDarkLineArray(remainingLines, lines->cols);
-            int newIndex = 0;
-
-            for (int i = 0; i < lines->rows; i++) {
-                if (keepLine[i]) {
-                    for (int j = 0; j < lines->cols; j++) {
-                        newLines->lines[newIndex][j] = lines->lines[i][j];
-                    }
-                    newIndex++;
-                }
-            }
-
-            // Replace old lines array with new one
-            destroyDarkLineArray(lines);
-            *lines = *newLines;
-            newLines = nullptr;  // Ownership transferred
-        }
-
-        delete[] keepLine;
-
-    } catch (const std::exception& e) {
-        std::cerr << "Error in removeIsolatedDarkLines: " << e.what() << std::endl;
-        throw;
-    }
-}
+//Process 3B - 1: removeDarkLinesSequential - mainly use for remove in object lines
 
 void DarkLinePointerProcessor::removeDarkLinesSequential(
     ImageData& image,
@@ -935,10 +599,9 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
     bool removeIsolated,
     RemovalMethod method) {
 
-    // 1. 参数验证和初始化日志
     std::cout << "\n=== Starting Sequential Line Removal Process ===" << std::endl;
 
-    // 1.1 验证图像数据
+    //Parameter validation and initialization logging
     if (!image.data || image.rows <= 0 || image.cols <= 0) {
         std::ostringstream error;
         error << "Invalid image parameters:"
@@ -948,7 +611,7 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
         throw std::invalid_argument(error.str());
     }
 
-    // 1.2 验证线条数组
+    //Validate image array
     if (!lines || !selectedLines || selectedCount <= 0) {
         std::ostringstream error;
         error << "Invalid line parameters:"
@@ -958,16 +621,16 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
         throw std::invalid_argument(error.str());
     }
 
-    // 1.3 创建临时数组
+    // 1.3 Create temporary array
     DarkLine** validLines = new DarkLine*[selectedCount];
     int validLinesCount = 0;
 
-    // 为每行分配列内存
+    // Allocate column memory for each row
     for (int i = 0; i < selectedCount; i++) {
-        validLines[i] = new DarkLine[1];  // 每行只需要一列
+        validLines[i] = new DarkLine[1];  //Only one column needed per row
     }
 
-    // 1.4 打印初始配置信息
+    // 1.4 Print initial configuration information
     std::cout << "Initial Configuration:" << std::endl
               << "  - Image dimensions: " << image.rows << "x" << image.cols << std::endl
               << "  - Selected lines count: " << selectedCount << std::endl
@@ -977,12 +640,12 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
               << std::endl;
 
     try {
-        // 2. 验证和收集要处理的线条
+        //Validate and collect lines to process
         std::cout << "\nValidating selected lines..." << std::endl;
         int skippedLines = 0;
         int validatedLines = 0;
 
-        // 2.1 验证每条线
+        //Validate each line
         for (int i = 0; i < selectedCount; i++) {
             if (!selectedLines[i]) {
                 std::cout << "  Warning: Null line pointer at index " << i << std::endl;
@@ -994,7 +657,7 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
             std::ostringstream validationDetails;
             validationDetails << "  Line " << i << " validation:";
 
-            // 2.2 验证线条坐标
+            //Validate line coordinates
             if (selectedLines[i]->isVertical) {
                 validationDetails << " [Vertical]"
                                   << " x=" << selectedLines[i]->x
@@ -1045,7 +708,7 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
                 continue;
             }
 
-            // 2.3 检查是否符合移除条件
+            // Check if line meets removal criteria
             bool shouldProcess = (selectedLines[i]->inObject && removeInObject) ||
                                  (!selectedLines[i]->inObject && removeIsolated);
 
@@ -1055,15 +718,15 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
             }
         }
 
-        // 2.4 打印验证总结
+        //Print validation summary
         std::cout << "\nValidation Summary:" << std::endl
                   << "  - Total lines processed: " << selectedCount << std::endl
                   << "  - Valid lines for removal: " << validatedLines << std::endl
                   << "  - Skipped lines: " << skippedLines << std::endl;
 
-        // 2.5 检查是否有有效的线条要处理
+        //Check if there are valid lines to process
         if (validatedLines == 0) {
-            // 清理内存
+
             for (int i = 0; i < selectedCount; i++) {
                 delete[] validLines[i];
             }
@@ -1072,17 +735,17 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
             std::cout << "\nNo valid lines to process - operation complete" << std::endl;
             return;
         }
-        // 3. 对有效线条进行排序和准备处理
+        //Sort and prepare valid lines for processing
         std::cout << "\nPreparing for line processing..." << std::endl;
 
-        // 3.1 创建用于排序的临时数组
+        // Create temporary array for sorting
         DarkLine** sortedLines = new DarkLine*[validatedLines];
         for (int i = 0; i < validatedLines; i++) {
             sortedLines[i] = new DarkLine[1];
             sortedLines[i][0] = validLines[i][0];
         }
 
-        // 3.2 根据位置进行排序
+        // 3.2 Sort based on position
         for (int i = 0; i < validatedLines - 1; i++) {
             for (int j = 0; j < validatedLines - i - 1; j++) {
                 DarkLine& a = sortedLines[j][0];
@@ -1092,11 +755,11 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
                 if (a.isVertical == b.isVertical) {
                     shouldSwap = a.isVertical ? (a.x > b.x) : (a.y > b.y);
                 } else {
-                    shouldSwap = !a.isVertical;  // 垂直线优先
+                    shouldSwap = !a.isVertical;  //Vertical lines have priority
                 }
 
                 if (shouldSwap) {
-                    // 交换两行
+                    // Swap two rows
                     DarkLine temp = sortedLines[j][0];
                     sortedLines[j][0] = sortedLines[j + 1][0];
                     sortedLines[j + 1][0] = temp;
@@ -1104,19 +767,19 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
             }
         }
 
-        // 3.3 创建移除区段数组
+        //Create removal section arrays
         std::pair<int, int>** verticalSections = new std::pair<int, int>*[validatedLines];
         std::pair<int, int>** horizontalSections = new std::pair<int, int>*[validatedLines];
         int verticalCount = 0;
         int horizontalCount = 0;
 
-        // 为每个数组分配列内存
+        // Allocate column memory for each array
         for (int i = 0; i < validatedLines; i++) {
             verticalSections[i] = new std::pair<int, int>[1];
             horizontalSections[i] = new std::pair<int, int>[1];
         }
 
-        // 3.4 收集移除区段
+        // Collect removal sections
         for (int i = 0; i < validatedLines; i++) {
             const DarkLine& line = sortedLines[i][0];
             if (line.isVertical) {
@@ -1128,7 +791,7 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
             }
         }
 
-        // 3.5 计算新维度
+        //Calculate new dimensions
         int newWidth = image.cols;
         int newHeight = image.rows;
 
@@ -1139,7 +802,7 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
             newHeight -= horizontalSections[i][0].second;
         }
 
-        // 3.6 验证新维度
+        //Validate new dimensions
         if (newWidth <= 0 || newHeight <= 0) {
             std::ostringstream error;
             error << "Invalid resulting dimensions: "
@@ -1149,20 +812,21 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
 
         std::cout << "New dimensions will be: " << newWidth << "x" << newHeight
                   << " (original: " << image.cols << "x" << image.rows << ")" << std::endl;
-        // 4. 执行线条移除
+
+        //Execute line removal
         if (method == RemovalMethod::DIRECT_STITCH) {
-            // 4.1 创建新的图像缓冲区
+            //Create new image buffer
             std::cout << "\nAllocating new image buffer..." << std::endl;
             double** newImageData = new double*[newHeight];
             for (int i = 0; i < newHeight; i++) {
-                newImageData[i] = new double[newWidth]();  // 零初始化
+                newImageData[i] = new double[newWidth]();
             }
 
-            // 4.2 复制数据并移除线条
+            //Copy data and remove lines
             std::cout << "\nCopying image data and removing lines..." << std::endl;
             int destY = 0;
             for (int srcY = 0; srcY < image.rows && destY < newHeight; srcY++) {
-                // 检查是否应该跳过这一行
+                // Check if this row should be skipped
                 bool skipRow = false;
                 for (int i = 0; i < horizontalCount; i++) {
                     if (srcY >= horizontalSections[i][0].first &&
@@ -1175,7 +839,7 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
                 if (!skipRow) {
                     int destX = 0;
                     for (int srcX = 0; srcX < image.cols && destX < newWidth; srcX++) {
-                        // 检查是否应该跳过这一列
+                        // Check if this column should be skipped
                         bool skipCol = false;
                         for (int i = 0; i < verticalCount; i++) {
                             if (srcX >= verticalSections[i][0].first &&
@@ -1193,7 +857,7 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
                 }
             }
 
-            // 4.3 更新原始图像
+            // Update the original image
             for (int i = 0; i < image.rows; i++) {
                 delete[] image.data[i];
             }
@@ -1206,14 +870,14 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
         } else {  // NEIGHBOR_VALUES method
             std::cout << "\nProcessing with neighbor values method..." << std::endl;
 
-            // 4.4 创建临时图像
+            // Create temporary image
             double** tempData = new double*[image.rows];
             for (int i = 0; i < image.rows; i++) {
                 tempData[i] = new double[image.cols];
                 std::copy(image.data[i], image.data[i] + image.cols, tempData[i]);
             }
 
-            // 4.5 处理每条线
+            // Process each line
             for (int i = 0; i < validatedLines; i++) {
                 const DarkLine& line = sortedLines[i][0];
                 if (line.isVertical) {
@@ -1235,7 +899,7 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
                 }
             }
 
-            // 4.6 更新原始图像
+            // 4.6 Update the original image
             for (int i = 0; i < image.rows; i++) {
                 std::copy(tempData[i], tempData[i] + image.cols, image.data[i]);
                 delete[] tempData[i];
@@ -1243,7 +907,7 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
             delete[] tempData;
         }
 
-        // 5. 清理内存
+        // 5. Clean up memory
         for (int i = 0; i < selectedCount; i++) {
             delete[] validLines[i];
         }
@@ -1265,167 +929,78 @@ void DarkLinePointerProcessor::removeDarkLinesSequential(
         std::cout << "Final image dimensions: " << image.rows << "x" << image.cols << std::endl;
 
     } catch (const std::exception& e) {
-        // 6. 异常处理时的清理
+        // 6. Clean up during exception handling
         for (int i = 0; i < selectedCount; i++) {
             delete[] validLines[i];
         }
         delete[] validLines;
 
-        // 重新抛出异常
+        // Rethrow the exception
         throw;
     }
 }
 
+//Process 3B - 2: Helper function for Neighbour Values method (In-Object Lines)
 
-void DarkLinePointerProcessor::validateNewDimensions(
+int DarkLinePointerProcessor::calculateSearchRadius(int lineWidth) {
+    return std::clamp(lineWidth * 2, MIN_SEARCH_RADIUS, MAX_SEARCH_RADIUS);
+}
+
+double DarkLinePointerProcessor::findReplacementValue(
     const ImageData& image,
-    const std::pair<DarkLine, int>** lines,
-    int linesCount,
+    int x, int y,
     bool isVertical,
-    int& newSize) {
+    int lineWidth) {
 
-    int totalReduction = 0;
-    for (int i = 0; i < linesCount; i++) {
-        for (int j = 0; j < 1; j++) {  // 假设每行只有一列
-            if (lines[i][j].first.isVertical == isVertical) {
-                totalReduction += lines[i][j].first.width;
+    int searchRadius = calculateSearchRadius(lineWidth);
+    double* validValues = new double[searchRadius * 2]();
+    int validCount = 0;
+
+    if (isVertical) {
+        for (int offset = 1; offset <= searchRadius; ++offset) {
+            int leftX = x - offset;
+            if (leftX >= 0 && image.data[y][leftX] > MIN_BRIGHTNESS) {
+                validValues[validCount++] = image.data[y][leftX];
             }
-        }
-    }
 
-    newSize = (isVertical ? image.cols : image.rows) - totalReduction;
-    if (newSize <= 0) {
-        throw std::runtime_error("Invalid dimensions after line removal");
-    }
-}
-
-bool DarkLinePointerProcessor::prepareImageBuffer(
-    const ImageData& image,
-    const std::pair<DarkLine, int>** lines,
-    int linesCount,
-    ImageData& buffer) {
-
-    try {
-        // 计算新维度
-        int newWidth = image.cols;
-        int newHeight = image.rows;
-
-        for (int i = 0; i < linesCount; i++) {
-            for (int j = 0; j < 1; j++) {
-                const auto& line = lines[i][j];
-                if (line.first.isVertical) {
-                    newWidth -= line.first.width;
-                } else {
-                    newHeight -= line.first.width;
-                }
+            int rightX = x + offset;
+            if (rightX < image.cols && image.data[y][rightX] > MIN_BRIGHTNESS) {
+                validValues[validCount++] = image.data[y][rightX];
             }
-        }
-
-        if (newWidth <= 0 || newHeight <= 0) {
-            return false;
-        }
-
-        // 分配新缓冲区
-        buffer.rows = newHeight;
-        buffer.cols = newWidth;
-        buffer.data = new double*[newHeight];
-        for (int i = 0; i < newHeight; i++) {
-            buffer.data[i] = new double[newWidth]();  // 使用()进行零初始化
-        }
-
-        return true;
-    } catch (const std::exception& e) {
-        std::cerr << "Error preparing image buffer: " << e.what() << std::endl;
-        return false;
-    }
-}
-
-void DarkLinePointerProcessor::adjustLineCoordinates(
-    DarkLine& line,
-    const std::pair<int, int>** verticalSections,
-    int verticalCount,
-    const std::pair<int, int>** horizontalSections,
-    int horizontalCount,
-    int newWidth,
-    int newHeight) {
-
-    if (line.isVertical) {
-        int xAdjustment = 0;
-        for (int i = 0; i < verticalCount; i++) {
-            for (int j = 0; j < 1; j++) {
-                const auto& section = verticalSections[i][j];
-                if (line.x > section.first) {
-                    xAdjustment += section.second;
-                }
-            }
-        }
-        line.x -= xAdjustment;
-        line.endY = std::min(line.endY, newHeight - 1);
-        line.startY = std::max(line.startY, 0);
-        if (line.x + line.width > newWidth) {
-            line.width = newWidth - line.x;
         }
     } else {
-        int yAdjustment = 0;
-        for (int i = 0; i < horizontalCount; i++) {
-            for (int j = 0; j < 1; j++) {
-                const auto& section = horizontalSections[i][j];
-                if (line.y > section.first) {
-                    yAdjustment += section.second;
+        for (int offset = 1; offset <= searchRadius; ++offset) {
+            int upY = y - offset;
+            if (upY >= 0 && image.data[upY][x] > MIN_BRIGHTNESS) {
+                validValues[validCount++] = image.data[upY][x];
+            }
+
+            int downY = y + offset;
+            if (downY < image.rows && image.data[downY][x] > MIN_BRIGHTNESS) {
+                validValues[validCount++] = image.data[downY][x];
+            }
+        }
+    }
+
+    double result;
+    if (validCount > 0) {
+        // Sort the valid values using bubble sort
+        for (int i = 0; i < validCount - 1; i++) {
+            for (int j = 0; j < validCount - i - 1; j++) {
+                if (validValues[j] > validValues[j + 1]) {
+                    double temp = validValues[j];
+                    validValues[j] = validValues[j + 1];
+                    validValues[j + 1] = temp;
                 }
             }
         }
-        line.y -= yAdjustment;
-        line.endX = std::min(line.endX, newWidth - 1);
-        line.startX = std::max(line.startX, 0);
-        if (line.y + line.width > newHeight) {
-            line.width = newHeight - line.y;
-        }
+        result = validValues[validCount / 2]; // Median value
+    } else {
+        result = image.data[y][x]; // Keep original if no valid replacements found
     }
+
+    delete[] validValues;
+    return result;
 }
-DarkLineArray* DarkLinePointerProcessor::createSafeDarkLineArray(int rows, int cols) {
-    std::cout << "Creating safe dark line array with dimensions: " << rows << "x" << cols << std::endl;
 
-    try {
-        auto newArray = new DarkLineArray();
 
-        if (rows <= 0 || cols <= 0) {
-            std::cout << "Creating empty array" << std::endl;
-            newArray->rows = 0;
-            newArray->cols = 0;
-            newArray->lines = nullptr;
-            return newArray;
-        }
-
-        newArray->rows = rows;
-        newArray->cols = cols;
-        newArray->lines = new DarkLine*[rows];
-
-        if (!newArray->lines) {
-            throw std::bad_alloc();
-        }
-
-        std::memset(newArray->lines, 0, rows * sizeof(DarkLine*));
-
-        for (int i = 0; i < rows; i++) {
-            newArray->lines[i] = new DarkLine[cols];
-            if (!newArray->lines[i]) {
-                for (int j = 0; j < i; j++) {
-                    delete[] newArray->lines[j];
-                }
-                delete[] newArray->lines;
-                delete newArray;
-                throw std::bad_alloc();
-            }
-            for (int j = 0; j < cols; j++) {
-                newArray->lines[i][j] = DarkLine();
-            }
-        }
-
-        return newArray;
-
-    } catch (const std::exception& e) {
-        std::cerr << "Error in createSafeDarkLineArray: " << e.what() << std::endl;
-        throw;
-    }
-}
