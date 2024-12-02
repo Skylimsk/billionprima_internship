@@ -52,6 +52,8 @@ public:
     QLabel* getDarkLineInfoLabel() { return m_darkLineInfoLabel; }
     void updateImageDisplay();
 
+
+
 protected:
     struct LineVisualProperties {
         QColor color;
@@ -62,6 +64,13 @@ protected:
     };
 
 private:
+
+    enum class CalibrationMode {
+        BOTH_AXES,
+        Y_AXIS_ONLY,
+        X_AXIS_ONLY
+    };
+
     // Setup functions
     void setupPixelInfoLabel();
     void setupFileOperations();
@@ -70,7 +79,6 @@ private:
     void setupFilteringOperations();
     void setupAdvancedOperations();
     void setupCombinedAdjustments();
-    void setupCLAHEOperations();
     void setupBlackLineDetection();
     void setupZoomControls();
     void handleRevert();
@@ -144,6 +152,10 @@ private:
     void clearAllDetectionResults();
     void updateLastActionLabelSize();
 
+    void processCalibration(int linesToProcessY, int linesToProcessX, CalibrationMode mode);
+
+    void resetAllParameters();
+
     // Member variables
     QVBoxLayout* m_mainLayout;
     QVBoxLayout* m_scrollLayout;
@@ -200,6 +212,12 @@ private:
     QPushButton* m_vectorDetectBtn = nullptr;
     QPushButton* m_vectorRemoveBtn = nullptr;
     QPushButton* m_vectorResetBtn = nullptr;
+
+    std::pair<int, bool> showInputDialog(const QString& title,
+                                         const QString& label,
+                                         int defaultValue);
 };
+
+
 
 #endif // CONTROL_PANEL_H

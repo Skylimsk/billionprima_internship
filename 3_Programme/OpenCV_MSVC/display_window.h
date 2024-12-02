@@ -19,6 +19,7 @@ public:
     explicit DisplayWindow(const QString& title, QWidget* parent = nullptr,
                            const QPoint& position = QPoint(0, 0));
     void updateImage(const std::vector<std::vector<uint16_t>>& image);
+    void clear();
 
 private slots:
     void saveImage();

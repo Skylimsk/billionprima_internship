@@ -145,11 +145,25 @@ QString ImageProcessor::revertImage() {
     if (!imageHistory.empty() && !actionHistory.empty()) {
         ImageState prevState = imageHistory.top();
         finalImage = prevState.image;
-        m_detectedLines = prevState.detectedLines;  // Updated variable name
+        m_detectedLines = prevState.detectedLines;
         imageHistory.pop();
 
         ActionRecord currentAction = actionHistory.top();
         actionHistory.pop();
+
+        // For calibration operations, ensure parameters are maintained
+        if (currentAction.action.startsWith("Calibration")) {
+            if (currentAction.parameters.contains("Y:") && !currentAction.parameters.contains("X:")) {
+                // Y-axis only calibration
+                int yParam = currentAction.parameters.mid(2).toInt();
+                InterlaceProcessor::setCalibrationParams(yParam, 0);
+            } else if (!currentAction.parameters.contains("Y:") && currentAction.parameters.contains("X:")) {
+                // X-axis only calibration
+                int xParam = currentAction.parameters.mid(2).toInt();
+                InterlaceProcessor::setCalibrationParams(0, xParam);
+            }
+            // Both axes case is already handled by existing calibration params
+        }
 
         if (!actionHistory.empty()) {
             lastAction = actionHistory.top().toString();
@@ -216,45 +230,77 @@ void ImageProcessor::processImage() {
 }
 
 void ImageProcessor::processYXAxis(std::vector<std::vector<uint16_t>>& image, int linesToAvgY, int linesToAvgX) {
-
     saveCurrentState();
 
-    InterlaceProcessor::setCalibrationParams(linesToAvgY, linesToAvgX);
+    // Store calibration parameters
+    if (linesToAvgY > 0 && linesToAvgX == 0) {
+        InterlaceProcessor::setCalibrationParams(linesToAvgY, 0);  // Y-axis only
+    } else if (linesToAvgY == 0 && linesToAvgX > 0) {
+        InterlaceProcessor::setCalibrationParams(0, linesToAvgX);  // X-axis only
+    } else {
+        InterlaceProcessor::setCalibrationParams(linesToAvgY, linesToAvgX);  // Both axes
+    }
 
     int height = image.size();
     int width = image[0].size();
 
-    // Y-axis processing
-    std::vector<float> referenceYMean(width, 0.0f);
-    for (int y = 0; y < std::min(linesToAvgY, height); ++y) {
+    // Y-axis processing only if Y lines are specified
+    if (linesToAvgY > 0) {
+        std::vector<float> referenceYMean(width, 0.0f);
+
+        // Calculate reference means for Y-axis
+        for (int y = 0; y < std::min(linesToAvgY, height); ++y) {
+            for (int x = 0; x < width; ++x) {
+                referenceYMean[x] += static_cast<float>(image[y][x]);
+            }
+        }
+
+        // Normalize reference means and add epsilon to avoid division by zero
+        const float epsilon = 1e-6f;
         for (int x = 0; x < width; ++x) {
-            referenceYMean[x] += image[y][x];
+            referenceYMean[x] = std::max(referenceYMean[x] / linesToAvgY, epsilon);
         }
-    }
-    for (int x = 0; x < width; ++x) {
-        referenceYMean[x] /= linesToAvgY;
-    }
 
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            float normalizedValue = static_cast<float>(image[y][x]) / referenceYMean[x];
-            image[y][x] = static_cast<uint16_t>(std::min(normalizedValue * 65535.0f, 65535.0f));
-        }
-    }
-
-    // X-axis processing
-    std::vector<float> referenceXMean(height, 0.0f);
-    for (int y = 0; y < height; ++y) {
-        for (int x = width - linesToAvgX; x < width; ++x) {
-            referenceXMean[y] += image[y][x];
-        }
-        referenceXMean[y] /= linesToAvgX;
-    }
-
-    for (int x = 0; x < width; ++x) {
+        // Apply Y-axis normalization with clamping
         for (int y = 0; y < height; ++y) {
-            float normalizedValue = static_cast<float>(image[y][x]) / referenceXMean[y];
-            image[y][x] = static_cast<uint16_t>(std::min(normalizedValue * 65535.0f, 65535.0f));
+            for (int x = 0; x < width; ++x) {
+                float normalizedValue = static_cast<float>(image[y][x]) / referenceYMean[x];
+                // Clamp the normalized value to a reasonable range (e.g., 0.1 to 10.0)
+                normalizedValue = std::clamp(normalizedValue, 0.1f, 10.0f);
+                // Scale to 16-bit range and clamp again
+                float scaledValue = normalizedValue * 65535.0f;
+                image[y][x] = static_cast<uint16_t>(std::clamp(scaledValue, 0.0f, 65535.0f));
+            }
+        }
+    }
+
+    // X-axis processing only if X lines are specified
+    if (linesToAvgX > 0) {
+        std::vector<float> referenceXMean(height, 0.0f);
+
+        // Calculate reference means for X-axis
+        for (int y = 0; y < height; ++y) {
+            for (int x = width - linesToAvgX; x < width; ++x) {
+                referenceXMean[y] += static_cast<float>(image[y][x]);
+            }
+        }
+
+        // Normalize reference means and add epsilon to avoid division by zero
+        const float epsilon = 1e-6f;
+        for (int y = 0; y < height; ++y) {
+            referenceXMean[y] = std::max(referenceXMean[y] / linesToAvgX, epsilon);
+        }
+
+        // Apply X-axis normalization with clamping
+        for (int x = 0; x < width; ++x) {
+            for (int y = 0; y < height; ++y) {
+                float normalizedValue = static_cast<float>(image[y][x]) / referenceXMean[y];
+                // Clamp the normalized value to a reasonable range (e.g., 0.1 to 10.0)
+                normalizedValue = std::clamp(normalizedValue, 0.1f, 10.0f);
+                // Scale to 16-bit range and clamp again
+                float scaledValue = normalizedValue * 65535.0f;
+                image[y][x] = static_cast<uint16_t>(std::clamp(scaledValue, 0.0f, 65535.0f));
+            }
         }
     }
 }
@@ -795,4 +841,19 @@ void ImageProcessor::applyEdgeEnhancement(float strength) {
             finalImage[y][x] = static_cast<uint16_t>(std::min(enhancedValue, 65535.0f));
         }
     }
+}
+
+InterlaceProcessor::InterlacedResult ImageProcessor::processEnhancedInterlacedSections(
+    InterlaceProcessor::StartPoint lowEnergyStart,
+    InterlaceProcessor::StartPoint highEnergyStart,
+    const InterlaceProcessor::MergeParams& mergeParams)  // Change from MergeMethod to MergeParams
+{
+    saveCurrentState();
+
+    return InterlaceProcessor::processEnhancedInterlacedSections(
+        finalImage,
+        lowEnergyStart,
+        highEnergyStart,
+        mergeParams
+        );
 }

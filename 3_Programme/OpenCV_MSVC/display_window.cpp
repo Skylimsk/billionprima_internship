@@ -115,3 +115,18 @@ void DisplayWindow::updateDisplayedImage() {
 void DisplayWindow::setWindowPosition(const QPoint& position) {
     move(position);
 }
+
+void DisplayWindow::clear() {
+    if (imageLabel) {
+        imageLabel->clear();
+        imageLabel->setMinimumSize(0, 0);
+    }
+    originalImage.reset();
+    currentZoom = 1.0;
+    if (zoomSlider) {
+        zoomSlider->setValue(100);
+    }
+    if (zoomLabel) {
+        zoomLabel->setText("Zoom: 100%");
+    }
+}

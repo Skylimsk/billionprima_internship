@@ -115,7 +115,6 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
     setupBasicOperations();
     setupFilteringOperations();
     setupAdvancedOperations();
-    setupCLAHEOperations();
     setupBlackLineDetection();
     setupCombinedAdjustments();
     setupResetOperations();
@@ -828,7 +827,7 @@ void ControlPanel::setupPreProcessingOperations() {
     // Create calibration button
     m_calibrationButton = new QPushButton("Calibration");
     m_calibrationButton->setFixedHeight(35);
-    m_calibrationButton->setToolTip("Apply calibration using Y-axis and X-axis parameters");
+    m_calibrationButton->setToolTip("Apply calibration using Y-axis and/or X-axis parameters");
     m_calibrationButton->setEnabled(false);  // Initially disabled
     m_allButtons.push_back(m_calibrationButton);
     layout->addWidget(m_calibrationButton);
@@ -841,57 +840,6 @@ void ControlPanel::setupPreProcessingOperations() {
     m_allButtons.push_back(m_resetCalibrationButton);
     layout->addWidget(m_resetCalibrationButton);
 
-    // Create Enhanced Interlace button
-    QPushButton* enhancedInterlaceBtn = new QPushButton("Enhanced Interlace");
-    enhancedInterlaceBtn->setFixedHeight(35);
-    enhancedInterlaceBtn->setToolTip("Process image using enhanced interlacing method");
-    enhancedInterlaceBtn->setEnabled(false);  // Initially disabled
-    m_allButtons.push_back(enhancedInterlaceBtn);
-    layout->addWidget(enhancedInterlaceBtn);
-
-    // Connect calibration button
-    connect(m_calibrationButton, &QPushButton::clicked, this, [this]() {
-        if (checkZoomMode()) return;
-        m_darkLineInfoLabel->hide();
-        resetDetectedLines();
-
-        if (!InterlaceProcessor::hasCalibrationParams()) {
-            // First time calibration - ask for parameters
-            auto [linesToProcessY, yOk] = showInputDialog(
-                "Calibration",
-                "Enter lines to process for Y-axis:",
-                10, 1, 1000
-                );
-            if (!yOk) return;
-
-            auto [linesToProcessX, xOk] = showInputDialog(
-                "Calibration",
-                "Enter lines to process for X-axis:",
-                10, 1, 1000
-                );
-            if (!xOk) return;
-
-            m_imageProcessor.processYXAxis(
-                const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()),
-                linesToProcessY,
-                linesToProcessX
-                );
-
-            // Enable reset button after first calibration
-            m_resetCalibrationButton->setEnabled(true);
-        } else {
-            // Use existing parameters
-            m_imageProcessor.processYXAxisWithStoredParams(
-                const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage())
-                );
-        }
-
-        m_imageLabel->clearSelection();
-        updateImageDisplay();
-        updateLastAction("Calibration", InterlaceProcessor::getCalibrationParamsString());
-        updateCalibrationButtonText();
-    });
-
     // Connect reset button
     connect(m_resetCalibrationButton, &QPushButton::clicked, this, [this]() {
         InterlaceProcessor::resetCalibrationParams();
@@ -901,6 +849,80 @@ void ControlPanel::setupPreProcessingOperations() {
                                  "Calibration parameters have been reset. Next calibration will require new parameters.");
     });
 
+    // Connect calibration button
+    connect(m_calibrationButton, &QPushButton::clicked, this, [this]() {
+        if (checkZoomMode()) return;
+        m_darkLineInfoLabel->hide();
+        resetDetectedLines();
+
+        // Create dialog for calibration options
+        QDialog dialog(this);
+        dialog.setWindowTitle("Calibration Options");
+        dialog.setMinimumWidth(300);
+        QVBoxLayout* dialogLayout = new QVBoxLayout(&dialog);
+
+        // Add mode selection
+        QGroupBox* modeBox = new QGroupBox("Calibration Mode");
+        QVBoxLayout* modeLayout = new QVBoxLayout(modeBox);
+
+        QRadioButton* bothAxesRadio = new QRadioButton("Both Axes");
+        QRadioButton* yAxisRadio = new QRadioButton("Y-Axis Only");
+        QRadioButton* xAxisRadio = new QRadioButton("X-Axis Only");
+
+        bothAxesRadio->setChecked(true);
+
+        modeLayout->addWidget(bothAxesRadio);
+        modeLayout->addWidget(yAxisRadio);
+        modeLayout->addWidget(xAxisRadio);
+        modeBox->setLayout(modeLayout);
+        dialogLayout->addWidget(modeBox);
+
+        // Add explanation labels
+        QLabel* explanationLabel = new QLabel(
+            "Y-Axis: Uses top lines as reference\n"
+            "X-Axis: Uses rightmost lines as reference\n"
+            "Both: Applies both calibrations sequentially"
+            );
+        explanationLabel->setStyleSheet("color: gray; font-size: 10px;");
+        dialogLayout->addWidget(explanationLabel);
+
+        // Add buttons
+        QDialogButtonBox* buttonBox = new QDialogButtonBox(
+            QDialogButtonBox::Ok | QDialogButtonBox::Cancel
+            );
+        dialogLayout->addWidget(buttonBox);
+
+        connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+        connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+        if (dialog.exec() == QDialog::Accepted) {
+            CalibrationMode mode;
+            if (yAxisRadio->isChecked()) {
+                mode = CalibrationMode::Y_AXIS_ONLY;
+            } else if (xAxisRadio->isChecked()) {
+                mode = CalibrationMode::X_AXIS_ONLY;
+            } else {
+                mode = CalibrationMode::BOTH_AXES;
+            }
+
+            // Call processCalibration with 0 values - it will handle parameter input
+            processCalibration(0, 0, mode);
+            m_resetCalibrationButton->setEnabled(true);
+            m_imageLabel->clearSelection();
+            updateImageDisplay();
+            updateCalibrationButtonText();
+        }
+    });
+
+    // Create Enhanced Interlace button
+    QPushButton* enhancedInterlaceBtn = new QPushButton("Enhanced Interlace");
+    enhancedInterlaceBtn->setFixedHeight(35);
+    enhancedInterlaceBtn->setToolTip("Process image using enhanced interlacing method");
+    enhancedInterlaceBtn->setEnabled(false);  // Initially disabled
+    m_allButtons.push_back(enhancedInterlaceBtn);
+    layout->addWidget(enhancedInterlaceBtn);
+
+    // Connect Enhanced Interlace button
     connect(enhancedInterlaceBtn, &QPushButton::clicked, this, [this]() {
         if (checkZoomMode()) return;
         m_darkLineInfoLabel->hide();
@@ -964,7 +986,7 @@ void ControlPanel::setupPreProcessingOperations() {
 
         // Add explanatory label for Merge Method
         QLabel* mergeExplanation = new QLabel(
-            "Weighted Average: Average of corresponding pixels\n"
+            "Weighted Average: Average of corresponding pixels with weights\n"
             "Minimum Value: Choose the smaller value between corresponding pixels"
             );
         mergeExplanation->setStyleSheet("color: #666; font-size: 10px;");
@@ -974,12 +996,39 @@ void ControlPanel::setupPreProcessingOperations() {
         mergeLayout->addWidget(mergeExplanation);
         dialogLayout->addWidget(mergeBox);
 
-        // Add Display Windows checkbox - defaulting to unchecked
+        QLabel* weightingInfo = new QLabel(
+            "Note: Weighting method will be automatically determined based on image characteristics:\n"
+            "• High gradient areas: Edge-preserving weighting\n"
+            "• High variance areas: Texture-preserving weighting\n"
+            "• Uniform areas: Intensity-based weighting"
+            );
+        weightingInfo->setStyleSheet(
+            "QLabel {"
+            "    color: #666;"
+            "    font-size: 10px;"
+            "    background-color: #f8f8f8;"
+            "    border: 1px solid #ddd;"
+            "    border-radius: 4px;"
+            "    padding: 8px;"
+            "    margin: 4px 0px;"
+            "}"
+            );
+        weightingInfo->setWordWrap(true);
+        dialogLayout->addWidget(weightingInfo);
+
+        // Add auto-calibration checkbox
+        QCheckBox* autoCalibrationCheck = new QCheckBox("Auto-calibrate after interlace and merge");
+        autoCalibrationCheck->setChecked(false);  // Default to unchecked
+        autoCalibrationCheck->setToolTip("Automatically apply calibration after interlace and merge process");
+        dialogLayout->addWidget(autoCalibrationCheck);
+
+        // Add Display Windows checkbox
         QCheckBox* showWindowsCheck = new QCheckBox("Show Intermediate Results Windows");
-        showWindowsCheck->setChecked(false);  // Always start unchecked
+        showWindowsCheck->setChecked(false);
         showWindowsCheck->setToolTip("Display separate windows showing low energy, high energy, and final merged results");
         dialogLayout->addWidget(showWindowsCheck);
 
+        // Show current calibration parameters if available
         if (InterlaceProcessor::hasCalibrationParams()) {
             QLabel* currentParamsLabel = new QLabel(
                 QString("Current calibration parameters: %1")
@@ -995,7 +1044,8 @@ void ControlPanel::setupPreProcessingOperations() {
 
         // Add buttons
         QDialogButtonBox* buttonBox = new QDialogButtonBox(
-            QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+            QDialogButtonBox::Ok | QDialogButtonBox::Cancel
+            );
         dialogLayout->addWidget(buttonBox);
 
         connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
@@ -1012,7 +1062,7 @@ void ControlPanel::setupPreProcessingOperations() {
                 if (m_finalWindow) m_finalWindow->hide();
             }
 
-            // Get user selections
+            // Get user selections for section starts
             InterlaceProcessor::StartPoint lowEnergyStart =
                 leftLeftLowRadio->isChecked() ?
                     InterlaceProcessor::StartPoint::LEFT_LEFT :
@@ -1023,34 +1073,35 @@ void ControlPanel::setupPreProcessingOperations() {
                     InterlaceProcessor::StartPoint::RIGHT_LEFT :
                     InterlaceProcessor::StartPoint::RIGHT_RIGHT;
 
-            InterlaceProcessor::MergeMethod mergeMethod =
-                weightedAvgRadio->isChecked() ?
-                    InterlaceProcessor::MergeMethod::WEIGHTED_AVERAGE :
-                    InterlaceProcessor::MergeMethod::MINIMUM_VALUE;
-
-            // Process the image and get all results
+            // Process the image with automatic weight determination
             auto result = m_imageProcessor.processEnhancedInterlacedSections(
                 lowEnergyStart,
                 highEnergyStart,
-                mergeMethod
+                InterlaceProcessor::MergeParams()  // Use default constructor for automatic selection
                 );
 
-            // Only create and show windows if explicitly requested
+            // Show intermediate windows if requested
             if (m_showDisplayWindows) {
                 // Create windows if they don't exist
                 if (!m_lowEnergyWindow) {
-                    m_lowEnergyWindow = std::make_unique<DisplayWindow>("Low Energy Interlaced", nullptr,
-                                                                        QPoint(this->x() + this->width() + 10, this->y()));
+                    m_lowEnergyWindow = std::make_unique<DisplayWindow>(
+                        "Low Energy Interlaced", nullptr,
+                        QPoint(this->x() + this->width() + 10, this->y())
+                        );
                     m_lowEnergyWindow->resize(800, 600);
                 }
                 if (!m_highEnergyWindow) {
-                    m_highEnergyWindow = std::make_unique<DisplayWindow>("High Energy Interlaced", nullptr,
-                                                                         QPoint(this->x() + this->width() + 10, this->y() + 300));
+                    m_highEnergyWindow = std::make_unique<DisplayWindow>(
+                        "High Energy Interlaced", nullptr,
+                        QPoint(this->x() + this->width() + 10, this->y() + 300)
+                        );
                     m_highEnergyWindow->resize(800, 600);
                 }
                 if (!m_finalWindow) {
-                    m_finalWindow = std::make_unique<DisplayWindow>("Final Merged Result", nullptr,
-                                                                    QPoint(this->x() + this->width() + 10, this->y() + 600));
+                    m_finalWindow = std::make_unique<DisplayWindow>(
+                        "Final Merged Result", nullptr,
+                        QPoint(this->x() + this->width() + 10, this->y() + 600)
+                        );
                     m_finalWindow->resize(800, 600);
                 }
 
@@ -1067,24 +1118,36 @@ void ControlPanel::setupPreProcessingOperations() {
                 m_finalWindow->raise();
             }
 
-            // Update main display
+            // Update main display with the combined image
             m_imageProcessor.updateAndSaveFinalImage(result.combinedImage);
+
+            // Apply auto-calibration if checked
+            if (autoCalibrationCheck->isChecked()) {
+                processCalibration(0, 0, CalibrationMode::BOTH_AXES);
+            }
+
             m_imageLabel->clearSelection();
             updateImageDisplay();
 
-            // Create status message
+            // Generate status message
             QString lowEnergyStr = leftLeftLowRadio->isChecked() ? "LeftLeft" : "LeftRight";
             QString highEnergyStr = rightLeftHighRadio->isChecked() ? "RightLeft" : "RightRight";
-            QString mergeStr = weightedAvgRadio->isChecked() ? "WeightedAvg" : "MinValue";
 
-            QString statusMsg = QString("Low: %1, High: %2, Merge: %3")
+            // Get used weighting method information
+            const auto& [lowImage, highImage] = std::make_pair(result.lowEnergyImage, result.highEnergyImage);
+            auto bestParams = InterlaceProcessor::determineBestWeightingMethod(lowImage, highImage);
+            QString weightMethodInfo = InterlaceProcessor::getWeightingMethodString(bestParams);
+
+            QString statusMsg = QString("Sections: Low=%1, High=%2\nSelected Method: %3")
                                     .arg(lowEnergyStr)
                                     .arg(highEnergyStr)
-                                    .arg(mergeStr);
+                                    .arg(weightMethodInfo);
 
-            if (InterlaceProcessor::hasCalibrationParams()) {
-                statusMsg += QString(" (Auto-calibrated: %1)")
-                .arg(InterlaceProcessor::getCalibrationParamsString());
+            if (autoCalibrationCheck->isChecked()) {
+                statusMsg += QString("\nAuto-calibrated using %1")
+                .arg(InterlaceProcessor::hasCalibrationParams() ?
+                         InterlaceProcessor::getCalibrationParamsString() :
+                         "default parameters");
             }
 
             updateLastAction("Enhanced Interlace", statusMsg);
@@ -1097,53 +1160,185 @@ void ControlPanel::setupPreProcessingOperations() {
     updateCalibrationButtonText();
 }
 
+// Remove setupCLAHEOperations() from the constructor and modify setupFilteringOperations()
+
 void ControlPanel::setupFilteringOperations() {
-    createGroupBox("Filtering Operations", {
-                                               {"Median Filter", [this]() {
-                                                    if (checkZoomMode()) return;
-                                                    m_darkLineInfoLabel->hide();
-                                                    resetDetectedLines();
-                                                    resetDetectedLinesPointer();
-                                                    auto [filterKernelSize, ok] = showInputDialog("Median Filter", "Enter kernel size:", 3, 1, 21);
-                                                    if (ok) {
-                                                        m_imageProcessor.applyMedianFilter(
-                                                            const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()),
-                                                            filterKernelSize
-                                                            );
-                                                        m_imageLabel->clearSelection();
-                                                        updateImageDisplay();
-                                                        updateLastAction("Median Filter", QString("Size: %1").arg(filterKernelSize));
-                                                    }
-                                                }},
-                                               {"High-Pass Filter", [this]() {
-                                                    if (checkZoomMode()) return;
-                                                    m_darkLineInfoLabel->hide();
-                                                    resetDetectedLines();
-                                                    m_imageProcessor.applyHighPassFilter(const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()));
-                                                    m_imageLabel->clearSelection();
-                                                    updateImageDisplay();
-                                                    updateLastAction("High-Pass Filter");
-                                                }},
-                                               {"Edge Enhancement", [this]() {
-                                                    if (checkZoomMode()) return;
-                                                    m_darkLineInfoLabel->hide();
-                                                    resetDetectedLines();
-                                                    resetDetectedLinesPointer();
+    createGroupBox("Image Enhancement", {
+                                            {"CLAHE", [this]() {
+                                                 if (checkZoomMode()) return;
+                                                 m_darkLineInfoLabel->hide();
+                                                 resetDetectedLines();
+                                                 resetDetectedLinesPointer();
 
-                                                    auto [strength, ok] = showInputDialog(
-                                                        "Edge Enhancement",
-                                                        "Enter enhancement strength (0.1-2.0):",
-                                                        0.5, 0.1, 2.0);
+                                                 // Create dialog for CLAHE options
+                                                 QDialog dialog(this);
+                                                 dialog.setWindowTitle("CLAHE Options");
+                                                 dialog.setMinimumWidth(300);
+                                                 QVBoxLayout* layout = new QVBoxLayout(&dialog);
 
-                                                    if (ok) {
-                                                        m_imageProcessor.applyEdgeEnhancement(strength);
-                                                        m_imageLabel->clearSelection();
-                                                        updateImageDisplay();
-                                                        updateLastAction("Edge Enhancement",
-                                                                         QString("Strength: %1").arg(strength, 0, 'f', 2));
-                                                    }
-                                                }}
-                                           });
+                                                 // Processing mode selection
+                                                 QGroupBox* modeBox = new QGroupBox("Processing Mode");
+                                                 QVBoxLayout* modeLayout = new QVBoxLayout(modeBox);
+                                                 QRadioButton* gpuRadio = new QRadioButton("GPU Processing");
+                                                 QRadioButton* cpuRadio = new QRadioButton("CPU Processing");
+                                                 gpuRadio->setChecked(true);
+
+                                                 modeLayout->addWidget(gpuRadio);
+                                                 modeLayout->addWidget(cpuRadio);
+                                                 layout->addWidget(modeBox);
+
+                                                 // Threshold option
+                                                 QCheckBox* useThresholdCheck = new QCheckBox("Apply Threshold");
+                                                 layout->addWidget(useThresholdCheck);
+
+                                                 // Threshold value input (initially disabled)
+                                                 QLabel* thresholdLabel = new QLabel("Threshold Value:");
+                                                 QSpinBox* thresholdSpinBox = new QSpinBox();
+                                                 thresholdSpinBox->setRange(0, 65535);
+                                                 thresholdSpinBox->setValue(5000);
+                                                 thresholdSpinBox->setEnabled(false);
+                                                 layout->addWidget(thresholdLabel);
+                                                 layout->addWidget(thresholdSpinBox);
+
+                                                 // Connect checkbox to enable/disable threshold input
+                                                 connect(useThresholdCheck, &QCheckBox::toggled, thresholdSpinBox, &QSpinBox::setEnabled);
+
+                                                 // CLAHE parameters
+                                                 QLabel* clipLabel = new QLabel("Clip Limit:");
+                                                 QDoubleSpinBox* clipSpinBox = new QDoubleSpinBox();
+                                                 clipSpinBox->setRange(0.1, 1000.0);
+                                                 clipSpinBox->setValue(2.0);
+                                                 clipSpinBox->setSingleStep(0.1);
+                                                 layout->addWidget(clipLabel);
+                                                 layout->addWidget(clipSpinBox);
+
+                                                 QLabel* tileLabel = new QLabel("Tile Size:");
+                                                 QSpinBox* tileSpinBox = new QSpinBox();
+                                                 tileSpinBox->setRange(2, 1000);
+                                                 tileSpinBox->setValue(8);
+                                                 layout->addWidget(tileLabel);
+                                                 layout->addWidget(tileSpinBox);
+
+                                                 // Add buttons
+                                                 QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                                                     QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                                                 layout->addWidget(buttonBox);
+
+                                                 connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                                                 connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+                                                 if (dialog.exec() == QDialog::Accepted) {
+                                                     bool useGPU = gpuRadio->isChecked();
+                                                     bool useThreshold = useThresholdCheck->isChecked();
+                                                     int threshold = thresholdSpinBox->value();
+                                                     float clipLimit = clipSpinBox->value();
+                                                     int tileSize = tileSpinBox->value();
+
+                                                     try {
+                                                         if (useThreshold) {
+                                                             if (useGPU) {
+                                                                 m_imageProcessor.applyThresholdCLAHE_GPU(threshold, clipLimit, cv::Size(tileSize, tileSize));
+                                                                 m_lastGpuTime = m_imageProcessor.getLastPerformanceMetrics().processingTime;
+                                                                 m_hasGpuClaheTime = true;
+                                                                 m_gpuTimingLabel->setText(QString("CLAHE Processing Time (GPU): %1 ms").arg(m_lastGpuTime, 0, 'f', 2));
+                                                                 m_gpuTimingLabel->setVisible(true);
+                                                             } else {
+                                                                 m_imageProcessor.applyThresholdCLAHE_CPU(threshold, clipLimit, cv::Size(tileSize, tileSize));
+                                                                 m_lastCpuTime = m_imageProcessor.getLastPerformanceMetrics().processingTime;
+                                                                 m_hasCpuClaheTime = true;
+                                                                 m_cpuTimingLabel->setText(QString("CLAHE Processing Time (CPU): %1 ms").arg(m_lastCpuTime, 0, 'f', 2));
+                                                                 m_cpuTimingLabel->setVisible(true);
+                                                             }
+                                                         } else {
+                                                             cv::Mat matImage = m_imageProcessor.vectorToMat(m_imageProcessor.getFinalImage());
+                                                             cv::Mat resultImage;
+
+                                                             if (useGPU) {
+                                                                 resultImage = m_imageProcessor.applyCLAHE(matImage, clipLimit, cv::Size(tileSize, tileSize));
+                                                                 m_lastGpuTime = m_imageProcessor.getLastPerformanceMetrics().processingTime;
+                                                                 m_hasGpuClaheTime = true;
+                                                                 m_gpuTimingLabel->setText(QString("CLAHE Processing Time (GPU): %1 ms").arg(m_lastGpuTime, 0, 'f', 2));
+                                                                 m_gpuTimingLabel->setVisible(true);
+                                                             } else {
+                                                                 resultImage = m_imageProcessor.applyCLAHE_CPU(matImage, clipLimit, cv::Size(tileSize, tileSize));
+                                                                 m_lastCpuTime = m_imageProcessor.getLastPerformanceMetrics().processingTime;
+                                                                 m_hasCpuClaheTime = true;
+                                                                 m_cpuTimingLabel->setText(QString("CLAHE Processing Time (CPU): %1 ms").arg(m_lastCpuTime, 0, 'f', 2));
+                                                                 m_cpuTimingLabel->setVisible(true);
+                                                             }
+
+                                                             m_imageProcessor.updateAndSaveFinalImage(m_imageProcessor.matToVector(resultImage));
+                                                         }
+
+                                                         m_imageLabel->clearSelection();
+                                                         updateImageDisplay();
+
+                                                         QString actionStr = QString("CLAHE (%1)").arg(useGPU ? "GPU" : "CPU");
+                                                         QString paramsStr = QString("Clip: %1, Tile: %2%3")
+                                                                                 .arg(clipLimit, 0, 'f', 2)
+                                                                                 .arg(tileSize)
+                                                                                 .arg(useThreshold ? QString(", Threshold: %1").arg(threshold) : "");
+
+                                                         updateLastAction(actionStr, paramsStr);
+                                                     }
+                                                     catch (const cv::Exception& e) {
+                                                         QMessageBox::critical(this, "Error",
+                                                                               QString("%1 CLAHE processing failed: %2")
+                                                                                   .arg(useGPU ? "GPU" : "CPU")
+                                                                                   .arg(e.what()));
+                                                     }
+                                                 }
+                                             }},
+
+                                            {"Median Filter", [this]() {
+                                                 if (checkZoomMode()) return;
+                                                 m_darkLineInfoLabel->hide();
+                                                 resetDetectedLines();
+                                                 resetDetectedLinesPointer();
+                                                 auto [filterKernelSize, ok] = showInputDialog("Median Filter", "Enter kernel size:", 3, 1, 21);
+                                                 if (ok) {
+                                                     m_imageProcessor.applyMedianFilter(
+                                                         const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage()),
+                                                         filterKernelSize
+                                                         );
+                                                     m_imageLabel->clearSelection();
+                                                     updateImageDisplay();
+                                                     updateLastAction("Median Filter", QString("Size: %1").arg(filterKernelSize));
+                                                 }
+                                             }},
+
+                                            {"Edge Enhancement", [this]() {
+                                                 if (checkZoomMode()) return;
+                                                 m_darkLineInfoLabel->hide();
+                                                 resetDetectedLines();
+                                                 resetDetectedLinesPointer();
+
+                                                 auto [strength, ok] = showInputDialog(
+                                                     "Edge Enhancement",
+                                                     "Enter enhancement strength (0.1-2.0):",
+                                                     0.5, 0.1, 2.0);
+
+                                                 if (ok) {
+                                                     m_imageProcessor.applyEdgeEnhancement(strength);
+                                                     m_imageLabel->clearSelection();
+                                                     updateImageDisplay();
+                                                     updateLastAction("Edge Enhancement",
+                                                                      QString("Strength: %1").arg(strength, 0, 'f', 2));
+                                                 }
+                                             }},
+
+                                            {"High-Pass Filter", [this]() {
+                                                 if (checkZoomMode()) return;
+                                                 m_darkLineInfoLabel->hide();
+                                                 resetDetectedLines();
+                                                 m_imageProcessor.applyHighPassFilter(
+                                                     const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage())
+                                                     );
+                                                 m_imageLabel->clearSelection();
+                                                 updateImageDisplay();
+                                                 updateLastAction("High-Pass Filter");
+                                             }}
+                                        });
 }
 
 void ControlPanel::setupAdvancedOperations()
@@ -1246,140 +1441,6 @@ void ControlPanel::setupAdvancedOperations()
                                           });
 }
 
-void ControlPanel::setupCLAHEOperations() {
-    createGroupBox("CLAHE Operations", {
-                                           {"CLAHE (GPU)", [this]() {
-                                                if (checkZoomMode()) return;
-                                                m_darkLineInfoLabel->hide();
-                                                resetDetectedLines();
-                                                resetDetectedLinesPointer();
-                                                auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 1000);
-                                                if (!clipOk) return;
-
-                                                auto [tileSize, tileOk] = showInputDialog("CLAHE", "Enter tile size:", 8, 2, 1000);
-                                                if (!tileOk) return;
-
-                                                try {
-                                                    cv::Mat matImage = m_imageProcessor.vectorToMat(m_imageProcessor.getFinalImage());
-                                                    cv::Mat resultImage = m_imageProcessor.applyCLAHE(matImage, clipLimit, cv::Size(tileSize, tileSize));
-
-                                                    m_lastGpuTime = m_imageProcessor.getLastPerformanceMetrics().processingTime;
-                                                    m_hasGpuClaheTime = true;
-                                                    m_gpuTimingLabel->setText(QString("CLAHE Processing Time (GPU): %1 ms").arg(m_lastGpuTime, 0, 'f', 2));
-                                                    m_gpuTimingLabel->setVisible(true);
-
-                                                    m_imageProcessor.updateAndSaveFinalImage(m_imageProcessor.matToVector(resultImage));
-                                                    m_imageLabel->clearSelection();
-                                                    updateImageDisplay();
-                                                    updateLastAction("CLAHE (GPU)", QString("Clip: %1, Tile: %2").arg(clipLimit, 0, 'f', 2).arg(tileSize));
-                                                }
-                                                catch (const cv::Exception& e) {
-                                                    QMessageBox::critical(this, "Error", QString("GPU CLAHE processing failed: %1").arg(e.what()));
-                                                }
-                                            }},
-
-                                           {"CLAHE (CPU)", [this]() {
-                                                if (checkZoomMode()) return;
-                                                m_darkLineInfoLabel->hide();
-                                                resetDetectedLines();
-                                                resetDetectedLinesPointer();
-                                                auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 1000);
-                                                if (!clipOk) return;
-
-                                                auto [tileSize, tileOk] = showInputDialog("CLAHE", "Enter tile size:", 8, 2, 1000);
-                                                if (!tileOk) return;
-
-                                                try {
-                                                    cv::Mat matImage = m_imageProcessor.vectorToMat(m_imageProcessor.getFinalImage());
-                                                    cv::Mat resultImage = m_imageProcessor.applyCLAHE_CPU(matImage, clipLimit, cv::Size(tileSize, tileSize));
-
-                                                    m_lastCpuTime = m_imageProcessor.getLastPerformanceMetrics().processingTime;
-                                                    m_hasCpuClaheTime = true;
-                                                    m_cpuTimingLabel->setText(QString("CLAHE Processing Time (CPU): %1 ms").arg(m_lastCpuTime, 0, 'f', 2));
-                                                    m_cpuTimingLabel->setVisible(true);
-
-                                                    m_imageProcessor.updateAndSaveFinalImage(m_imageProcessor.matToVector(resultImage));
-                                                    m_imageLabel->clearSelection();
-                                                    updateImageDisplay();
-                                                    updateLastAction("CLAHE (CPU)", QString("Clip: %1, Tile: %2").arg(clipLimit, 0, 'f', 2).arg(tileSize));
-                                                }
-                                                catch (const cv::Exception& e) {
-                                                    QMessageBox::critical(this, "Error", QString("CPU CLAHE processing failed: %1").arg(e.what()));
-                                                }
-                                            }},
-
-                                           {"Threshold CLAHE (GPU)", [this]() {
-                                                if (checkZoomMode()) return;
-                                                m_darkLineInfoLabel->hide();
-                                                resetDetectedLines();
-                                                resetDetectedLinesPointer();
-                                                auto [threshold, thresholdOk] = showInputDialog("Threshold", "Enter threshold value:", 5000, 0, 65535);
-                                                if (!thresholdOk) return;
-
-                                                auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 1000);
-                                                if (!clipOk) return;
-
-                                                auto [tileSize, tileOk] = showInputDialog("CLAHE", "Enter tile size:", 8, 2, 1000);
-                                                if (!tileOk) return;
-
-                                                try {
-                                                    m_imageProcessor.applyThresholdCLAHE_GPU(threshold, clipLimit, cv::Size(tileSize, tileSize));
-
-                                                    m_lastGpuTime = m_imageProcessor.getLastPerformanceMetrics().processingTime;
-                                                    m_hasGpuClaheTime = true;
-                                                    m_gpuTimingLabel->setText(QString("CLAHE Processing Time (GPU): %1 ms").arg(m_lastGpuTime, 0, 'f', 2));
-                                                    m_gpuTimingLabel->setVisible(true);
-
-                                                    m_imageLabel->clearSelection();
-                                                    updateImageDisplay();
-                                                    updateLastAction("Threshold CLAHE (GPU)",
-                                                                     QString("Threshold: %1, Clip: %2, Tile: %3")
-                                                                         .arg(threshold)
-                                                                         .arg(clipLimit, 0, 'f', 2)
-                                                                         .arg(tileSize));
-                                                }
-                                                catch (const cv::Exception& e) {
-                                                    QMessageBox::critical(this, "Error", QString("GPU Threshold CLAHE processing failed: %1").arg(e.what()));
-                                                }
-                                            }},
-
-                                           {"Threshold CLAHE (CPU)", [this]() {
-                                                if (checkZoomMode()) return;
-                                                m_darkLineInfoLabel->hide();
-                                                resetDetectedLines();
-                                                resetDetectedLinesPointer();
-                                                auto [threshold, thresholdOk] = showInputDialog("Threshold", "Enter threshold value:", 5000, 0, 65535);
-                                                if (!thresholdOk) return;
-
-                                                auto [clipLimit, clipOk] = showInputDialog("CLAHE", "Enter clip limit:", 2.0, 0.1, 100.0);
-                                                if (!clipOk) return;
-
-                                                auto [tileSize, tileOk] = showInputDialog("CLAHE", "Enter tile size:", 8, 2, 100);
-                                                if (!tileOk) return;
-
-                                                try {
-                                                    m_imageProcessor.applyThresholdCLAHE_CPU(threshold, clipLimit, cv::Size(tileSize, tileSize));
-
-                                                    m_lastCpuTime = m_imageProcessor.getLastPerformanceMetrics().processingTime;
-                                                    m_hasCpuClaheTime = true;
-                                                    m_cpuTimingLabel->setText(QString("CLAHE Processing Time (CPU): %1 ms").arg(m_lastCpuTime, 0, 'f', 2));
-                                                    m_cpuTimingLabel->setVisible(true);
-
-                                                    m_imageLabel->clearSelection();
-                                                    updateImageDisplay();
-                                                    updateLastAction("Threshold CLAHE (CPU)",
-                                                                     QString("Threshold: %1, Clip: %2, Tile: %3")
-                                                                         .arg(threshold)
-                                                                         .arg(clipLimit, 0, 'f', 2)
-                                                                         .arg(tileSize));
-                                                }
-                                                catch (const cv::Exception& e) {
-                                                    QMessageBox::critical(this, "Error", QString("CPU Threshold CLAHE processing failed: %1").arg(e.what()));
-                                                }
-                                            }}
-                                       });
-}
-
 std::pair<double, bool> ControlPanel::showInputDialog(const QString& title, const QString& label, double defaultValue, double min, double max)
 {
     bool ok;
@@ -1443,30 +1504,26 @@ void ControlPanel::setupBlackLineDetection() {
     // Create buttons
     QPushButton* detectBtn = new QPushButton("Detect Dark Lines");
     QPushButton* removeBtn = new QPushButton("Remove Dark Lines");
-    QPushButton* resetBtn = new QPushButton("Reset Detection");
 
     // Store pointers for access
     m_vectorDetectBtn = detectBtn;
     m_vectorRemoveBtn = removeBtn;
-    m_vectorResetBtn = resetBtn;
 
     // Initially disable remove and reset buttons
+    detectBtn->setEnabled(false);
     removeBtn->setEnabled(false);
-    resetBtn->setEnabled(false);
 
     // Set fixed height for buttons
     const int buttonHeight = 35;
     detectBtn->setFixedHeight(buttonHeight);
     removeBtn->setFixedHeight(buttonHeight);
-    resetBtn->setFixedHeight(buttonHeight);
 
     // Add buttons to layout
     layout->addWidget(detectBtn);
     layout->addWidget(removeBtn);
-    layout->addWidget(resetBtn);
 
     // Connect detect button
-    connect(detectBtn, &QPushButton::clicked, [this, detectBtn, removeBtn, resetBtn]() {
+    connect(detectBtn, &QPushButton::clicked, [this, detectBtn, removeBtn]() {
         if (checkZoomMode()) return;
 
         // Create method selection dialog
@@ -1567,14 +1624,13 @@ void ControlPanel::setupBlackLineDetection() {
 
             // Enable remove and reset buttons
             removeBtn->setEnabled(true);
-            resetBtn->setEnabled(true);
             updateImageDisplay();
             updateLastAction("Detect Lines",
                              vectorMethodRadio->isChecked() ? "Vector Method" : "2D Pointer Method");
         }
     });
     // Connect remove button
-    connect(removeBtn, &QPushButton::clicked, [this, removeBtn, resetBtn]() {
+    connect(removeBtn, &QPushButton::clicked, [this, removeBtn]() {
         if (checkZoomMode()) return;
 
         if (m_detectedLines.empty() && (!m_detectedLinesPointer || m_detectedLinesPointer->rows == 0)) {
@@ -1649,7 +1705,6 @@ void ControlPanel::setupBlackLineDetection() {
                     lineList->addItem(item);
                 }
             }
-
             // Connect stitch radio button to change selection mode
             connect(stitchRadio, &QRadioButton::toggled, [lineList](bool checked) {
                 lineList->setSelectionMode(checked ?
@@ -1701,7 +1756,6 @@ void ControlPanel::setupBlackLineDetection() {
 
             dialog.setLayout(layout);
             updateVisibility();
-
             if (dialog.exec() == QDialog::Accepted) {
                 bool removeInObject = inObjectRadio->isChecked();
                 QString methodStr;
@@ -1742,14 +1796,53 @@ void ControlPanel::setupBlackLineDetection() {
                         );
                 }
 
-                // Update detected lines and display
+                // Update detected lines after removal
                 m_detectedLines = m_imageProcessor.detectDarkLines();
+
+                // Generate updated detection info
+                QString detectionInfo = "Detected Lines (Vector Method):\n\n";
+                int inObjectCount = 0;
+                int isolatedCount = 0;
+
+                for (size_t i = 0; i < m_detectedLines.size(); ++i) {
+                    const auto& line = m_detectedLines[i];
+                    QString coordinates = line.isVertical ?
+                                              QString("(%1,0)").arg(line.x) :
+                                              QString("(0,%1)").arg(line.y);
+
+                    detectionInfo += QString("Line %1: %2 with width %3 pixels (%4)\n")
+                                         .arg(i + 1)
+                                         .arg(coordinates)
+                                         .arg(line.width)
+                                         .arg(line.inObject ? "In Object" : "Isolated");
+
+                    if (line.inObject) inObjectCount++;
+                    else isolatedCount++;
+                }
+
+                detectionInfo += QString("\nSummary:\n");
+                detectionInfo += QString("Total Lines: %1\n").arg(m_detectedLines.size());
+                detectionInfo += QString("In-Object Lines: %1\n").arg(inObjectCount);
+                detectionInfo += QString("Isolated Lines: %1\n").arg(isolatedCount);
+
+                // Update the info label and display
+                m_darkLineInfoLabel->setText(detectionInfo);
+                updateDarkLineInfoDisplay();
+
+                // Update UI elements
                 updateImageDisplay();
                 updateLastAction("Remove Lines", QString("%1 - %2").arg(typeStr).arg(methodStr));
 
                 if (m_detectedLines.empty()) {
                     removeBtn->setEnabled(false);
-                    resetBtn->setEnabled(false);
+                    m_darkLineInfoLabel->clear();
+                    m_darkLineInfoLabel->setVisible(false);
+                    QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
+                        qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
+                        );
+                    if (darkLineScrollArea) {
+                        darkLineScrollArea->setVisible(false);
+                    }
                 }
             }
         } else if (pointerMethodActive) {
@@ -1757,39 +1850,14 @@ void ControlPanel::setupBlackLineDetection() {
             PointerOperations::handleRemoveLinesDialog(this);
         }
     });
-    // Connect reset button
-    connect(resetBtn, &QPushButton::clicked, [this, detectBtn, removeBtn, resetBtn]() {
-        if (checkZoomMode()) return;
-
-        QMessageBox::StandardButton reply = QMessageBox::question(this,
-                                                                  "Reset Detection",
-                                                                  "Are you sure you want to reset all detected lines?",
-                                                                  QMessageBox::Yes | QMessageBox::No);
-
-        if (reply == QMessageBox::Yes) {
-            // Reset both methods' results
-            resetDetectedLines();
-            resetDetectedLinesPointer();
-
-            // Reset button states
-            detectBtn->setEnabled(true);
-            removeBtn->setEnabled(false);
-            resetBtn->setEnabled(false);
-
-            updateImageDisplay();
-            updateLastAction("Reset Detection");
-        }
-    });
 
     // Add buttons to the list for general enable/disable management
     m_allButtons.push_back(detectBtn);
     m_allButtons.push_back(removeBtn);
-    m_allButtons.push_back(resetBtn);
 
     // Set tooltips
     detectBtn->setToolTip("Detect dark lines using vector or pointer method");
     removeBtn->setToolTip("Remove detected dark lines");
-    resetBtn->setToolTip("Reset all detected lines");
 
     // Add the group box to the main layout
     m_scrollLayout->addWidget(groupBox);
@@ -2208,6 +2276,91 @@ void ControlPanel::clearAllDetectionResults() {
     updateImageDisplay();
 }
 
+void ControlPanel::resetAllParameters() {
+    // Reset calibration parameters
+    InterlaceProcessor::resetCalibrationParams();
+    updateCalibrationButtonText();
+
+    // Reset timing information
+    m_lastGpuTime = -1;
+    m_lastCpuTime = -1;
+    m_hasCpuClaheTime = false;
+    m_hasGpuClaheTime = false;
+    m_gpuTimingLabel->clear();
+    m_gpuTimingLabel->setVisible(false);
+    m_cpuTimingLabel->clear();
+    m_cpuTimingLabel->setVisible(false);
+
+    // Reset histogram
+    if (m_histogram) {
+        m_histogram->setVisible(false);
+    }
+
+    // Reset zoom settings and button states
+    auto& zoomManager = m_imageProcessor.getZoomManager();
+    zoomManager.resetZoom();
+    zoomManager.toggleZoomMode(false);
+    zoomManager.toggleFixedZoom(false);
+
+    // Reset zoom controls group visibility
+    if (m_zoomControlsGroup) {
+        m_zoomControlsGroup->hide();
+    }
+
+    // Reset fix zoom button
+    if (m_fixZoomButton) {
+        m_fixZoomButton->setChecked(false);
+        m_fixZoomButton->setText("Fix Zoom");
+        m_fixZoomButton->setEnabled(false);
+    }
+
+    // Reset main zoom button state and appearance
+    if (m_zoomButton) {
+        m_zoomButton->setChecked(false);
+        m_zoomButton->setText("Activate Zoom");
+        m_zoomButton->setProperty("state", "");
+        m_zoomButton->setEnabled(false);
+        m_zoomButton->style()->unpolish(m_zoomButton);
+        m_zoomButton->style()->polish(m_zoomButton);
+    }
+
+    // Reset zoom control buttons
+    if (m_zoomInButton) m_zoomInButton->setEnabled(false);
+    if (m_zoomOutButton) m_zoomOutButton->setEnabled(false);
+    if (m_resetZoomButton) m_resetZoomButton->setEnabled(false);
+
+    // Reset display windows
+    if (m_lowEnergyWindow) {
+        m_lowEnergyWindow->hide();
+        m_lowEnergyWindow->clear();
+    }
+    if (m_highEnergyWindow) {
+        m_highEnergyWindow->hide();
+        m_highEnergyWindow->clear();
+    }
+    if (m_finalWindow) {
+        m_finalWindow->hide();
+        m_finalWindow->clear();
+    }
+    m_showDisplayWindows = false;
+
+    // Reset labels
+    m_imageSizeLabel->setText("Image Size: No image loaded");
+    m_pixelInfoLabel->setText("Pixel Info: ");
+    m_lastActionLabel->setText("Last Action: None");
+    m_lastActionParamsLabel->clear();
+    m_lastActionParamsLabel->setVisible(false);
+
+    // Reset detection info
+    clearAllDetectionResults();
+
+    // Re-enable all buttons except Browse
+    for (QPushButton* button : m_allButtons) {
+        if (button && button->text() != "Browse") {
+            button->setEnabled(false);
+        }
+    }
+}
 
 void ControlPanel::setupResetOperations() {
     createGroupBox("Reset Operations", {
@@ -2229,36 +2382,41 @@ void ControlPanel::setupResetOperations() {
                                                 QMessageBox::StandardButton reply = QMessageBox::warning(
                                                     this,
                                                     "Reset All",
-                                                    "Are you sure you want to reset everything to initial state?\nThis will reset the image to its state right after loading.\nThis action cannot be undone.",
+                                                    "Are you sure you want to reset everything to initial state?\n"
+                                                    "This will reset the image to its state right after loading and clear all parameters.\n"
+                                                    "This action cannot be undone.",
                                                     QMessageBox::Yes | QMessageBox::No
                                                     );
 
                                                 if (reply == QMessageBox::Yes) {
                                                     m_imageProcessor.resetToOriginal();
-                                                    clearAllDetectionResults();
+                                                    resetAllParameters();
                                                     m_imageLabel->clearSelection();
                                                     updateImageDisplay();
                                                     updateLastAction("Reset All");
-                                                    QMessageBox::information(this, "Success", "Image has been reset to initial state.");
+                                                    QMessageBox::information(this, "Success",
+                                                                             "Image has been reset to initial state and all parameters have been cleared.");
                                                 }
                                             }},
                                            {"Clear Image", [this]() {
                                                 QMessageBox::StandardButton reply = QMessageBox::warning(
                                                     this,
                                                     "Clear Image",
-                                                    "Are you sure you want to clear the loaded image?\nThis will remove the image completely.\nThis action cannot be undone.",
+                                                    "Are you sure you want to clear the loaded image?\n"
+                                                    "This will remove the image and reset all parameters.\n"
+                                                    "This action cannot be undone.",
                                                     QMessageBox::Yes | QMessageBox::No
                                                     );
 
                                                 if (reply == QMessageBox::Yes) {
                                                     m_imageProcessor.clearImage();
-                                                    clearAllDetectionResults();
+                                                    resetAllParameters();
                                                     m_imageLabel->clearSelection();
                                                     m_imageLabel->clear();
                                                     emit fileLoaded(false);
-                                                    m_imageSizeLabel->setText("Image Size: No image loaded");
                                                     updateLastAction("Clear Image");
-                                                    QMessageBox::information(this, "Success", "Image has been cleared.");
+                                                    QMessageBox::information(this, "Success",
+                                                                             "Image has been cleared and all parameters have been reset.");
                                                 }
                                             }}
                                        });
@@ -2471,4 +2629,192 @@ void ControlPanel::setupCombinedAdjustments() {
                                                  }
                                              }}
                                         });
+}
+
+void ControlPanel::processCalibration(int linesToProcessY, int linesToProcessX, CalibrationMode mode) {
+    // 检查是否已经有存储的参数
+    bool hasStoredParams = InterlaceProcessor::hasCalibrationParams();
+    int storedY = hasStoredParams ? InterlaceProcessor::getStoredYParam() : 0;
+    int storedX = hasStoredParams ? InterlaceProcessor::getStoredXParam() : 0;
+
+    // 根据模式获取新的参数值
+    int newY = linesToProcessY;
+    int newX = linesToProcessX;
+    QString actionDescription;
+
+    // 如果已经有存储的参数
+    if (hasStoredParams) {
+        switch (mode) {
+        case CalibrationMode::Y_AXIS_ONLY:
+            if (storedY > 0) {
+                newY = storedY;
+                actionDescription = QString("Y-Axis (Used stored: %1 lines)").arg(newY);
+            } else {
+                // Remove limits from input dialog
+                auto result = showInputDialog("Calibration", "Enter lines to process for Y-axis:", 10);
+                if (!result.second) return;
+                newY = result.first;
+                actionDescription = QString("Y-Axis (New: %1 lines)").arg(newY);
+            }
+            newX = storedX;
+            break;
+
+        case CalibrationMode::X_AXIS_ONLY:
+            if (storedX > 0) {
+                newX = storedX;
+                actionDescription = QString("X-Axis (Used stored: %1 lines)").arg(newX);
+            } else {
+                // Remove limits from input dialog
+                auto result = showInputDialog("Calibration", "Enter lines to process for X-axis:", 10);
+                if (!result.second) return;
+                newX = result.first;
+                actionDescription = QString("X-Axis (New: %1 lines)").arg(newX);
+            }
+            newY = storedY;
+            break;
+
+        case CalibrationMode::BOTH_AXES:
+            QString yDescription, xDescription;
+            if (storedY == 0) {
+                // Remove limits from input dialog for Y-axis
+                auto resultY = showInputDialog("Calibration", "Enter lines to process for Y-axis:", 10);
+                if (!resultY.second) return;
+                newY = resultY.first;
+                yDescription = QString("Y:%1 (New)").arg(newY);
+            } else {
+                newY = storedY;
+                yDescription = QString("Y:%1 (Stored)").arg(newY);
+            }
+
+            if (storedX == 0) {
+                // Remove limits from input dialog for X-axis
+                auto resultX = showInputDialog("Calibration", "Enter lines to process for X-axis:", 10);
+                if (!resultX.second) return;
+                newX = resultX.first;
+                xDescription = QString("X:%1 (New)").arg(newX);
+            } else {
+                newX = storedX;
+                xDescription = QString("X:%1 (Stored)").arg(newX);
+            }
+            actionDescription = QString("Both Axes (%1, %2)").arg(yDescription).arg(xDescription);
+            break;
+        }
+    } else {
+        switch (mode) {
+        case CalibrationMode::Y_AXIS_ONLY:
+        {
+            // Remove limits from input dialog
+            auto result = showInputDialog("Calibration", "Enter lines to process for Y-axis:", 10);
+            if (!result.second) return;
+            newY = result.first;
+            newX = 0;
+            actionDescription = QString("Y-Axis (New: %1 lines)").arg(newY);
+        }
+        break;
+
+        case CalibrationMode::X_AXIS_ONLY:
+        {
+            // Remove limits from input dialog
+            auto result = showInputDialog("Calibration", "Enter lines to process for X-axis:", 10);
+            if (!result.second) return;
+            newX = result.first;
+            newY = 0;
+            actionDescription = QString("X-Axis (New: %1 lines)").arg(newX);
+        }
+        break;
+
+        case CalibrationMode::BOTH_AXES:
+        {
+            // Remove limits from input dialogs
+            auto resultY = showInputDialog("Calibration", "Enter lines to process for Y-axis:", 10);
+            if (!resultY.second) return;
+            newY = resultY.first;
+
+            auto resultX = showInputDialog("Calibration", "Enter lines to process for X-axis:", 10);
+            if (!resultX.second) return;
+            newX = resultX.first;
+            actionDescription = QString("Both Axes (Y:%1, X:%2) (New)").arg(newY).arg(newX);
+        }
+        break;
+        }
+    }
+
+    // Save current state before processing
+    m_imageProcessor.saveCurrentState();
+
+    // 执行校准
+    auto& image = const_cast<std::vector<std::vector<uint16_t>>&>(m_imageProcessor.getFinalImage());
+
+    // Y轴处理
+    if (mode == CalibrationMode::Y_AXIS_ONLY || mode == CalibrationMode::BOTH_AXES) {
+        if (newY > 0) {
+            int height = image.size();
+            int width = image[0].size();
+            std::vector<float> referenceYMean(width, 0.0f);
+
+            for (int y = 0; y < std::min(newY, height); ++y) {
+                for (int x = 0; x < width; ++x) {
+                    referenceYMean[x] += image[y][x];
+                }
+            }
+
+            for (int x = 0; x < width; ++x) {
+                referenceYMean[x] /= newY;
+            }
+
+            for (int y = 0; y < height; ++y) {
+                for (int x = 0; x < width; ++x) {
+                    if (referenceYMean[x] > 0) {
+                        float normalizedValue = static_cast<float>(image[y][x]) / referenceYMean[x];
+                        image[y][x] = static_cast<uint16_t>(std::min(normalizedValue * 65535.0f, 65535.0f));
+                    }
+                }
+            }
+        }
+    }
+
+    // X轴处理
+    if (mode == CalibrationMode::X_AXIS_ONLY || mode == CalibrationMode::BOTH_AXES) {
+        if (newX > 0) {
+            int height = image.size();
+            int width = image[0].size();
+            std::vector<float> referenceXMean(height, 0.0f);
+
+            for (int y = 0; y < height; ++y) {
+                for (int x = width - newX; x < width; ++x) {
+                    referenceXMean[y] += image[y][x];
+                }
+                referenceXMean[y] /= newX;
+            }
+
+            for (int x = 0; x < width; ++x) {
+                for (int y = 0; y < height; ++y) {
+                    if (referenceXMean[y] > 0) {
+                        float normalizedValue = static_cast<float>(image[y][x]) / referenceXMean[y];
+                        image[y][x] = static_cast<uint16_t>(std::min(normalizedValue * 65535.0f, 65535.0f));
+                    }
+                }
+            }
+        }
+    }
+
+    // 更新存储的校准参数
+    InterlaceProcessor::setCalibrationParams(newY, newX);
+
+    // 更新Last Action和参数显示
+    QString paramString = QString("Mode: %1\nParameters: Y=%2, X=%3")
+                              .arg(actionDescription)
+                              .arg(newY)
+                              .arg(newX);
+
+    updateLastAction("Calibration", paramString);
+}
+
+std::pair<int, bool> ControlPanel::showInputDialog(const QString& title,
+                                                   const QString& label,
+                                                   int defaultValue) {
+    bool ok;
+    int value = QInputDialog::getInt(this, title, label, defaultValue,
+                                     INT_MIN, INT_MAX, 1, &ok);
+    return std::make_pair(value, ok);
 }

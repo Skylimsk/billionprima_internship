@@ -176,6 +176,12 @@ public:
 
     void applyEdgeEnhancement(float strength);
 
+    InterlaceProcessor::InterlacedResult processEnhancedInterlacedSections(
+        InterlaceProcessor::StartPoint lowEnergyStart,
+        InterlaceProcessor::StartPoint highEnergyStart,
+        const InterlaceProcessor::MergeParams& mergeParams  // Change from MergeMethod to MergeParams
+        );
+
 private:
     std::vector<std::vector<uint16_t>> imgData;
     std::vector<std::vector<uint16_t>> originalImg;
@@ -206,6 +212,8 @@ private:
 
     static constexpr int SEGMENT_WIDTH = 100;    // Default segment width for processing
     static constexpr int WIDTH_THRESHOLD = 50;  // Threshold for using segmented processing
+
+    bool isValidPixel(uint16_t pixel);
 
 
 

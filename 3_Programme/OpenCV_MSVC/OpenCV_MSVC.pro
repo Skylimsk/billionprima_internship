@@ -124,3 +124,16 @@ HEADERS = \
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+win32:CONFIG(release, debug|release): LIBS += -L"D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib" -lCGProcessImage
+else:win32:CONFIG(debug, debug|release): LIBS += -L"D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib" -lCGProcessImage
+else:unix: LIBS += -L"D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib" -lCGProcessImage
+
+INCLUDEPATH += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/include"
+DEPENDPATH += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/include"
+
+win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib/CGProcessImage.lib"
+else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib/CGProcessImage.lib"
+else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib/CGProcessImage.lib"
+else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib/CGProcessImage.lib"
+else:unix: PRE_TARGETDEPS += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib/CGProcessImage.lib"
