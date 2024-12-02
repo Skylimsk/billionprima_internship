@@ -1,0 +1,52 @@
+Function Explanation for darkline_pointer.h and its source code.
+
+1. detectDarkLines:
+
+- For detecting dark lines horizontally and vertically in an image
+- Uses multi-threading
+- Return array of detected lines via helper
+
+2. isInObject:
+
+- Determines if a line is within a dark object.
+- Checks surround pixels via some parameters; if the surround pixels exceed the threshold, they will be declared isolated lines, and vice versa.
+
+3. createDarkLineArray:
+
+- Creates a new array for storing dark lines.
+
+4. destroyDarkLineArray:
+
+- Properly deallocates DarkLineArray memory
+
+5. copyDarkLineArray:
+
+- Creates deep copy of DarkLineArray
+
+6. createSafeDarkLineArray:
+
+- Safely creating a new DarkLineArray object with specified dimensions
+
+7. createImageCopy：
+
+- Creates a deep copy of an ImageData object using smart pointers
+
+8.  copyImageData:
+
+- Copies content from a source ImageData to a destination ImageData
+
+8. removeDarkLinesSelective:
+
+- Remove specific types of dark lines at once using specific removal methods.
+
+9. removeDarkLineSequential:
+
+- Remove lines in a specific sequence using specific removal methods.
+
+10. calculateSearchRadius:
+
+- Determines search radius for neighbour value calculation
+
+11. findReplacementValue:
+
+- Calculates replacement pixel values when removing dark lines
