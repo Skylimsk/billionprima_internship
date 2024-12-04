@@ -26,6 +26,7 @@
 #include "interlace.h"
 //#include "display_window.h"
 #include "zoom.h"
+#include "CGParams.h"
 
 class ImageProcessor {
 public:
@@ -182,6 +183,9 @@ public:
         const InterlaceProcessor::MergeParams& mergeParams  // Change from MergeMethod to MergeParams
         );
 
+    _ImageDisplayParameters& getImageDisplayParameters() { return m_imageDisplayParams; }
+    const _ImageDisplayParameters& getImageDisplayParameters() const { return m_imageDisplayParams; }
+
 private:
     std::vector<std::vector<uint16_t>> imgData;
     std::vector<std::vector<uint16_t>> originalImg;
@@ -215,7 +219,7 @@ private:
 
     bool isValidPixel(uint16_t pixel);
 
-
+    _ImageDisplayParameters m_imageDisplayParams;
 
 
 };

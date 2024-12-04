@@ -1,7 +1,7 @@
 #ifndef CONTROL_PANEL_H
 #define CONTROL_PANEL_H
 
-#include <QWidget>
+#include <QtWidgets/QWidget>
 #include <QVBoxLayout>
 #include <QScrollArea>
 #include <QLabel>
@@ -155,6 +155,13 @@ private:
     void processCalibration(int linesToProcessY, int linesToProcessX, CalibrationMode mode);
 
     void resetAllParameters();
+
+    void processEnergyCalibration();
+
+    // In control_panel.h, add:
+    void addDoublePointerLoad();
+
+    std::vector<std::vector<uint16_t>> convertToVector(double** input, int height, int width);
 
     // Member variables
     QVBoxLayout* m_mainLayout;

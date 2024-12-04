@@ -1,10 +1,37 @@
-QT       += core gui printsupport
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+QT += core gui widgets printsupport
 
 # Project configuration
 TARGET = ImageProcessor
 TEMPLATE = app
 CONFIG += c++17
+
+# Ensure Qt modules are found - using specific Qt path
+QTDIR = C:/Qt/6.8.0/msvc2022_64    # Updated to match your actual Qt version
+INCLUDEPATH += C:/Qt/6.8.0/msvc2022_64/include
+INCLUDEPATH += C:/Qt/6.8.0/msvc2022_64/include/QtWidgets
+INCLUDEPATH += C:/Qt/6.8.0/msvc2022_64/include/QtCore
+INCLUDEPATH += C:/Qt/6.8.0/msvc2022_64/include/QtGui
+
+# Add this to ensure all Qt widgets are available
+requires(qtConfig(combobox))
+requires(qtConfig(label))
+requires(qtConfig(messagebox))
+
+# Qt library paths
+LIBS += -L$${QTDIR}/lib
+
+# Runtime library configuration - match with CGProcessImage.lib
+CONFIG(debug, debug|release) {
+    # Debug configuration
+    QMAKE_CXXFLAGS_DEBUG += /MDd       # Debug dynamic runtime
+    DEFINES += _ITERATOR_DEBUG_LEVEL=2  # Debug iterator level
+    DEFINES += _DEBUG                   # Debug mode
+} else {
+    # Release configuration
+    QMAKE_CXXFLAGS_RELEASE += /MD      # Release dynamic runtime
+    DEFINES += _ITERATOR_DEBUG_LEVEL=0  # Release iterator level
+    DEFINES += NDEBUG                   # Release mode
+}
 
 # MSVC specific configuration
 msvc {
@@ -18,7 +45,7 @@ msvc {
     QMAKE_CXXFLAGS += /wd4189             # local variable is initialized but not referenced
     QMAKE_CXXFLAGS += /wd4456             # declaration hides previous local declaration
     QMAKE_CXXFLAGS += /wd4458             # declaration hides class member
-    QMAKE_CXXFLAGS += /wd4996             # deprecated functions and types (includes STL4043)
+    QMAKE_CXXFLAGS += /wd4996             # deprecated functions and types
     QMAKE_CXXFLAGS += /wd4819             # Character encoding warning
     QMAKE_CXXFLAGS += /wd4251             # DLL interface warning
     QMAKE_CXXFLAGS += /wd4127             # Conditional expression is constant
@@ -29,8 +56,8 @@ msvc {
     QMAKE_CXXFLAGS += /wd4101             # unreferenced local variable
 
     # STL specific warnings suppression
-    DEFINES += _SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING    # Suppress array iterator deprecation
-    DEFINES += _SILENCE_ALL_MS_EXT_DEPRECATION_WARNINGS         # Suppress all MS extension deprecation warnings
+    DEFINES += _SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING
+    DEFINES += _SILENCE_ALL_MS_EXT_DEPRECATION_WARNINGS
 
     # Optimization and other flags
     QMAKE_CXXFLAGS += /MP                 # Multi-processor compilation
@@ -84,6 +111,13 @@ CONFIG(debug, debug|release) {
 # QCustomPlot configuration
 INCLUDEPATH += $$PWD/third_party/qcustomplot
 
+# CGProcessImage configuration
+CONFIG(debug, debug|release) {
+    LIBS += -L"D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib" -lCGProcessImaged
+} else {
+    LIBS += -L"D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib" -lCGProcessImage
+}
+
 # Sources and Headers
 SOURCES = \
     ThreadLogger.cpp \
@@ -120,20 +154,10 @@ HEADERS = \
     third_party/qcustomplot/qcustomplot.h \
     zoom.h
 
+INCLUDEPATH += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/include"
+DEPENDPATH += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/include"
+
 # Default rules for deployment
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
-
-win32:CONFIG(release, debug|release): LIBS += -L"D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib" -lCGProcessImage
-else:win32:CONFIG(debug, debug|release): LIBS += -L"D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib" -lCGProcessImage
-else:unix: LIBS += -L"D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib" -lCGProcessImage
-
-INCLUDEPATH += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/include"
-DEPENDPATH += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/include"
-
-win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib/CGProcessImage.lib"
-else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib/CGProcessImage.lib"
-else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib/CGProcessImage.lib"
-else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib/CGProcessImage.lib"
-else:unix: PRE_TARGETDEPS += "D:/billionprima_internship/3_Programme/OpenCV_MSVC/lib/CGProcessImage.lib"

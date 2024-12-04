@@ -21,7 +21,7 @@
 #include <fstream>
 #include <thread>
 #include <algorithm>
-#include <QMessageBox>
+#include <QtWidgets/QMessageBox>
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include "image_processor.h"
@@ -39,11 +39,30 @@
 #endif
 
 ImageProcessor::ImageProcessor(QLabel* imageLabel)
-    : imageLabel(imageLabel),
-    regionSelected(false),
-    rotationState(0),
-    kernelSize(0),
-    hasCLAHEBeenApplied(false) {
+    : imageLabel(imageLabel)
+    , regionSelected(false)
+    , rotationState(0)
+    , kernelSize(0)
+    , hasCLAHEBeenApplied(false)
+{
+    // Initialize image display parameters with defaults
+    m_imageDisplayParams.EnergyMode_Default = 2;
+    m_imageDisplayParams.DualRowMode_Default = 0;
+    m_imageDisplayParams.DualRowDirection_Default = 0;
+    m_imageDisplayParams.LaneNumber_Default = "0101";
+    m_imageDisplayParams.HighLowLayout_Default = 2;
+    m_imageDisplayParams.DefaultSpeed_Default = 5;
+
+    // Set current lane data to defaults
+    m_imageDisplayParams.LaneData.EnergyMode = m_imageDisplayParams.EnergyMode_Default;
+    m_imageDisplayParams.LaneData.DualRowMode = m_imageDisplayParams.DualRowMode_Default;
+    m_imageDisplayParams.LaneData.DualRowDirection = m_imageDisplayParams.DualRowDirection_Default;
+    m_imageDisplayParams.LaneData.LaneNumber = m_imageDisplayParams.LaneNumber_Default;
+    m_imageDisplayParams.LaneData.HighLowLayout = m_imageDisplayParams.HighLowLayout_Default;
+    m_imageDisplayParams.LaneData.DefaultSpeed = m_imageDisplayParams.DefaultSpeed_Default;
+
+    // Initialize total lane count
+    m_imageDisplayParams.TotalLane = 0;
 }
 
 void ImageProcessor::saveCurrentState() {

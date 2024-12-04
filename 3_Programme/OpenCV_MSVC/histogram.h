@@ -1,9 +1,9 @@
 #ifndef HISTOGRAM_H
 #define HISTOGRAM_H
 
-#include <QWidget>
-#include <QDialog>
-#include <QLabel>
+#include <QtWidgets/QWidget>
+#include <QtWidgets/QDialog>
+#include <QtWidgets/QLabel>
 #include "third_party/qcustomplot/qcustomplot.h"
 
 class Histogram : public QWidget {
