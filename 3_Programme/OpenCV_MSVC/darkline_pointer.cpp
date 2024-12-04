@@ -671,7 +671,6 @@ bool DarkLinePointerProcessor::checkforVertical(const ImageData& image, DarkLine
     }
 }
 
-
 // Implementation for checking both types of lines
 bool DarkLinePointerProcessor::checkforBoth(const ImageData& image, DarkLineArray*& outLines) {
     try {

@@ -72,7 +72,7 @@ ImageData& ImageData::operator=(ImageData&& other) noexcept {
     return *this;
 }
 
-//Process 1: Detecting Line : For detecting dark lines horizontally and vertically in an image
+//Process 1A: Detecting Line : For detecting dark lines horizontally and vertically in an image
 
 DarkLineArray* DarkLinePointerProcessor::detectDarkLines(const ImageData& image) {
     // 1. Validate input parameters
@@ -258,6 +258,208 @@ DarkLineArray* DarkLinePointerProcessor::detectDarkLines(const ImageData& image)
     }
 }
 
+//Process 1B: Detecting Line : For detecting dark lines horizontally in an image
+
+DarkLineArray* DarkLinePointerProcessor::detectHorizontalLines(const ImageData& image) {
+    if (!image.data || image.rows == 0 || image.cols == 0) {
+        std::cerr << "Invalid input image parameters for horizontal detection" << std::endl;
+        return nullptr;
+    }
+
+    try {
+        const int numThreads = std::thread::hardware_concurrency();
+        std::mutex detectedLinesMutex;
+        std::cout << "Starting horizontal detection with " << numThreads << " threads" << std::endl;
+
+        bool* isBlackRow = new bool[image.rows]();
+        std::thread** horizontalThreads = new std::thread*[numThreads];
+        int rowsPerThread = image.rows / numThreads;
+
+        // Detect horizontal lines using multiple threads
+        for (int t = 0; t < numThreads; ++t) {
+            int startY = t * rowsPerThread;
+            int endY = (t == numThreads - 1) ? image.rows : startY + rowsPerThread;
+
+            horizontalThreads[t] = new std::thread([=, &isBlackRow, &image]() {
+                for (int y = startY; y < endY; ++y) {
+                    int blackPixelCount = 0;
+                    for (int x = 0; x < image.cols; ++x) {
+                        if (image.data[y][x] <= BLACK_THRESHOLD) {
+                            blackPixelCount++;
+                        }
+                    }
+                    double blackRatio = static_cast<double>(blackPixelCount) / image.cols;
+                    if (blackRatio > (1.0 - NOISE_TOLERANCE)) {
+                        isBlackRow[y] = true;
+                    }
+                }
+            });
+        }
+
+        // Wait for horizontal detection threads
+        for (int t = 0; t < numThreads; ++t) {
+            horizontalThreads[t]->join();
+            delete horizontalThreads[t];
+        }
+        delete[] horizontalThreads;
+
+        // Process horizontal lines
+        std::pair<int, int>* horizontalLines = new std::pair<int, int>[image.rows];
+        int horizontalLineCount = 0;
+        int startY = -1;
+
+        for (int y = 0; y < image.rows; ++y) {
+            if (isBlackRow[y]) {
+                if (startY == -1) startY = y;
+            } else if (startY != -1) {
+                int width = y - startY;
+                if (width >= MIN_LINE_WIDTH) {
+                    horizontalLines[horizontalLineCount++] = std::make_pair(startY, width);
+                }
+                startY = -1;
+            }
+        }
+
+        // Check for line extending to edge
+        if (startY != -1) {
+            int width = image.rows - startY;
+            if (width >= MIN_LINE_WIDTH) {
+                horizontalLines[horizontalLineCount++] = std::make_pair(startY, width);
+            }
+        }
+
+        // Create result array
+        DarkLineArray* result = createDarkLineArray(horizontalLineCount, 1);
+        if (!result) {
+            throw std::runtime_error("Failed to create result array for horizontal lines");
+        }
+
+        // Fill the result array with horizontal lines
+        for (int i = 0; i < horizontalLineCount; ++i) {
+            const auto& [y, width] = horizontalLines[i];
+            DarkLine& line = result->lines[i][0];
+            line.x = 0;
+            line.y = y;
+            line.startX = 0;
+            line.endX = image.cols - 1;
+            line.width = width;
+            line.isVertical = false;
+            line.inObject = isInObject(image, y, width, false, i);
+        }
+
+        // Clean up
+        delete[] isBlackRow;
+        delete[] horizontalLines;
+
+        return result;
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error in detectHorizontalLines: " << e.what() << std::endl;
+        return nullptr;
+    }
+}
+
+//Process 1C: Detecting Line : For detecting dark lines vertically in an image
+
+DarkLineArray* DarkLinePointerProcessor::detectVerticalLines(const ImageData& image) {
+    if (!image.data || image.rows == 0 || image.cols == 0) {
+        std::cerr << "Invalid input image parameters for vertical detection" << std::endl;
+        return nullptr;
+    }
+
+    try {
+        const int numThreads = std::thread::hardware_concurrency();
+        std::mutex detectedLinesMutex;
+        std::cout << "Starting vertical detection with " << numThreads << " threads" << std::endl;
+
+        bool* isBlackColumn = new bool[image.cols]();
+        std::thread** verticalThreads = new std::thread*[numThreads];
+        int columnsPerThread = image.cols / numThreads;
+
+        // Detect vertical lines using multiple threads
+        for (int t = 0; t < numThreads; ++t) {
+            int startX = t * columnsPerThread;
+            int endX = (t == numThreads - 1) ? image.cols : startX + columnsPerThread;
+
+            verticalThreads[t] = new std::thread([=, &isBlackColumn, &image]() {
+                for (int x = startX; x < endX; ++x) {
+                    int blackPixelCount = 0;
+                    for (int y = 0; y < image.rows; ++y) {
+                        if (image.data[y][x] <= BLACK_THRESHOLD) {
+                            blackPixelCount++;
+                        }
+                    }
+                    double blackRatio = static_cast<double>(blackPixelCount) / image.rows;
+                    if (blackRatio > (1.0 - NOISE_TOLERANCE)) {
+                        isBlackColumn[x] = true;
+                    }
+                }
+            });
+        }
+
+        // Wait for vertical detection threads
+        for (int t = 0; t < numThreads; ++t) {
+            verticalThreads[t]->join();
+            delete verticalThreads[t];
+        }
+        delete[] verticalThreads;
+
+        // Process vertical lines
+        std::pair<int, int>* verticalLines = new std::pair<int, int>[image.cols];
+        int verticalLineCount = 0;
+        int startX = -1;
+
+        for (int x = 0; x < image.cols; ++x) {
+            if (isBlackColumn[x]) {
+                if (startX == -1) startX = x;
+            } else if (startX != -1) {
+                int width = x - startX;
+                if (width >= MIN_LINE_WIDTH) {
+                    verticalLines[verticalLineCount++] = std::make_pair(startX, width);
+                }
+                startX = -1;
+            }
+        }
+
+        // Check for line extending to edge
+        if (startX != -1) {
+            int width = image.cols - startX;
+            if (width >= MIN_LINE_WIDTH) {
+                verticalLines[verticalLineCount++] = std::make_pair(startX, width);
+            }
+        }
+
+        // Create result array
+        DarkLineArray* result = createDarkLineArray(verticalLineCount, 1);
+        if (!result) {
+            throw std::runtime_error("Failed to create result array for vertical lines");
+        }
+
+        // Fill the result array with vertical lines
+        for (int i = 0; i < verticalLineCount; ++i) {
+            const auto& [x, width] = verticalLines[i];
+            DarkLine& line = result->lines[i][0];
+            line.x = x;
+            line.y = 0;
+            line.startY = 0;
+            line.endY = image.rows - 1;
+            line.width = width;
+            line.isVertical = true;
+            line.inObject = isInObject(image, x, width, true, i);
+        }
+
+        // Clean up
+        delete[] isBlackColumn;
+        delete[] verticalLines;
+
+        return result;
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error in detectVerticalLines: " << e.what() << std::endl;
+        return nullptr;
+    }
+}
+
 //Process 2: Helper function for Line Detected
 
 // Helper function for Determines if a line is within a dark object.
@@ -398,52 +600,89 @@ void DarkLinePointerProcessor::copyDarkLineArray(const DarkLineArray* source, Da
     }
 }
 
-// DarkLineArray* DarkLinePointerProcessor::createSafeDarkLineArray(int rows, int cols) {
-//     std::cout << "Creating safe dark line array with dimensions: " << rows << "x" << cols << std::endl;
+DarkLineArray* DarkLinePointerProcessor::createSafeDarkLineArray(int rows, int cols) {
+    std::cout << "Creating safe dark line array with dimensions: " << rows << "x" << cols << std::endl;
 
-//     try {
-//         auto newArray = new DarkLineArray();
+    try {
+        auto newArray = new DarkLineArray();
 
-//         if (rows <= 0 || cols <= 0) {
-//             std::cout << "Creating empty array" << std::endl;
-//             newArray->rows = 0;
-//             newArray->cols = 0;
-//             newArray->lines = nullptr;
-//             return newArray;
-//         }
+        if (rows <= 0 || cols <= 0) {
+            std::cout << "Creating empty array" << std::endl;
+            newArray->rows = 0;
+            newArray->cols = 0;
+            newArray->lines = nullptr;
+            return newArray;
+        }
 
-//         newArray->rows = rows;
-//         newArray->cols = cols;
-//         newArray->lines = new DarkLine*[rows];
+        newArray->rows = rows;
+        newArray->cols = cols;
+        newArray->lines = new DarkLine*[rows];
 
-//         if (!newArray->lines) {
-//             throw std::bad_alloc();
-//         }
+        if (!newArray->lines) {
+            throw std::bad_alloc();
+        }
 
-//         std::memset(newArray->lines, 0, rows * sizeof(DarkLine*));
+        std::memset(newArray->lines, 0, rows * sizeof(DarkLine*));
 
-//         for (int i = 0; i < rows; i++) {
-//             newArray->lines[i] = new DarkLine[cols];
-//             if (!newArray->lines[i]) {
-//                 for (int j = 0; j < i; j++) {
-//                     delete[] newArray->lines[j];
-//                 }
-//                 delete[] newArray->lines;
-//                 delete newArray;
-//                 throw std::bad_alloc();
-//             }
-//             for (int j = 0; j < cols; j++) {
-//                 newArray->lines[i][j] = DarkLine();
-//             }
-//         }
+        for (int i = 0; i < rows; i++) {
+            newArray->lines[i] = new DarkLine[cols];
+            if (!newArray->lines[i]) {
+                for (int j = 0; j < i; j++) {
+                    delete[] newArray->lines[j];
+                }
+                delete[] newArray->lines;
+                delete newArray;
+                throw std::bad_alloc();
+            }
+            for (int j = 0; j < cols; j++) {
+                newArray->lines[i][j] = DarkLine();
+            }
+        }
 
-//         return newArray;
+        return newArray;
 
-//     } catch (const std::exception& e) {
-//         std::cerr << "Error in createSafeDarkLineArray: " << e.what() << std::endl;
-//         throw;
-//     }
-// }
+    } catch (const std::exception& e) {
+        std::cerr << "Error in createSafeDarkLineArray: " << e.what() << std::endl;
+        throw;
+    }
+}
+
+// Implementation for vertical line checking
+bool DarkLinePointerProcessor::checkforHorizontal(const ImageData& image, DarkLineArray*& outLines) {
+    try {
+        outLines = detectHorizontalLines(image);
+        return outLines != nullptr;
+    } catch (const std::exception& e) {
+        std::cerr << "Error in checkforHorizontal: " << e.what() << std::endl;
+        outLines = nullptr;
+        return false;
+    }
+}
+
+// Implementation for horizontal line checking
+bool DarkLinePointerProcessor::checkforVertical(const ImageData& image, DarkLineArray*& outLines) {
+    try {
+        outLines = detectVerticalLines(image);
+        return outLines != nullptr;
+    } catch (const std::exception& e) {
+        std::cerr << "Error in checkforVertical: " << e.what() << std::endl;
+        outLines = nullptr;
+        return false;
+    }
+}
+
+// Implementation for checking both types of lines
+bool DarkLinePointerProcessor::checkforBoth(const ImageData& image, DarkLineArray*& outLines) {
+    try {
+        outLines = detectDarkLines(image);  // Uses existing function that detects both
+        return outLines != nullptr;
+    } catch (const std::exception& e) {
+        std::cerr << "Error in checkforBoth: " << e.what() << std::endl;
+        outLines = nullptr;
+        return false;
+    }
+}
+
 
 //Process 3: Remove Line Function (Calling according to line type and method)
 

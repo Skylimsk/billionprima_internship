@@ -165,7 +165,12 @@ public:
 
 
     static DarkLineArray* detectDarkLines(const ImageData& image);
+    static DarkLineArray* detectVerticalLines(const ImageData& image);
+    static DarkLineArray* detectHorizontalLines(const ImageData& image);
 
+    static bool checkforHorizontal(const ImageData& image, DarkLineArray*& outLines);
+    static bool checkforVertical(const ImageData& image, DarkLineArray*& outLines);
+    static bool checkforBoth(const ImageData& image, DarkLineArray*& outLines);
 
     static void removeDarkLinesSelective(
         ImageData& image,

@@ -1867,34 +1867,62 @@ void ControlPanel::setupBlackLineDetection() {
     layout->addWidget(detectBtn);
     layout->addWidget(removeBtn);
 
-    // Connect detect button
     connect(detectBtn, &QPushButton::clicked, [this, detectBtn, removeBtn]() {
         if (checkZoomMode()) return;
 
         // Create method selection dialog
         QDialog methodDialog(this);
-        methodDialog.setWindowTitle("Select Detection Method");
-        methodDialog.setMinimumWidth(300);
+        methodDialog.setWindowTitle("Select Detection Settings");
+        methodDialog.setMinimumWidth(350);
         QVBoxLayout* dialogLayout = new QVBoxLayout(&methodDialog);
 
         // Create radio buttons for method selection
+        QGroupBox* methodBox = new QGroupBox("Detection Method");
+        QVBoxLayout* methodLayout = new QVBoxLayout(methodBox);
+
         QRadioButton* vectorMethodRadio = new QRadioButton("Vector Method");
         QRadioButton* pointerMethodRadio = new QRadioButton("2D Pointer Method");
         vectorMethodRadio->setChecked(true);
 
-        // Add explanation labels
         QLabel* vectorExplanation = new QLabel("Vector Method: Traditional approach suitable for most cases");
         QLabel* pointerExplanation = new QLabel("2D Pointer Method: Alternative implementation using pointer arrays");
         vectorExplanation->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
         pointerExplanation->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
 
-        // Add widgets to dialog layout
-        dialogLayout->addWidget(vectorMethodRadio);
-        dialogLayout->addWidget(vectorExplanation);
-        dialogLayout->addSpacing(5);
-        dialogLayout->addWidget(pointerMethodRadio);
-        dialogLayout->addWidget(pointerExplanation);
-        dialogLayout->addSpacing(10);
+        methodLayout->addWidget(vectorMethodRadio);
+        methodLayout->addWidget(vectorExplanation);
+        methodLayout->addSpacing(5);
+        methodLayout->addWidget(pointerMethodRadio);
+        methodLayout->addWidget(pointerExplanation);
+        methodBox->setLayout(methodLayout);
+        dialogLayout->addWidget(methodBox);
+
+        // Add line type selection group - for pointer method only
+        QGroupBox* lineTypeBox = new QGroupBox("Line Types to Detect");
+        QVBoxLayout* lineTypeLayout = new QVBoxLayout(lineTypeBox);
+
+        QCheckBox* verticalCheck = new QCheckBox("Detect Vertical Lines");
+        QCheckBox* horizontalCheck = new QCheckBox("Detect Horizontal Lines");
+
+        // Add explanatory text for pointer method
+        QLabel* lineTypeExplanation = new QLabel(
+            "Select line types to detect.\n"
+            "Leave unchecked to use comprehensive detection."
+            );
+        lineTypeExplanation->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+
+        lineTypeLayout->addWidget(verticalCheck);
+        lineTypeLayout->addWidget(horizontalCheck);
+        lineTypeLayout->addWidget(lineTypeExplanation);
+        lineTypeBox->setLayout(lineTypeLayout);
+        dialogLayout->addWidget(lineTypeBox);
+
+        // Initially hide line type selection for vector method
+        lineTypeBox->setVisible(false);
+
+        // Connect radio buttons to show/hide line type selection
+        connect(vectorMethodRadio, &QRadioButton::toggled, lineTypeBox, &QGroupBox::setHidden);
+        connect(pointerMethodRadio, &QRadioButton::toggled, lineTypeBox, &QGroupBox::setVisible);
 
         // Add OK/Cancel buttons
         QDialogButtonBox* buttonBox = new QDialogButtonBox(
@@ -1910,21 +1938,78 @@ void ControlPanel::setupBlackLineDetection() {
             resetDetectedLinesPointer();
             m_darkLineInfoLabel->hide();
 
-            if (vectorMethodRadio->isChecked()) {
-                // Vector method implementation
+            if (pointerMethodRadio->isChecked()) {
+                try {
+                    auto imageData = convertToImageData(m_imageProcessor.getFinalImage());
+                    m_imageProcessor.saveCurrentState();
+
+                    bool detectVertical = verticalCheck->isChecked();
+                    bool detectHorizontal = horizontalCheck->isChecked();
+                    DarkLineArray* outLines = nullptr;
+                    bool success = false;
+
+                    // If neither checkbox is checked, detect all lines
+                    if (!detectVertical && !detectHorizontal) {
+                        success = DarkLinePointerProcessor::checkforBoth(imageData, outLines);
+                    } else {
+                        // Use specific detection based on checkbox selection
+                        if (detectVertical && detectHorizontal) {
+                            success = DarkLinePointerProcessor::checkforBoth(imageData, outLines);
+                        } else if (detectVertical) {
+                            success = DarkLinePointerProcessor::checkforVertical(imageData, outLines);
+                        } else if (detectHorizontal) {
+                            success = DarkLinePointerProcessor::checkforHorizontal(imageData, outLines);
+                        }
+                    }
+
+                    if (success && outLines && outLines->rows > 0) {
+                        // Clean up any existing detection results
+                        if (m_detectedLinesPointer) {
+                            DarkLinePointerProcessor::destroyDarkLineArray(m_detectedLinesPointer);
+                        }
+
+                        m_detectedLinesPointer = outLines;
+                        QString detectionInfo = PointerOperations::generateDarkLineInfo(m_detectedLinesPointer);
+                        m_darkLineInfoLabel->setText(detectionInfo);
+                        updateDarkLineInfoDisplayPointer();
+
+                        // Update button states
+                        if (m_pointerRemoveBtn) m_pointerRemoveBtn->setEnabled(true);
+                        if (m_pointerResetBtn) m_pointerResetBtn->setEnabled(true);
+                        if (m_vectorDetectBtn) m_vectorDetectBtn->setEnabled(false);
+                        if (m_vectorRemoveBtn) m_vectorRemoveBtn->setEnabled(false);
+                        if (m_vectorResetBtn) m_vectorResetBtn->setEnabled(false);
+                    } else {
+                        if (outLines) {
+                            DarkLinePointerProcessor::destroyDarkLineArray(outLines);
+                        }
+                        QMessageBox::information(this, "Detection Result",
+                                                 "No dark lines detected using pointer method.");
+                        return;
+                    }
+                } catch (const std::exception& e) {
+                    QMessageBox::critical(this, "Error",
+                                          QString("Error in line detection: %1").arg(e.what()));
+                    return;
+                }
+            } else {
+                // Vector method implementation - always detect all lines
                 m_imageProcessor.saveCurrentState();
                 m_detectedLines = m_imageProcessor.detectDarkLines();
 
-                // Generate detection info
+                // Generate detection info for vector method
                 QString detectionInfo = "Detected Lines (Vector Method):\n\n";
                 int inObjectCount = 0;
                 int isolatedCount = 0;
 
                 for (size_t i = 0; i < m_detectedLines.size(); ++i) {
                     const auto& line = m_detectedLines[i];
-                    QString coordinates = line.isVertical ?
-                                              QString("(%1,0)").arg(line.x) :
-                                              QString("(0,%1)").arg(line.y);
+                    QString coordinates;
+                    if (line.isVertical) {
+                        coordinates = QString("(%1,0)").arg(line.x);
+                    } else {
+                        coordinates = QString("(0,%1)").arg(line.y);
+                    }
 
                     detectionInfo += QString("Line %1: %2 with width %3 pixels (%4)\n")
                                          .arg(i + 1)
@@ -1943,37 +2028,33 @@ void ControlPanel::setupBlackLineDetection() {
 
                 m_darkLineInfoLabel->setText(detectionInfo);
                 updateDarkLineInfoDisplay();
-
-            } else {
-                // Pointer method implementation
-                try {
-                    auto imageData = convertToImageData(m_imageProcessor.getFinalImage());
-                    m_imageProcessor.saveCurrentState();
-                    m_detectedLinesPointer = DarkLinePointerProcessor::detectDarkLines(imageData);
-
-                    if (m_detectedLinesPointer && m_detectedLinesPointer->rows > 0) {
-                        QString detectionInfo = PointerOperations::generateDarkLineInfo(m_detectedLinesPointer);
-                        m_darkLineInfoLabel->setText(detectionInfo);
-                        updateDarkLineInfoDisplayPointer();
-                    } else {
-                        QMessageBox::information(this, "Detection Result",
-                                                 "No dark lines detected using pointer method.");
-                        return;
-                    }
-                } catch (const std::exception& e) {
-                    QMessageBox::critical(this, "Error",
-                                          QString("Error in line detection: %1").arg(e.what()));
-                    return;
-                }
             }
 
             // Enable remove and reset buttons
             removeBtn->setEnabled(true);
             updateImageDisplay();
-            updateLastAction("Detect Lines",
-                             vectorMethodRadio->isChecked() ? "Vector Method" : "2D Pointer Method");
+
+            // Update last action with detection type info
+            QString methodStr = vectorMethodRadio->isChecked() ? "Vector Method" : "2D Pointer Method";
+            QString typeStr;
+            if (pointerMethodRadio->isChecked()) {
+                bool detectVertical = verticalCheck->isChecked();
+                bool detectHorizontal = horizontalCheck->isChecked();
+                if (!detectVertical && !detectHorizontal) {
+                    typeStr = "All Lines";
+                } else {
+                    QStringList types;
+                    if (detectVertical) types << "Vertical";
+                    if (detectHorizontal) types << "Horizontal";
+                    typeStr = types.join(" and ");
+                }
+            } else {
+                typeStr = "All Lines";  // Vector method always detects all lines
+            }
+            updateLastAction("Detect Lines", QString("%1 - %2").arg(methodStr).arg(typeStr));
         }
     });
+
     // Connect remove button
     connect(removeBtn, &QPushButton::clicked, [this, removeBtn]() {
         if (checkZoomMode()) return;
@@ -2535,11 +2616,17 @@ void ControlPanel::drawLineLabelWithCount(QPainter& painter,
     int labelMargin = static_cast<int>(10 * zoomLevel);
     int labelSpacing = static_cast<int>(std::max(30.0f, 40.0f * zoomLevel));
 
-    int labelX = line.isVertical ?
-                     (line.x * zoomLevel + labelMargin) : labelMargin;
-    int labelY = line.isVertical ?
-                     (30 * zoomLevel + count * labelSpacing) :
-                     (line.y * zoomLevel + labelMargin + count * labelSpacing);
+    int labelX, labelY;
+    if (line.isVertical) {
+        labelX = static_cast<int>(line.x * zoomLevel + labelMargin);
+        labelY = static_cast<int>(30 * zoomLevel + count * labelSpacing);
+    } else {
+        labelX = labelMargin;
+        labelY = static_cast<int>(line.y * zoomLevel + labelMargin);
+        if (count > 0) {
+            labelX += static_cast<int>(count * labelSpacing * 1.5); // Adjust spacing for horizontal lines
+        }
+    }
 
     drawLabelCommon(painter, labelText, labelX, labelY, labelMargin, zoomLevel, imageSize);
 }
@@ -2547,7 +2634,7 @@ void ControlPanel::drawLineLabelWithCount(QPainter& painter,
 // For pointer implementation
 // 实现也使用全局的 DarkLine
 void ControlPanel::drawLineLabelWithCountPointer(QPainter& painter,
-                                                 const DarkLine& line,  // 直接使用全局 DarkLine
+                                                 const DarkLine& line,
                                                  int count,
                                                  float zoomLevel,
                                                  const QSize& imageSize) {
@@ -2560,14 +2647,21 @@ void ControlPanel::drawLineLabelWithCountPointer(QPainter& painter,
     int labelMargin = static_cast<int>(10 * zoomLevel);
     int labelSpacing = static_cast<int>(std::max(30.0f, 40.0f * zoomLevel));
 
-    int labelX = line.isVertical ?
-                     (line.x * zoomLevel + labelMargin) : labelMargin;
-    int labelY = line.isVertical ?
-                     (30 * zoomLevel + count * labelSpacing) :
-                     (line.y * zoomLevel + labelMargin + count * labelSpacing);
+    int labelX, labelY;
+    if (line.isVertical) {
+        labelX = static_cast<int>(line.x * zoomLevel + labelMargin);
+        labelY = static_cast<int>(30 * zoomLevel + count * labelSpacing);
+    } else {
+        labelX = labelMargin;
+        labelY = static_cast<int>(line.y * zoomLevel + labelMargin);
+        if (count > 0) {
+            labelX += static_cast<int>(count * labelSpacing * 1.5); // Adjust spacing for horizontal lines
+        }
+    }
 
     drawLabelCommon(painter, labelText, labelX, labelY, labelMargin, zoomLevel, imageSize);
 }
+
 
 void ControlPanel::drawLabelCommon(QPainter& painter,
                                    const QString& labelText,
@@ -2589,6 +2683,12 @@ void ControlPanel::drawLabelCommon(QPainter& painter,
     if (textRect.bottom() > imageSize.height()) {
         textRect.moveTop(imageSize.height() - textRect.height() - labelMargin);
     }
+    if (textRect.left() < labelMargin) {
+        textRect.moveLeft(labelMargin);
+    }
+    if (textRect.top() < labelMargin) {
+        textRect.moveTop(labelMargin);
+    }
 
     // Draw label with enhanced visibility
     QColor bgColor = QColor(255, 255, 255, 245);
@@ -2601,9 +2701,6 @@ void ControlPanel::drawLabelCommon(QPainter& painter,
     painter.setPen(Qt::black);
     painter.drawText(textRect, Qt::AlignCenter | Qt::TextDontClip, labelText);
 }
-
-
-
 
 void ControlPanel::clearAllDetectionResults() {
     resetDetectedLines();
