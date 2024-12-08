@@ -3,13 +3,29 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
 
-# OpenCV configuration for debug
-win32 {
-    INCLUDEPATH += D:/opencv_build/install/include
+# Path configurations
+OPENCV_DIR = D:/opencv_build/install
+OPENCV_BIN_PATH = $$OPENCV_DIR/x64/vc17/bin
+TBB_DIR = "C:/Program Files (x86)/Intel/oneAPI/tbb/latest"
+CUDA_DIR = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6"
 
+# Include paths
+INCLUDEPATH += $$OPENCV_DIR/include
+INCLUDEPATH += $$TBB_DIR/include
+INCLUDEPATH += $$CUDA_DIR/include
+INCLUDEPATH += $$PWD/third_party/qcustomplot
+INCLUDEPATH += $$PWD/include
+
+# Environment setup
+QMAKE_EXTRA_TARGETS += first
+first.target = first
+first.commands = set PATH=$$OPENCV_BIN_PATH;$$TBB_DIR/redist/intel64/vc14;$(PATH)
+
+# OpenCV configuration for debug and release
+win32 {
     CONFIG(debug, debug|release) {
-        # OpenCV libs
-        LIBS += -LD:/opencv_build/install/x64/vc17/lib \
+        # OpenCV libs for debug
+        LIBS += -L$$OPENCV_DIR/x64/vc17/lib \
                 -lopencv_core4100d \
                 -lopencv_imgproc4100d \
                 -lopencv_highgui4100d \
@@ -26,10 +42,8 @@ win32 {
                 -lopencv_cudastereo4100d \
                 -lopencv_cudawarping4100d
 
-        # 修改 DLL 复制命令
-        OPENCV_DLL_PATH = D:/opencv_build/install/x64/vc17/bin
-
-        # 使用 copy 命令替代 powershell
+        # DLL Copy Commands
+        OPENCV_DLL_PATH = $$OPENCV_DIR/x64/vc17/bin
         QMAKE_POST_LINK += \
             $$quote(cmd /c copy /y \"$$OPENCV_DLL_PATH\\opencv_core4100d.dll\" \"$(DESTDIR)\" $$escape_expand(\n\t)) \
             $$quote(cmd /c copy /y \"$$OPENCV_DLL_PATH\\opencv_imgproc4100d.dll\" \"$(DESTDIR)\" $$escape_expand(\n\t)) \
@@ -49,7 +63,8 @@ win32 {
     }
 
     CONFIG(release, debug|release) {
-        LIBS += -LD:/opencv_build/install/x64/vc17/lib \
+        # OpenCV libs for release
+        LIBS += -L$$OPENCV_DIR/x64/vc17/lib \
                 -lopencv_core4100 \
                 -lopencv_imgproc4100 \
                 -lopencv_highgui4100 \
@@ -65,21 +80,15 @@ win32 {
                 -lopencv_cudaoptflow4100 \
                 -lopencv_cudastereo4100 \
                 -lopencv_cudawarping4100
+
+        # TBB lib for release
+        LIBS += -L$$TBB_DIR/lib/intel64/vc14 -ltbb12
     }
 }
 
 # QCustomPlot configuration
-INCLUDEPATH += $$PWD/third_party/qcustomplot
-SOURCES += third_party/qcustomplot/qcustomplot.cpp \
-    CGParams.cpp
+SOURCES += third_party/qcustomplot/qcustomplot.cpp
 HEADERS += third_party/qcustomplot/qcustomplot.h
-
-# CUDA Configuration
-CUDA_DIR = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6"
-INCLUDEPATH += $$CUDA_DIR/include
-
-# You can make this application better by adding large file support:
-DEFINES += _FILE_OFFSET_BITS=64
 
 # Source files
 SOURCES += \
@@ -97,7 +106,8 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     pointer_operations.cpp \
-    zoom.cpp
+    zoom.cpp \
+    CGParams.cpp
 
 HEADERS += \
     CLAHE.h \
@@ -116,31 +126,23 @@ HEADERS += \
     pointer_operations.h \
     zoom.h
 
-FORMS += \
-    mainwindow.ui
+FORMS += mainwindow.ui
 
-# Default rules for deployment.
-qnx: target.path = /tmp/$${TARGET}/bin
-else: unix:!android: target.path = /opt/$${TARGET}/bin
-!isEmpty(target.path): INSTALLS += target
+# Compiler and linker flags
+DEFINES += _FILE_OFFSET_BITS=64
 
-# Add optimization flags for better performance
+# Optimization flags
 QMAKE_CXXFLAGS_RELEASE -= -O2
 QMAKE_CXXFLAGS_RELEASE += -O3
 QMAKE_LFLAGS_RELEASE += -O3
 
-# Enable link time optimization
-QMAKE_LFLAGS += -flto
-QMAKE_CXXFLAGS += -flto
-
-# If using MSVC
+# Enable OpenMP support
 msvc {
-    QMAKE_CXXFLAGS += /GL
+    QMAKE_CXXFLAGS += /GL /openmp
     QMAKE_LFLAGS += /LTCG
 } else {
-    # 其他编译器保持使用 -flto
+    QMAKE_CXXFLAGS += -flto -fopenmp
     QMAKE_LFLAGS += -flto
-    QMAKE_CXXFLAGS += -flto
 }
 
 # CGProcessImage library configuration
@@ -154,5 +156,9 @@ win32 {
     }
 }
 
-INCLUDEPATH += $$PWD/include
 DEPENDPATH += $$PWD/include
+
+# Deployment
+qnx: target.path = /tmp/$${TARGET}/bin
+else: unix:!android: target.path = /opt/$${TARGET}/bin
+!isEmpty(target.path): INSTALLS += target

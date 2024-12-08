@@ -53,7 +53,9 @@ public:
     std::vector<std::vector<uint16_t>> convertFromImageData(const ImageData& imageData);
 
     QLabel* getDarkLineInfoLabel() { return m_darkLineInfoLabel; }
-    void updateImageDisplay();
+
+    void updateImageDisplay(const std::vector<std::vector<uint16_t>>* vectorImage = nullptr);
+    void updateImageDisplay(double** doubleImage, int height, int width);
 
 
 
@@ -219,6 +221,9 @@ private:
     std::pair<int, bool> showInputDialog(const QString& title,
                                          const QString& label,
                                          int defaultValue);
+
+    double m_fileLoadTime = 0.0;
+    double m_histogramTime = 0.0;
 };
 
 

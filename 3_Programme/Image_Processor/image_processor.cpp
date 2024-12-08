@@ -67,52 +67,62 @@ ImageProcessor::ActionRecord ImageProcessor::getLastActionRecord() const {
     return {"None", ""};
 }
 
-void ImageProcessor::loadTxtImage(const std::string& txtFilePath) {
-    std::ifstream inFile(txtFilePath);
-    if (!inFile.is_open()) {
-        std::cerr << "Error: Cannot open file " << txtFilePath << std::endl;
-        return;
+void ImageProcessor::loadImage(const std::string& filePath) {
+    // Get file extension
+    std::string extension = filePath.substr(filePath.find_last_of(".") + 1);
+    std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+
+    try {
+            // Load image using OpenCV
+            cv::Mat img = cv::imread(filePath, cv::IMREAD_ANYDEPTH);
+
+            if (img.empty()) {
+                throw std::runtime_error("Failed to load image: " + filePath);
+            }
+
+            // Convert to 16-bit if necessary
+            cv::Mat img16;
+            if (img.depth() != CV_16U) {
+                double scale = (img.depth() == CV_8U) ? 257.0 : 1.0;  // Scale 8-bit to 16-bit range
+                img.convertTo(img16, CV_16U, scale);
+            } else {
+                img16 = img;
+            }
+
+            // Handle multi-channel images by converting to grayscale
+            cv::Mat grayscale;
+            if (img16.channels() > 1) {
+                cv::cvtColor(img16, grayscale, cv::COLOR_BGR2GRAY);
+            } else {
+                grayscale = img16;
+            }
+
+            // Convert to our internal format
+            finalImage = matToVector(grayscale);
+            originalImg = finalImage;
+
+            qDebug() << "Loaded image dimensions:" << grayscale.cols << "x" << grayscale.rows
+                     << "with" << (grayscale.depth() == CV_16U ? "16" : "8") << "-bit depth";
+    } catch (const std::exception& e) {
+        qDebug() << "Error loading image:" << e.what();
+        throw;
     }
 
-    std::string line;
-    imgData.clear();
-    size_t maxWidth = 0;
+    // Clear history when loading new image
+    while (!imageHistory.empty()) imageHistory.pop();
+    while (!actionHistory.empty()) actionHistory.pop();
+}
 
-    while (std::getline(inFile, line)) {
-        std::stringstream ss(line);
-        std::vector<uint16_t> row;
-        uint32_t value;
-        while (ss >> value) {
-            // Convert to 16-bit, clamping to maximum value
-            row.push_back(static_cast<uint16_t>(std::min(value, static_cast<uint32_t>(65535))));
-        }
-        if (!row.empty()) {
-            maxWidth = std::max(maxWidth, row.size());
-            imgData.push_back(row);
-        }
-    }
-    inFile.close();
+// Helper function to check if a file is an image
+bool ImageProcessor::isImageFile(const std::string& filePath) {
+    std::string extension = filePath.substr(filePath.find_last_of(".") + 1);
+    std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
 
-    if (imgData.empty()) {
-        std::cerr << "Error: No valid data found in the file." << std::endl;
-        return;
-    }
+    const std::vector<std::string> imageExtensions = {
+        "jpg", "jpeg", "png", "tiff", "tif", "bmp"
+    };
 
-    // Pad all rows to the same width with the last value in each row
-    for (auto& row : imgData) {
-        if (row.size() < maxWidth) {
-            row.resize(maxWidth, row.empty() ? 0 : row.back());
-        }
-    }
-
-    originalImg = imgData;
-    finalImage = imgData;
-
-    saveCurrentState();
-
-    // Reset selection-related variables
-    selectedRegion = QRect();
-    regionSelected = false;
+    return std::find(imageExtensions.begin(), imageExtensions.end(), extension) != imageExtensions.end();
 }
 
 void ImageProcessor::setLastAction(const QString& action, const QString& parameters) {
@@ -366,54 +376,6 @@ void ImageProcessor::applyHighPassFilter(std::vector<std::vector<uint16_t>>& ima
     }
 
     image = outputImage;
-}
-
-cv::Mat ImageProcessor::applyCLAHE(const cv::Mat& inputImage, double clipLimit, const cv::Size& tileSize) {
-    saveCurrentState();
-    preProcessedImage = finalImage;  // 保存当前图像状态，而不是输入图像
-    hasCLAHEBeenApplied = true;
-    cv::Mat result = claheProcessor.applyCLAHE(inputImage, clipLimit, tileSize);
-    finalImage = matToVector(result);  // 更新 finalImage 为 CLAHE 处理后的结果
-    return result;
-}
-
-cv::Mat ImageProcessor::applyCLAHE_CPU(const cv::Mat& inputImage, double clipLimit, const cv::Size& tileSize) {
-    saveCurrentState();
-    preProcessedImage = finalImage;  // 保存当前图像状态，而不是输入图像
-    hasCLAHEBeenApplied = true;
-    cv::Mat result = claheProcessor.applyCLAHE_CPU(inputImage, clipLimit, tileSize);
-    finalImage = matToVector(result);  // 更新 finalImage 为 CLAHE 处理后的结果
-    return result;
-}
-
-
-void ImageProcessor::applyThresholdCLAHE_GPU(uint16_t threshold, double clipLimit, const cv::Size& tileSize) {
-    saveCurrentState();
-    if (hasCLAHEBeenApplied) {
-
-        double enhancedClipLimit = clipLimit * 2.0;  // 增加 clipLimit 使效果更明显
-        std::vector<std::vector<uint16_t>> processImage = finalImage;
-        claheProcessor.applyThresholdCLAHE_GPU(processImage, threshold, enhancedClipLimit, tileSize);
-        finalImage = processImage;
-    } else {
-
-        claheProcessor.applyThresholdCLAHE_GPU(finalImage, threshold, clipLimit, tileSize);
-    }
-    hasCLAHEBeenApplied = false;
-}
-
-void ImageProcessor::applyThresholdCLAHE_CPU(uint16_t threshold, double clipLimit, const cv::Size& tileSize) {
-    saveCurrentState();
-    if (hasCLAHEBeenApplied) {
-
-        double enhancedClipLimit = clipLimit * 2.0;
-        std::vector<std::vector<uint16_t>> processImage = finalImage;
-        claheProcessor.applyThresholdCLAHE_CPU(processImage, threshold, enhancedClipLimit, tileSize);
-        finalImage = processImage;
-    } else {
-        claheProcessor.applyThresholdCLAHE_CPU(finalImage, threshold, clipLimit, tileSize);
-    }
-    hasCLAHEBeenApplied = false;
 }
 
 CLAHEProcessor::PerformanceMetrics ImageProcessor::getLastPerformanceMetrics() const {

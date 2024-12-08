@@ -25,6 +25,13 @@
 // Qt includes
 #include <QDebug>
 
+struct DarkPixelInfo {
+    double value;
+    int x;
+    int y;
+    bool isUsed;
+};
+
 class CLAHEProcessor {
 public:
     // Configuration structure for thread management
@@ -65,29 +72,36 @@ public:
     CLAHEProcessor();
 
     // Main processing functions
-    cv::Mat applyCLAHE(const cv::Mat& inputImage, double clipLimit, const cv::Size& tileSize);
-    cv::Mat applyCLAHE_CPU(const cv::Mat& inputImage, double clipLimit, const cv::Size& tileSize);
-    void applyThresholdCLAHE_GPU(std::vector<std::vector<uint16_t>>& finalImage,
+    void applyCLAHE(double** outputImage, double** inputImage, int height, int width,
+                    double clipLimit, const cv::Size& tileSize);
+    void applyCLAHE_CPU(double** outputImage, double** inputImage, int height, int width,
+                        double clipLimit, const cv::Size& tileSize);
+
+    // Modified main functions to use double**
+    void applyThresholdCLAHE(double** image, int height, int width,
+                             uint16_t threshold, double clipLimit,
+                             const cv::Size& tileSize, bool afterNormalCLAHE = false);
+
+    void applyThresholdCLAHE_CPU(double** finalImage, int height, int width,
                                  uint16_t threshold, double clipLimit,
-                                 const cv::Size& tileSize);
-    void applyThresholdCLAHE_CPU(std::vector<std::vector<uint16_t>>& finalImage,
-                                 uint16_t threshold, double clipLimit,
-                                 const cv::Size& tileSize);
+                                 const cv::Size& tileSize, bool afterNormalCLAHE = false);
 
     // Configuration and metrics
     void setThreadConfig(const ThreadConfig& config) { threadConfig = config; }
     ThreadConfig getThreadConfig() const { return threadConfig; }
     PerformanceMetrics getLastPerformanceMetrics() const { return metrics; }
 
+    // Memory management helpers
+    static double** allocateImageBuffer(int height, int width);
+    static void deallocateImageBuffer(double** buffer, int height);
+
     // Conversion utilities
-    cv::Mat vectorToMat(const std::vector<std::vector<uint16_t>>& image);
-    std::vector<std::vector<uint16_t>> matToVector(const cv::Mat& mat);
+    cv::Mat doubleToMat(double** image, int height, int width);
+    void matToDouble(const cv::Mat& mat, double** image);
 
     // Logging utilities
     static void logMessage(const std::string& message, int threadId);
-
-    void logThreadStart(int threadId, const std::string& function,
-                        int startRow, int endRow);
+    void logThreadStart(int threadId, const std::string& function, int startRow, int endRow);
     void logThreadComplete(int threadId, const std::string& function);
 
 protected:
@@ -96,23 +110,6 @@ protected:
                            const cv::Mat& claheResult, const cv::Mat& darkMask,
                            uint16_t threshold, int startRow, int endRow,
                            int threadId);
-
-    void createDarkMask(const cv::Mat& input, cv::Mat& darkMask,
-                        uint16_t threshold, float transitionRange,
-                        int startRow, int endRow,
-                        int threadId);
-
-    void processEnhancedImageChunk(cv::Mat& result, const cv::Mat& original,
-                                   const cv::Mat& claheResult, const cv::Mat& darkMask,
-                                   uint16_t threshold, int startRow, int endRow,
-                                   int threadId);
-
-    void createEnhancedDarkMask(const cv::Mat& input, cv::Mat& darkMask,
-                                uint16_t threshold, float transitionRange,
-                                int startRow, int endRow, int threadId) ;
-
-    void optimizeResult(cv::Mat& result, const cv::Mat& original, float strength);
-    void processEnhancedStrip(cv::Mat& strip, cv::Ptr<cv::CLAHE>& clahe);
 
     // Conversion helpers
     cv::Mat convertTo8Bit(const cv::Mat& input);
@@ -126,6 +123,15 @@ protected:
     cv::Ptr<cv::CLAHE> clahe;
     std::mutex processingMutex;
     static std::mutex logMutex;
+
+private:
+
+    DarkPixelInfo** createDarkPixelBuffer(int maxSize);
+    void releaseDarkPixelBuffer(DarkPixelInfo** buffer, int size);
+    int collectDarkPixels(double** image, int height, int width,
+                          uint16_t threshold, DarkPixelInfo** darkPixels);
+    void applyDarkPixelsBack(double** image, DarkPixelInfo** darkPixels,
+                             int darkPixelCount);
 };
 
 class ScopedTimer {

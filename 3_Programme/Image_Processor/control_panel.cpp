@@ -149,7 +149,7 @@ ControlPanel::~ControlPanel() {
 
 void ControlPanel::enableButtons(bool enable) {
     for (QPushButton* button : m_allButtons) {
-        if (button && button->text() != "Browse") {
+        if (button && button->text() != "Browse" && button->text() != "Load Pointer") {
             button->setEnabled(enable);
         }
     }
@@ -166,17 +166,16 @@ void ControlPanel::setupPixelInfoLabel() {
 
     // Add image size label
     m_imageSizeLabel = new QLabel("Image Size: No image loaded");
-    m_imageSizeLabel->setFixedHeight(30);
+    m_imageSizeLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     infoLayout->addWidget(m_imageSizeLabel);
 
     m_pixelInfoLabel = new QLabel("Pixel Info: ");
-    m_pixelInfoLabel->setFixedHeight(30);
+    m_pixelInfoLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     infoLayout->addWidget(m_pixelInfoLabel);
 
     // Update last action label setup
     m_lastActionLabel = new QLabel("Last Action: None");
-    m_lastActionLabel->setMinimumHeight(25);
-    m_lastActionLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    m_lastActionLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     m_lastActionLabel->setWordWrap(true);
     infoLayout->addWidget(m_lastActionLabel);
 
@@ -640,53 +639,169 @@ void ControlPanel::toggleZoomMode(bool active) {
     updateImageDisplay();
 }
 
-void ControlPanel::setupFileOperations()
-{
+void ControlPanel::setupFileOperations() {
     // Initially disable all buttons except Browse
     connect(this, &ControlPanel::fileLoaded, this, &ControlPanel::enableButtons);
 
     createGroupBox("File Operations", {
-                                          {"Browse", [this]() {
-                                               QString fileName = QFileDialog::getOpenFileName(this, "Open Text File", "", "Text Files (*.txt)");
-                                               if (!fileName.isEmpty()) {
-                                                   try {
-                                                       resetDetectedLines();
-                                                       resetDetectedLinesPointer();
-                                                       m_darkLineInfoLabel->hide();
-                                                       m_imageProcessor.loadTxtImage(fileName.toStdString());
-                                                       m_imageLabel->clearSelection();
-                                                       updateImageDisplay();
-                                                       // Extract just the file name without path
-                                                       QFileInfo fileInfo(fileName);
-                                                       updateLastAction("Load Image", fileInfo.fileName());
-                                                       emit fileLoaded(true);
-                                                       qDebug() << "Image loaded successfully from:" << fileName;
-                                                   } catch (const std::exception& e) {
-                                                       QMessageBox::critical(this, "Error", QString("Failed to load image: %1").arg(e.what()));
-                                                       qDebug() << "Error loading image:" << e.what();
-                                                   }
-                                               }
-                                           }},
+                                       {"Browse", [this]() {
+                                            // Create format selection dialog
+                                            QDialog formatDialog(this);
+                                            formatDialog.setWindowTitle("Select Load Format");
+                                            QVBoxLayout* layout = new QVBoxLayout(&formatDialog);
+
+                                            // Create radio buttons for format selection
+                                            QRadioButton* loadImageBtn = new QRadioButton("Load Image File (*.png, *.jpg, *.tiff, *.bmp)");
+                                            QRadioButton* load2DTextBtn = new QRadioButton("Load Text File - 2D Format");
+                                            QRadioButton* load1DTextBtn = new QRadioButton("Load Text File - 1D Format");
+                                            loadImageBtn->setChecked(true);
+
+                                            // Add tooltips for clarity
+                                            load2DTextBtn->setToolTip("For text files with space-separated values in a 2D grid");
+                                            load1DTextBtn->setToolTip("For text files with values in a single column");
+
+                                            layout->addWidget(loadImageBtn);
+                                            layout->addWidget(load2DTextBtn);
+                                            layout->addWidget(load1DTextBtn);
+
+                                            QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                                                QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                                            layout->addWidget(buttonBox);
+
+                                            connect(buttonBox, &QDialogButtonBox::accepted, &formatDialog, &QDialog::accept);
+                                            connect(buttonBox, &QDialogButtonBox::rejected, &formatDialog, &QDialog::reject);
+
+                                            if (formatDialog.exec() == QDialog::Accepted) {
+                                                QString filter;
+                                                if (loadImageBtn->isChecked()) {
+                                                    filter = "Image Files (*.png *.jpg *.jpeg *.tiff *.tif *.bmp)";
+                                                } else {
+                                                    filter = "Text Files (*.txt)";
+                                                }
+
+                                                QString fileName = QFileDialog::getOpenFileName(
+                                                    this,
+                                                    "Open File",
+                                                    "",
+                                                    filter);
+
+                                                if (!fileName.isEmpty()) {
+                                                    try {
+                                                        resetDetectedLines();
+                                                        resetDetectedLinesPointer();
+                                                        m_darkLineInfoLabel->hide();
+
+                                                        auto startLoad = std::chrono::high_resolution_clock::now();
+
+                                                        if (loadImageBtn->isChecked()) {
+                                                            m_imageProcessor.loadImage(fileName.toStdString());
+                                                        } else {
+                                                            // Use ImageReader for text files
+                                                            if (load2DTextBtn->isChecked()) {
+                                                                double** matrix = nullptr;
+                                                                int rows = 0, cols = 0;
+                                                                ImageReader::ReadTextToU2D(fileName.toStdString(), matrix, rows, cols);
+
+                                                                if (matrix && rows > 0 && cols > 0) {
+                                                                    std::vector<std::vector<uint16_t>> image(rows, std::vector<uint16_t>(cols));
+                                                                    for (int i = 0; i < rows; ++i) {
+                                                                        for (int j = 0; j < cols; ++j) {
+                                                                            image[i][j] = static_cast<uint16_t>(std::min(65535.0, std::max(0.0, matrix[i][j])));
+                                                                        }
+                                                                    }
+
+                                                                    // Update the image processor
+                                                                    m_imageProcessor.updateAndSaveFinalImage(image);
+
+                                                                    // Clean up the matrix
+                                                                    for (int i = 0; i < rows; ++i) {
+                                                                        delete[] matrix[i];
+                                                                    }
+                                                                    delete[] matrix;
+                                                                }
+                                                            } else {
+                                                                uint32_t* matrix = nullptr;
+                                                                int rows = 0, cols = 0;
+                                                                ImageReader::ReadTextToU1D(fileName.toStdString(), matrix, rows, cols);
+
+                                                                if (matrix && rows > 0 && cols > 0) {
+                                                                    std::vector<std::vector<uint16_t>> image(rows, std::vector<uint16_t>(cols));
+                                                                    for (int i = 0; i < rows; ++i) {
+                                                                        for (int j = 0; j < cols; ++j) {
+                                                                            image[i][j] = static_cast<uint16_t>(std::min(65535.0, std::max(0.0, static_cast<double>(matrix[i * cols + j]))));
+                                                                        }
+                                                                    }
+
+                                                                    // Update the image processor
+                                                                    m_imageProcessor.updateAndSaveFinalImage(image);
+
+                                                                    // Clean up the matrix
+                                                                    delete[] matrix;
+                                                                }
+                                                            }
+                                                        }
+
+                                                        auto endLoad = std::chrono::high_resolution_clock::now();
+                                                        m_fileLoadTime = std::chrono::duration<double, std::milli>(endLoad - startLoad).count();
+
+                                                        // Update histogram
+                                                        auto startHist = std::chrono::high_resolution_clock::now();
+                                                        if (m_histogram) {
+                                                            m_histogram->updateHistogram(m_imageProcessor.getFinalImage());
+                                                        }
+                                                        auto endHist = std::chrono::high_resolution_clock::now();
+                                                        m_histogramTime = std::chrono::duration<double, std::milli>(endHist - startHist).count();
+
+                                                        m_imageLabel->clearSelection();
+                                                        updateImageDisplay();
+
+                                                        QString loadType;
+                                                        if (loadImageBtn->isChecked()) {
+                                                            loadType = "Image";
+                                                        } else {
+                                                            loadType = load2DTextBtn->isChecked() ? "Text (2D)" : "Text (1D)";
+                                                        }
+
+                                                        QFileInfo fileInfo(fileName);
+                                                        QString timingInfo = QString("File: %1 (%2)\nProcessing Time - Load: %3 ms, Histogram: %4 ms")
+                                                                                 .arg(fileInfo.fileName())
+                                                                                 .arg(loadType)
+                                                                                 .arg(m_fileLoadTime, 0, 'f', 2)
+                                                                                 .arg(m_histogramTime, 0, 'f', 2);
+
+                                                        updateLastAction("Load File", timingInfo);
+                                                        emit fileLoaded(true);
+
+                                                    } catch (const std::exception& e) {
+                                                        QMessageBox::critical(this, "Error",
+                                                                              QString("Failed to load file: %1").arg(e.what()));
+                                                        qDebug() << "Error loading file:" << e.what();
+                                                    }
+                                                }
+                                            }
+                                        }},
                                           {"Save", [this]() {
-                                               QString filePath = QFileDialog::getSaveFileName(this, "Save Image", "", "PNG Files (*.png)");
+                                               QString filePath = QFileDialog::getSaveFileName(
+                                                   this,
+                                                   "Save Image",
+                                                   "",
+                                                   "PNG Files (*.png);;JPEG Files (*.jpg *.jpeg);;TIFF Files (*.tiff *.tif);;BMP Files (*.bmp)");
+
                                                if (!filePath.isEmpty()) {
                                                    m_imageProcessor.saveImage(filePath);
-                                                   // Extract just the file name without path
                                                    QFileInfo fileInfo(filePath);
-                                                   updateLastAction("Save Image",  fileInfo.fileName());
+                                                   updateLastAction("Save Image", fileInfo.fileName());
                                                }
                                            }},
                                           {"Revert", [this]() {
                                                QString revertedAction = m_imageProcessor.revertImage();
                                                if (!revertedAction.isEmpty()) {
-                                                   //m_darkLineInfoLabel->hide();
                                                    resetDetectedLines();
                                                    resetDetectedLinesPointer();
                                                    m_imageLabel->clearSelection();
                                                    updateImageDisplay();
                                                    handleRevert();
 
-                                                   // Split action and parameters if they exist
                                                    QString lastAction = m_imageProcessor.getLastActionRecord().action;
                                                    QString lastParams = m_imageProcessor.getLastActionRecord().parameters;
 
@@ -929,8 +1044,12 @@ void ControlPanel::setupPreProcessingOperations() {
         // Create dialog for calibration parameters
         QDialog dialog(this);
         dialog.setWindowTitle("Data Calibration Parameters");
-        dialog.setMinimumWidth(300);
         QVBoxLayout* dialogLayout = new QVBoxLayout(&dialog);
+
+        dialogLayout->setSizeConstraint(QLayout::SetFixedSize);
+
+        dialogLayout->setContentsMargins(20, 20, 20, 20);
+        dialogLayout->setSpacing(10);
 
         // Air sample start parameter
         QLabel* startLabel = new QLabel("Air Sample Start:");
@@ -1509,132 +1628,162 @@ void ControlPanel::setupPreProcessingOperations() {
 
 void ControlPanel::setupFilteringOperations() {
     createGroupBox("Image Enhancement", {
-                                            {"CLAHE", [this]() {
-                                                 if (checkZoomMode()) return;
-                                                 m_darkLineInfoLabel->hide();
-                                                 resetDetectedLines();
-                                                 resetDetectedLinesPointer();
+                                         {"CLAHE", [this]() {
+                                              if (checkZoomMode()) return;
+                                              m_darkLineInfoLabel->hide();
+                                              resetDetectedLines();
+                                              resetDetectedLinesPointer();
 
-                                                 // Create dialog for CLAHE options
-                                                 QDialog dialog(this);
-                                                 dialog.setWindowTitle("CLAHE Options");
-                                                 dialog.setMinimumWidth(300);
-                                                 QVBoxLayout* layout = new QVBoxLayout(&dialog);
+                                              // Get current image dimensions
+                                              const auto& currentImage = m_imageProcessor.getFinalImage();
+                                              if (currentImage.empty()) {
+                                                  QMessageBox::warning(this, "Error", "No image data available for CLAHE processing");
+                                                  return;
+                                              }
 
-                                                 // Processing mode selection
-                                                 QGroupBox* modeBox = new QGroupBox("Processing Mode");
-                                                 QVBoxLayout* modeLayout = new QVBoxLayout(modeBox);
-                                                 QRadioButton* gpuRadio = new QRadioButton("GPU Processing");
-                                                 QRadioButton* cpuRadio = new QRadioButton("CPU Processing");
-                                                 gpuRadio->setChecked(true);
+                                              int height = currentImage.size();
+                                              int width = currentImage[0].size();
 
-                                                 modeLayout->addWidget(gpuRadio);
-                                                 modeLayout->addWidget(cpuRadio);
-                                                 layout->addWidget(modeBox);
+                                              // Create dialog for CLAHE options (same as before)
+                                              QDialog dialog(this);
+                                              dialog.setWindowTitle("CLAHE Options");
+                                              dialog.setMinimumWidth(300);
+                                              QVBoxLayout* layout = new QVBoxLayout(&dialog);
 
-                                                 // Threshold option
-                                                 QCheckBox* useThresholdCheck = new QCheckBox("Apply Threshold");
-                                                 layout->addWidget(useThresholdCheck);
+                                              // Processing mode selection
+                                              QGroupBox* modeBox = new QGroupBox("Processing Mode");
+                                              QVBoxLayout* modeLayout = new QVBoxLayout(modeBox);
+                                              QRadioButton* gpuRadio = new QRadioButton("GPU Processing");
+                                              QRadioButton* cpuRadio = new QRadioButton("CPU Processing");
+                                              gpuRadio->setChecked(true);
 
-                                                 // Threshold value input (initially disabled)
-                                                 QLabel* thresholdLabel = new QLabel("Threshold Value:");
-                                                 QSpinBox* thresholdSpinBox = new QSpinBox();
-                                                 thresholdSpinBox->setRange(0, 65535);
-                                                 thresholdSpinBox->setValue(5000);
-                                                 thresholdSpinBox->setEnabled(false);
-                                                 layout->addWidget(thresholdLabel);
-                                                 layout->addWidget(thresholdSpinBox);
+                                              modeLayout->addWidget(gpuRadio);
+                                              modeLayout->addWidget(cpuRadio);
+                                              layout->addWidget(modeBox);
 
-                                                 // Connect checkbox to enable/disable threshold input
-                                                 connect(useThresholdCheck, &QCheckBox::toggled, thresholdSpinBox, &QSpinBox::setEnabled);
+                                              // Threshold option
+                                              QCheckBox* useThresholdCheck = new QCheckBox("Apply Threshold");
+                                              layout->addWidget(useThresholdCheck);
 
-                                                 // CLAHE parameters
-                                                 QLabel* clipLabel = new QLabel("Clip Limit:");
-                                                 QDoubleSpinBox* clipSpinBox = new QDoubleSpinBox();
-                                                 clipSpinBox->setRange(0.1, 1000.0);
-                                                 clipSpinBox->setValue(2.0);
-                                                 clipSpinBox->setSingleStep(0.1);
-                                                 layout->addWidget(clipLabel);
-                                                 layout->addWidget(clipSpinBox);
+                                              // Threshold value input
+                                              QLabel* thresholdLabel = new QLabel("Threshold Value:");
+                                              QSpinBox* thresholdSpinBox = new QSpinBox();
+                                              thresholdSpinBox->setRange(0, 65535);
+                                              thresholdSpinBox->setValue(5000);
+                                              thresholdSpinBox->setEnabled(false);
+                                              layout->addWidget(thresholdLabel);
+                                              layout->addWidget(thresholdSpinBox);
 
-                                                 QLabel* tileLabel = new QLabel("Tile Size:");
-                                                 QSpinBox* tileSpinBox = new QSpinBox();
-                                                 tileSpinBox->setRange(2, 1000);
-                                                 tileSpinBox->setValue(8);
-                                                 layout->addWidget(tileLabel);
-                                                 layout->addWidget(tileSpinBox);
+                                              connect(useThresholdCheck, &QCheckBox::toggled, thresholdSpinBox, &QSpinBox::setEnabled);
 
-                                                 // Add buttons
-                                                 QDialogButtonBox* buttonBox = new QDialogButtonBox(
-                                                     QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-                                                 layout->addWidget(buttonBox);
+                                              // CLAHE parameters
+                                              QLabel* clipLabel = new QLabel("Clip Limit:");
+                                              QDoubleSpinBox* clipSpinBox = new QDoubleSpinBox();
+                                              clipSpinBox->setRange(0.1, 1000.0);
+                                              clipSpinBox->setValue(2.0);
+                                              clipSpinBox->setSingleStep(0.1);
+                                              layout->addWidget(clipLabel);
+                                              layout->addWidget(clipSpinBox);
 
-                                                 connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-                                                 connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+                                              QLabel* tileLabel = new QLabel("Tile Size:");
+                                              QSpinBox* tileSpinBox = new QSpinBox();
+                                              tileSpinBox->setRange(2, 1000);
+                                              tileSpinBox->setValue(8);
+                                              layout->addWidget(tileLabel);
+                                              layout->addWidget(tileSpinBox);
 
-                                                 if (dialog.exec() == QDialog::Accepted) {
-                                                     bool useGPU = gpuRadio->isChecked();
-                                                     bool useThreshold = useThresholdCheck->isChecked();
-                                                     int threshold = thresholdSpinBox->value();
-                                                     float clipLimit = clipSpinBox->value();
-                                                     int tileSize = tileSpinBox->value();
+                                              QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                                              layout->addWidget(buttonBox);
 
-                                                     try {
-                                                         if (useThreshold) {
-                                                             if (useGPU) {
-                                                                 m_imageProcessor.applyThresholdCLAHE_GPU(threshold, clipLimit, cv::Size(tileSize, tileSize));
-                                                                 m_lastGpuTime = m_imageProcessor.getLastPerformanceMetrics().processingTime;
-                                                                 m_hasGpuClaheTime = true;
-                                                                 m_gpuTimingLabel->setText(QString("CLAHE Processing Time (GPU): %1 ms").arg(m_lastGpuTime, 0, 'f', 2));
-                                                                 m_gpuTimingLabel->setVisible(true);
-                                                             } else {
-                                                                 m_imageProcessor.applyThresholdCLAHE_CPU(threshold, clipLimit, cv::Size(tileSize, tileSize));
-                                                                 m_lastCpuTime = m_imageProcessor.getLastPerformanceMetrics().processingTime;
-                                                                 m_hasCpuClaheTime = true;
-                                                                 m_cpuTimingLabel->setText(QString("CLAHE Processing Time (CPU): %1 ms").arg(m_lastCpuTime, 0, 'f', 2));
-                                                                 m_cpuTimingLabel->setVisible(true);
-                                                             }
-                                                         } else {
-                                                             cv::Mat matImage = m_imageProcessor.vectorToMat(m_imageProcessor.getFinalImage());
-                                                             cv::Mat resultImage;
+                                              connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                                              connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
-                                                             if (useGPU) {
-                                                                 resultImage = m_imageProcessor.applyCLAHE(matImage, clipLimit, cv::Size(tileSize, tileSize));
-                                                                 m_lastGpuTime = m_imageProcessor.getLastPerformanceMetrics().processingTime;
-                                                                 m_hasGpuClaheTime = true;
-                                                                 m_gpuTimingLabel->setText(QString("CLAHE Processing Time (GPU): %1 ms").arg(m_lastGpuTime, 0, 'f', 2));
-                                                                 m_gpuTimingLabel->setVisible(true);
-                                                             } else {
-                                                                 resultImage = m_imageProcessor.applyCLAHE_CPU(matImage, clipLimit, cv::Size(tileSize, tileSize));
-                                                                 m_lastCpuTime = m_imageProcessor.getLastPerformanceMetrics().processingTime;
-                                                                 m_hasCpuClaheTime = true;
-                                                                 m_cpuTimingLabel->setText(QString("CLAHE Processing Time (CPU): %1 ms").arg(m_lastCpuTime, 0, 'f', 2));
-                                                                 m_cpuTimingLabel->setVisible(true);
-                                                             }
+                                              if (dialog.exec() == QDialog::Accepted) {
+                                                  try {
+                                                      // Allocate input and output buffers
+                                                      double** inputBuffer = CLAHEProcessor::allocateImageBuffer(height, width);
+                                                      double** outputBuffer = CLAHEProcessor::allocateImageBuffer(height, width);
 
-                                                             m_imageProcessor.updateAndSaveFinalImage(m_imageProcessor.matToVector(resultImage));
-                                                         }
+                                                      // Convert input image to normalized double format
+                                                      for (int y = 0; y < height; ++y) {
+                                                          for (int x = 0; x < width; ++x) {
+                                                              inputBuffer[y][x] = currentImage[y][x] / 65535.0;
+                                                          }
+                                                      }
 
-                                                         m_imageLabel->clearSelection();
-                                                         updateImageDisplay();
+                                                      // Get CLAHE parameters
+                                                      bool useThreshold = useThresholdCheck->isChecked();
+                                                      uint16_t threshold = thresholdSpinBox->value();
+                                                      double clipLimit = clipSpinBox->value();
+                                                      cv::Size tileSize(tileSpinBox->value(), tileSpinBox->value());
 
-                                                         QString actionStr = QString("CLAHE (%1)").arg(useGPU ? "GPU" : "CPU");
-                                                         QString paramsStr = QString("Clip: %1, Tile: %2%3")
-                                                                                 .arg(clipLimit, 0, 'f', 2)
-                                                                                 .arg(tileSize)
-                                                                                 .arg(useThreshold ? QString(", Threshold: %1").arg(threshold) : "");
+                                                      CLAHEProcessor claheProcessor;
+                                                      if (useThreshold) {
+                                                          // Apply threshold CLAHE directly to final buffer
+                                                          claheProcessor.applyThresholdCLAHE(inputBuffer, height, width, threshold,
+                                                                                             clipLimit, tileSize, false);
 
-                                                         updateLastAction(actionStr, paramsStr);
-                                                     }
-                                                     catch (const cv::Exception& e) {
-                                                         QMessageBox::critical(this, "Error",
-                                                                               QString("%1 CLAHE processing failed: %2")
-                                                                                   .arg(useGPU ? "GPU" : "CPU")
-                                                                                   .arg(e.what()));
-                                                     }
-                                                 }
-                                             }},
+                                                          // Copy results
+                                                          for (int y = 0; y < height; ++y) {
+                                                              for (int x = 0; x < width; ++x) {
+                                                                  outputBuffer[y][x] = inputBuffer[y][x];
+                                                              }
+                                                          }
+                                                      } else {
+                                                          // Apply regular CLAHE
+                                                          if (gpuRadio->isChecked()) {
+                                                              claheProcessor.applyCLAHE(outputBuffer, inputBuffer, height, width,
+                                                                                        clipLimit, tileSize);
+                                                              m_lastGpuTime = claheProcessor.getLastPerformanceMetrics().processingTime;
+                                                              m_hasGpuClaheTime = true;
+                                                              m_gpuTimingLabel->setText(QString("CLAHE Processing Time (GPU): %1 ms").arg(m_lastGpuTime, 0, 'f', 2));
+                                                              m_gpuTimingLabel->setVisible(true);
+                                                          } else {
+                                                              claheProcessor.applyCLAHE_CPU(outputBuffer, inputBuffer, height, width,
+                                                                                            clipLimit, tileSize);
+                                                              m_lastCpuTime = claheProcessor.getLastPerformanceMetrics().processingTime;
+                                                              m_hasCpuClaheTime = true;
+                                                              m_cpuTimingLabel->setText(QString("CLAHE Processing Time (CPU): %1 ms").arg(m_lastCpuTime, 0, 'f', 2));
+                                                              m_cpuTimingLabel->setVisible(true);
+                                                          }
+                                                      }
 
+                                                      // Convert result back to uint16_t vector format
+                                                      std::vector<std::vector<uint16_t>> resultImage(height, std::vector<uint16_t>(width));
+                                                      for (int y = 0; y < height; ++y) {
+                                                          for (int x = 0; x < width; ++x) {
+                                                              resultImage[y][x] = static_cast<uint16_t>(std::min(65535.0, std::max(0.0, outputBuffer[y][x] * 65535.0)));
+                                                          }
+                                                      }
+
+                                                      // Cleanup
+                                                      CLAHEProcessor::deallocateImageBuffer(inputBuffer, height);
+                                                      CLAHEProcessor::deallocateImageBuffer(outputBuffer, height);
+
+                                                      // Update the image
+                                                      m_imageProcessor.updateAndSaveFinalImage(resultImage);
+                                                      m_imageLabel->clearSelection();
+                                                      updateImageDisplay();
+
+                                                      // Update status
+                                                      QString methodStr = gpuRadio->isChecked() ? "GPU" : "CPU";
+                                                      QString typeStr = useThreshold ? "Threshold" : "Regular";
+                                                      QString paramsStr = QString("Method: %1, Type: %2, Clip: %3, Tile: %4%5")
+                                                                              .arg(methodStr)
+                                                                              .arg(typeStr)
+                                                                              .arg(clipLimit, 0, 'f', 2)
+                                                                              .arg(tileSpinBox->value())
+                                                                              .arg(useThreshold ? QString(", Threshold: %1").arg(threshold) : "");
+                                                      updateLastAction(QString("CLAHE"), paramsStr);
+
+                                                  } catch (const cv::Exception& e) {
+                                                      QMessageBox::critical(this, "Error",
+                                                                            QString("%1 CLAHE processing failed: %2")
+                                                                                .arg(gpuRadio->isChecked() ? "GPU" : "CPU")
+                                                                                .arg(e.what()));
+                                                  }
+                                              }
+                                          }},
                                             {"Median Filter", [this]() {
                                                  if (checkZoomMode()) return;
                                                  m_darkLineInfoLabel->hide();
@@ -1823,7 +1972,7 @@ void ControlPanel::createGroupBox(const QString& title,
 
             // Store button in the vector and disable if it's not Browse
             m_allButtons.push_back(button);
-            if (button->text() != "Browse") {
+            if (button->text() != "Browse" && button->text() != "Load Pointer") {
                 button->setEnabled(false);
             }
 
@@ -2433,16 +2582,27 @@ void ControlPanel::convertRowToUint16(const double* sourceRow, std::vector<uint1
     }
 }
 
-void ControlPanel::updateImageDisplay() {
-    const auto& finalImage = m_imageProcessor.getFinalImage();
+void ControlPanel::updateImageDisplay(double** doubleImage, int height, int width) {
+    // 创建临时的 vector<vector<uint16_t>> 并调用主显示函数
+    std::vector<std::vector<uint16_t>> tempImage(height, std::vector<uint16_t>(width));
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            tempImage[y][x] = static_cast<uint16_t>(std::clamp(doubleImage[y][x] * 65535.0, 0.0, 65535.0));
+        }
+    }
+    updateImageDisplay(&tempImage);
+}
+
+void ControlPanel::updateImageDisplay(const std::vector<std::vector<uint16_t>>* vectorImage) {
+    const auto& finalImage = vectorImage ? *vectorImage : m_imageProcessor.getFinalImage();
     if (!finalImage.empty()) {
-        // Update image size label
+        // 1. Update image size label
         int height = static_cast<int>(finalImage.size());
         int width = static_cast<int>(finalImage[0].size());
         m_imageSizeLabel->setText(QString("Image Size: %1 x %2").arg(width).arg(height));
 
         try {
-            // Create the base QImage
+            // 2. Create QImage
             QImage image(width, height, QImage::Format_Grayscale16);
             for (int y = 0; y < height; ++y) {
                 for (int x = 0; x < width; ++x) {
@@ -2451,18 +2611,18 @@ void ControlPanel::updateImageDisplay() {
                 }
             }
 
-            // Convert to pixmap and handle zoom
+            // 3. Convert to pixmap and handle zoom
             QPixmap pixmap = QPixmap::fromImage(image);
             const auto& zoomManager = m_imageProcessor.getZoomManager();
             float zoomLevel = zoomManager.getZoomLevel();
 
-            // Apply zoom if active
+            // 4. Apply zoom if active
             if (zoomManager.isZoomModeActive() && zoomLevel != 1.0f) {
                 QSize zoomedSize = zoomManager.getZoomedSize(pixmap.size());
                 pixmap = pixmap.scaled(zoomedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
             }
 
-            // Handle visualization of detected lines
+            // 5. Handle visualization of detected lines
             bool hasDetectedLines = !m_detectedLines.empty();
             bool hasDetectedLinesPointer = m_detectedLinesPointer && m_detectedLinesPointer->rows > 0;
 
@@ -2479,8 +2639,6 @@ void ControlPanel::updateImageDisplay() {
                 float scaledSize = std::min(11.0f * zoomLevel, 24.0f);
                 labelFont.setPixelSize(static_cast<int>(std::max(11.0f, scaledSize)));
                 labelFont.setFamily("Arial");
-                labelFont.setWeight(QFont::Medium);
-                labelFont.setHintingPreference(QFont::PreferFullHinting);
                 painter.setFont(labelFont);
 
                 int lineCount = 0;
@@ -2582,7 +2740,7 @@ void ControlPanel::updateImageDisplay() {
                 m_imageLabel->setFixedSize(pixmap.size());
             }
 
-            // Update histogram if visible
+            // 6. Update histogram if visible
             if (m_histogram && m_histogram->isVisible()) {
                 m_histogram->updateHistogram(finalImage);
             }

@@ -62,7 +62,8 @@ public:
     ImageProcessor(QLabel* imageLabel);
 
     // Basic Operations
-    void loadTxtImage(const std::string& txtFilePath);
+    void loadImage(const std::string& filePath);
+    static bool isImageFile(const std::string& filePath);
     void saveImage(const QString& filePath);
     void cropRegion(const QRect& region);
     void processImage();
@@ -116,8 +117,8 @@ public:
     std::vector<std::vector<uint16_t>> matToVector(const cv::Mat& mat);
 
     // CLAHE Functions
-    cv::Mat applyCLAHE(const cv::Mat& inputImage, double clipLimit, const cv::Size& tileSize);
-    cv::Mat applyCLAHE_CPU(const cv::Mat& inputImage, double clipLimit, const cv::Size& tileSize);
+    void applyCLAHE(const cv::Mat& inputImage, double clipLimit, const cv::Size& tileSize);
+    void applyCLAHE_CPU(const cv::Mat& inputImage, double clipLimit, const cv::Size& tileSize);
     void applyThresholdCLAHE_GPU(uint16_t threshold, double clipLimit, const cv::Size& tileSize);
     void applyThresholdCLAHE_CPU(uint16_t threshold, double clipLimit, const cv::Size& tileSize);
     CLAHEProcessor::PerformanceMetrics getLastPerformanceMetrics() const;

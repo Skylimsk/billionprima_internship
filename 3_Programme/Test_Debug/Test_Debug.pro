@@ -7,7 +7,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 INCLUDEPATH += D:/opencv_build/install/include
 
-LIBS += -LD:/opencv_build/install/x64/vc17/lib \
+LIBS += -LD:/opencv_build/install/x64/vc17/lib\
     -lopencv_core4100d \
     -lopencv_imgproc4100d \
     -lopencv_highgui4100d \
