@@ -36,28 +36,51 @@ signals:
     void fileLoaded(bool loaded);
 
 public:
+
+    std::mutex m_detectedLinesMutex;
+
+    struct SafeDarkLine {
+        bool isValid = false;
+        double x = 0;
+        double y = 0;
+        double width = 0;
+        bool isVertical = false;
+        bool inObject = false;
+        double startX = 0;
+        double startY = 0;
+        double endX = 0;
+        double endY = 0;
+    };
+
     ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabel, QWidget* parent = nullptr);
     ~ControlPanel();
     void updatePixelInfo(const QPoint& pos);
     void updateLastAction(const QString& action, const QString& parameters = QString());
 
-    // Add accessors needed by PointerOperations
     ImageProcessor& getImageProcessor() { return m_imageProcessor; }
     DarkLineArray* getDetectedLinesPointer() const { return m_detectedLinesPointer; }
-    void setDetectedLinesPointer(DarkLineArray* pointer) { m_detectedLinesPointer = pointer; }
     void resetDetectedLinesPointer();
     void updateDarkLineInfoDisplayPointer();
-
-    // Make these methods public since they're used by PointerOperations
-    ImageData convertToImageData(const std::vector<std::vector<uint16_t>>& image);
-    std::vector<std::vector<uint16_t>> convertFromImageData(const ImageData& imageData);
-
     QLabel* getDarkLineInfoLabel() { return m_darkLineInfoLabel; }
 
-    void updateImageDisplay(const std::vector<std::vector<uint16_t>>* vectorImage = nullptr);
-    void updateImageDisplay(double** doubleImage, int height, int width);
+    // Image Display Methods
+    void updateImageDisplay(double** image = nullptr, int height = 0, int width = 0);
 
+    DarkLineArray* getDetectedLinesPointer() {
+        std::lock_guard<std::mutex> lock(m_detectedLinesMutex);
+        return m_detectedLinesPointer;
+    }
 
+    void setDetectedLinesPointer(DarkLineArray* pointer) {
+        std::lock_guard<std::mutex> lock(m_detectedLinesMutex);
+        if (m_detectedLinesPointer) {
+            DarkLinePointerProcessor::destroyDarkLineArray(m_detectedLinesPointer);
+        }
+        m_detectedLinesPointer = pointer;
+    }
+
+    ImageData convertToImageData(double** data, int rows, int cols);
+    double** convertFromImageData(const ImageData& imageData);
 
 protected:
     struct LineVisualProperties {
@@ -76,92 +99,50 @@ private:
         X_AXIS_ONLY
     };
 
-    // Setup functions
+    // Setup Methods
     void setupPixelInfoLabel();
     void setupFileOperations();
     void setupPreProcessingOperations();
     void setupBasicOperations();
+    void setupGraph();
     void setupFilteringOperations();
     void setupAdvancedOperations();
     void setupCombinedAdjustments();
     void setupBlackLineDetection();
     void setupZoomControls();
-    void handleRevert();
-    void enableButtons(bool enable);
     void setupResetOperations();
 
-    // Drawing helper functions
-    LineVisualProperties calculateLineProperties(const ImageProcessor::DarkLine& line,
-                                                 size_t index,
-                                                 float zoomLevel,
-                                                 const QSize& imageSize);
-    void drawLineWithLabel(QPainter& painter,
-                           const LineVisualProperties& props,
-                           float zoomLevel);
-    void validateCoordinates(const ImageProcessor::DarkLine& line,
-                             int width,
-                             int height);
-    void drawLineLabel(QPainter& painter,
-                       const QString& text,
-                       const QPointF& pos,
-                       const ZoomManager& zoomManager);
+    // Event Handlers
+    QString handleRevert();
+    void enableButtons(bool enable);
 
-    // Zoom-related methods
+    // Drawing Methods
+    void drawLineLabelWithCountPointer(QPainter& painter, const DarkLine& line, int count, float zoomLevel, const QSize& imageSize);
+    void drawLabelCommon(QPainter& painter, const QString& labelText, int labelX, int labelY, int labelMargin, float zoomLevel, const QSize& imageSize);
+
+    // Zoom Methods
     void toggleZoomMode(bool active);
     bool checkZoomMode();
     QSize calculateZoomedSize(const QSize& originalSize, float zoomLevel) const;
 
-    // Memory management helpers
-    template<typename T>
-    std::unique_ptr<T[]> createUniqueArray(size_t size);
-
-    // UI helper functions
-    std::pair<double, bool> showInputDialog(const QString& title,
-                                            const QString& label,
-                                            double defaultValue,
-                                            double min,
-                                            double max);
-    void createGroupBox(const QString& title,
-                        const std::vector<std::pair<QString,
-                                                    std::variant<std::function<void()>,
-                                                                 QPushButton*>>>& buttons);
+    // Helper Methods
+    void validateImageData(const ImageData& imageData);
+    void processCalibration(int linesToProcessY, int linesToProcessX, CalibrationMode mode);
+    std::pair<double, bool> showInputDialog(
+        const QString& title,
+        const QString& label,
+        double defaultValue,
+        double min,
+        double max);
+    void createGroupBox(const QString& title, const std::vector<std::pair<QString, std::variant<std::function<void()>, QPushButton*>>>& buttons);
     void updateDarkLineInfoDisplay();
     void updateCalibrationButtonText();
-    void updateLineInfo(const QString& info);
-    void resetDetectedLines();
-
-    // Helper functions
-    void validateImageData(const ImageData& imageData);
-    std::vector<std::vector<uint16_t>> createVectorFromImageData(const ImageData& imageData);
-    void convertRowToUint16(const double* sourceRow, std::vector<uint16_t>& destRow, int cols);
-    void drawLineLabelWithCount(QPainter& painter,
-                                const ImageProcessor::DarkLine& line,
-                                int count,
-                                float zoomLevel,
-                                const QSize& imageSize);
-    void drawLineLabelWithCountPointer(QPainter& painter,
-                                       const DarkLine& line,
-                                       int count,
-                                       float zoomLevel,
-                                       const QSize& imageSize);
-    void drawLabelCommon(QPainter& painter,
-                         const QString& labelText,
-                         int labelX,
-                         int labelY,
-                         int labelMargin,
-                         float zoomLevel,
-                         const QSize& imageSize);
-    void countLinesInArray(const DarkLineArray* array, int& inObjectCount, int& isolatedCount);
-    bool isVectorMethodActive() const { return !m_detectedLines.empty(); }
-    bool isPointerMethodActive() const { return m_detectedLinesPointer != nullptr && m_detectedLinesPointer->rows > 0; }
+    void resetAllParameters();
     void clearAllDetectionResults();
+    void resetDetectedLines();
     void updateLastActionLabelSize();
 
-    void processCalibration(int linesToProcessY, int linesToProcessX, CalibrationMode mode);
-
-    void resetAllParameters();
-
-    // Member variables
+    // Member Variables
     QVBoxLayout* m_mainLayout;
     QVBoxLayout* m_scrollLayout;
     QScrollArea* m_scrollArea;
@@ -184,7 +165,7 @@ private:
     std::vector<QPushButton*> m_allButtons;
     QGroupBox* m_zoomControlsGroup;
 
-    // Buttons
+    // Button Members
     QPushButton* m_fixZoomButton;
     QPushButton* m_zoomButton;
     QPushButton* m_zoomInButton;
@@ -201,16 +182,16 @@ private:
     static constexpr int MIN_LINE_WIDTH = 1;
     static constexpr float DEFAULT_ZOOM_STEP = 0.2f;
 
+    // Display Windows
     std::unique_ptr<DisplayWindow> m_lowEnergyWindow;
     std::unique_ptr<DisplayWindow> m_highEnergyWindow;
     std::unique_ptr<DisplayWindow> m_finalWindow;
-
     bool m_showDisplayWindows = false;
 
-    // Dark line detection results storage
-    std::vector<ImageProcessor::DarkLine> m_detectedLines;     // For original implementation
-    DarkLineArray* m_detectedLinesPointer;                    // For 2D pointer implementation
+    // Dark Line Detection Results
+    DarkLineArray* m_detectedLinesPointer;
 
+    // Operation Buttons
     QPushButton* m_pointerDetectBtn = nullptr;
     QPushButton* m_pointerRemoveBtn = nullptr;
     QPushButton* m_pointerResetBtn = nullptr;
@@ -218,14 +199,26 @@ private:
     QPushButton* m_vectorRemoveBtn = nullptr;
     QPushButton* m_vectorResetBtn = nullptr;
 
-    std::pair<int, bool> showInputDialog(const QString& title,
-                                         const QString& label,
-                                         int defaultValue);
-
+    // Performance Metrics
     double m_fileLoadTime = 0.0;
     double m_histogramTime = 0.0;
+
+    QPixmap m_currentPixmap;
+
+    bool initializeImageData(ImageData& imageData, int& height, int& width);
+    static void cleanupImageData(ImageData& imageData);
+    bool processDetectedLines(DarkLineArray* outLines, bool success);
+    void updateDarkLineDisplay(const QString& detectionInfo);
+
+    void handleDetectionError(const std::exception& e, DarkLineArray* outLines = nullptr);
+
+    static void cleanupImageArray(double** array, int rows);
+
+    struct ImageDataGuard {
+        ImageData& data;
+        ImageDataGuard(ImageData& d) : data(d) {}
+        ~ImageDataGuard() { cleanupImageData(data); }
+    };
 };
-
-
 
 #endif // CONTROL_PANEL_H

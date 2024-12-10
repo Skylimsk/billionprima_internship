@@ -271,50 +271,63 @@ DarkLineArray* DarkLinePointerProcessor::detectHorizontalLines(const ImageData& 
         std::mutex detectedLinesMutex;
         std::cout << "Starting horizontal detection with " << numThreads << " threads" << std::endl;
 
-        bool* isBlackRow = new bool[image.rows]();
-        std::thread** horizontalThreads = new std::thread*[numThreads];
-        int rowsPerThread = image.rows / numThreads;
+        // Use vector instead of raw array for thread safety
+        std::vector<std::atomic<bool>> isBlackRow(image.rows);
+        for (auto& val : isBlackRow) {
+            val.store(false, std::memory_order_relaxed);
+        }
 
-        // Detect horizontal lines using multiple threads
+        // Split work among threads
+        std::vector<std::unique_ptr<std::thread>> horizontalThreads;
+        int rowsPerThread = (image.rows + numThreads - 1) / numThreads;
+
+        // Create and start threads
         for (int t = 0; t < numThreads; ++t) {
             int startY = t * rowsPerThread;
-            int endY = (t == numThreads - 1) ? image.rows : startY + rowsPerThread;
+            int endY = std::min(startY + rowsPerThread, image.rows);
 
-            horizontalThreads[t] = new std::thread([=, &isBlackRow, &image]() {
-                for (int y = startY; y < endY; ++y) {
-                    int blackPixelCount = 0;
-                    for (int x = 0; x < image.cols; ++x) {
-                        if (image.data[y][x] <= BLACK_THRESHOLD) {
-                            blackPixelCount++;
+            horizontalThreads.push_back(std::make_unique<std::thread>([&, startY, endY, t]() {
+                try {
+                    for (int y = startY; y < endY; ++y) {
+                        int blackPixelCount = 0;
+                        for (int x = 0; x < image.cols; ++x) {
+                            if (image.data[y][x] <= BLACK_THRESHOLD) {
+                                blackPixelCount++;
+                            }
+                        }
+                        double blackRatio = static_cast<double>(blackPixelCount) / image.cols;
+                        if (blackRatio > (1.0 - NOISE_TOLERANCE)) {
+                            isBlackRow[y].store(true, std::memory_order_relaxed);
                         }
                     }
-                    double blackRatio = static_cast<double>(blackPixelCount) / image.cols;
-                    if (blackRatio > (1.0 - NOISE_TOLERANCE)) {
-                        isBlackRow[y] = true;
-                    }
+                } catch (const std::exception& e) {
+                    std::cerr << "Thread " << t << " error: " << e.what() << std::endl;
                 }
-            });
+            }));
         }
 
-        // Wait for horizontal detection threads
-        for (int t = 0; t < numThreads; ++t) {
-            horizontalThreads[t]->join();
-            delete horizontalThreads[t];
+        // Wait for all threads to complete
+        for (auto& thread : horizontalThreads) {
+            if (thread && thread->joinable()) {
+                thread->join();
+            }
         }
-        delete[] horizontalThreads;
 
-        // Process horizontal lines
-        std::pair<int, int>* horizontalLines = new std::pair<int, int>[image.rows];
+        // Count the number of lines first
         int horizontalLineCount = 0;
         int startY = -1;
 
+        std::vector<std::pair<int, int>> horizontalLines;
+        horizontalLines.reserve(image.rows); // Preallocate for efficiency
+
         for (int y = 0; y < image.rows; ++y) {
-            if (isBlackRow[y]) {
+            if (isBlackRow[y].load(std::memory_order_relaxed)) {
                 if (startY == -1) startY = y;
             } else if (startY != -1) {
                 int width = y - startY;
                 if (width >= MIN_LINE_WIDTH) {
-                    horizontalLines[horizontalLineCount++] = std::make_pair(startY, width);
+                    horizontalLines.emplace_back(startY, width);
+                    horizontalLineCount++;
                 }
                 startY = -1;
             }
@@ -324,11 +337,13 @@ DarkLineArray* DarkLinePointerProcessor::detectHorizontalLines(const ImageData& 
         if (startY != -1) {
             int width = image.rows - startY;
             if (width >= MIN_LINE_WIDTH) {
-                horizontalLines[horizontalLineCount++] = std::make_pair(startY, width);
+                horizontalLines.emplace_back(startY, width);
+                horizontalLineCount++;
             }
         }
 
         // Create result array
+        std::cout << "Creating result array with " << horizontalLineCount << " horizontal lines" << std::endl;
         DarkLineArray* result = createDarkLineArray(horizontalLineCount, 1);
         if (!result) {
             throw std::runtime_error("Failed to create result array for horizontal lines");
@@ -347,10 +362,7 @@ DarkLineArray* DarkLinePointerProcessor::detectHorizontalLines(const ImageData& 
             line.inObject = isInObject(image, y, width, false, i);
         }
 
-        // Clean up
-        delete[] isBlackRow;
-        delete[] horizontalLines;
-
+        std::cout << "Horizontal line detection completed successfully" << std::endl;
         return result;
 
     } catch (const std::exception& e) {

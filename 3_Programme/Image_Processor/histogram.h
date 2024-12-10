@@ -19,11 +19,15 @@ public:
     explicit Histogram(QWidget* parent = nullptr);
     ~Histogram();
 
-    // 主要的公共接口
-    void updateHistogram(const std::vector<std::vector<uint16_t>>& image);
+    // Main public interface with overloaded updateHistogram
+    void updateHistogram(double** image, int height, int width);
+    void updateHistogram(const std::vector<std::vector<uint16_t>>& image, int height, int width);
     void setCollapsed(bool collapsed);
     bool isCollapsed() const { return m_isCollapsed; }
     QCustomPlot* getHistogramPlot() const { return m_histogramPlot; }
+    void updateClaheHistogram(double** image, int height, int width, double clipLimit);
+    void clearClaheData();
+    void toggleClaheVisibility();
 
 protected:
     bool eventFilter(QObject* obj, QEvent* event) override;
@@ -119,6 +123,19 @@ private:
         static constexpr int PLOT_MIN_WIDTH = 250;
         static constexpr int PLOT_MIN_HEIGHT = 350;
     };
+
+    QVector<double> m_claheHistogram;  // Store CLAHE histogram data
+    bool m_hasClaheData = false;       // Flag to track if CLAHE data exists
+    double m_clipLimit = -1;           // Store CLAHE clip limit
+    double m_maxFreq = 0.0;            // Store maximum frequency for visualization
+    QPushButton* m_claheButton = nullptr;  // CLAHE button reference
+
+    void setupClaheGraph();
+    void updateClaheDisplay();
+
+    void updateHistogramCache(const std::vector<std::atomic<int>>& histogram);
+    void updateHistogramCommon(const std::vector<std::atomic<int>>& histogram);
+
 
 private:
     // 禁用拷贝构造和赋值操作符

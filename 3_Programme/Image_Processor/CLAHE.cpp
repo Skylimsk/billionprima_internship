@@ -260,20 +260,8 @@ void CLAHEProcessor::applyCLAHE_CPU(double** outputImage, double** inputImage,
 void CLAHEProcessor::applyThresholdCLAHE(double** image, int height, int width,
                                          uint16_t threshold, double clipLimit,
                                          const cv::Size& tileSize, bool afterNormalCLAHE) {
-    if (height <= 0 || width <= 0) return;
-
     try {
-        // Debug: Print input range
-        double inputMin = 1.0, inputMax = 0.0;
-        for (int y = 0; y < height; ++y) {
-            for (int x = 0; x < width; ++x) {
-                inputMin = std::min(inputMin, image[y][x]);
-                inputMax = std::max(inputMax, image[y][x]);
-            }
-        }
-        qDebug() << "Input range (normalized):" << inputMin << "-" << inputMax;
-
-        // Convert to Mat format for processing
+        // 1. 转换为Mat格式
         cv::Mat matImage(height, width, CV_16UC1);
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
@@ -281,37 +269,44 @@ void CLAHEProcessor::applyThresholdCLAHE(double** image, int height, int width,
             }
         }
 
-        // Create and apply mask
+        // 2. 创建暗区域掩码
         cv::Mat darkMask;
         cv::threshold(matImage, darkMask, threshold, 255, cv::THRESH_BINARY_INV);
         darkMask.convertTo(darkMask, CV_8UC1);
 
-        int darkPixels = cv::countNonZero(darkMask);
-        qDebug() << "Dark pixels detected:" << darkPixels;
-
-        if (darkPixels > 0) {
-            // Extract dark region
+        if (cv::countNonZero(darkMask) > 0) {
+            // 3. 提取暗区域
             cv::Mat darkRegion;
             matImage.copyTo(darkRegion, darkMask);
 
-            // Convert to 8-bit for CLAHE
+            // 转换到8位进行CLAHE处理
             cv::Mat darkRegion8bit;
             darkRegion.convertTo(darkRegion8bit, CV_8UC1, 255.0/65535.0);
 
-            // Apply CLAHE
-            cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(clipLimit, tileSize);
+            // 修改1：调整CLAHE参数
+            double adjustedClipLimit = clipLimit * 0.8;  // 降低clip limit
+            cv::Size adjustedTileSize(tileSize.width * 2, tileSize.height * 2);  // 增加tile size
+
             cv::Mat processedDark8bit;
+            cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(adjustedClipLimit, adjustedTileSize);
             clahe->apply(darkRegion8bit, processedDark8bit);
 
-            // Convert back to 16-bit
-            cv::Mat processedDark;
-            processedDark8bit.convertTo(processedDark, CV_16UC1, 65535.0/255.0);
+            // 4. 计算CLAHE后的值范围
+            double minVal, maxVal;
+            cv::minMaxLoc(processedDark8bit, &minVal, &maxVal, nullptr, nullptr);
 
-            // Merge results
+            // 修改2：调整值域拉伸
+            cv::Mat processedDark16;
+            double stretchFactor = 0.7;  // 控制拉伸程度的因子
+            double scale = (65535.0 / (maxVal - minVal)) * stretchFactor;
+            double offset = -minVal * scale;
+            processedDark8bit.convertTo(processedDark16, CV_16UC1, scale, offset);
+
+            // 5. 合并结果
             cv::Mat result = matImage.clone();
-            processedDark.copyTo(result, darkMask);
+            processedDark16.copyTo(result, darkMask);
 
-            // Convert back to normalized double range
+            // 6. 转换回normalized double范围
             for (int y = 0; y < height; ++y) {
                 for (int x = 0; x < width; ++x) {
                     image[y][x] = result.at<uint16_t>(y, x) / 65535.0;
@@ -319,18 +314,9 @@ void CLAHEProcessor::applyThresholdCLAHE(double** image, int height, int width,
             }
         }
 
-        // Debug: Print output range
-        double outputMin = 1.0, outputMax = 0.0;
-        for (int y = 0; y < height; ++y) {
-            for (int x = 0; x < width; ++x) {
-                outputMin = std::min(outputMin, image[y][x]);
-                outputMax = std::max(outputMax, image[y][x]);
-            }
-        }
-        qDebug() << "Output range (normalized):" << outputMin << "-" << outputMax;
-
     } catch (const cv::Exception& e) {
         qDebug() << "Error in threshold CLAHE processing:" << e.what();
+        throw;
     }
 }
 

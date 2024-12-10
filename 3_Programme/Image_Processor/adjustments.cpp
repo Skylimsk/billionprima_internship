@@ -3,8 +3,9 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include "pch.h"
 
-void ImageAdjustments::adjustGammaForRegion(std::vector<std::vector<uint16_t>>& img, float gamma,
+void ImageAdjustments::adjustGammaForRegion(double**& img, float gamma,
                                             int startY, int endY, int startX, int endX, int threadId) {
     float invGamma = 1.0f / gamma;
     std::cout << "Thread " << threadId << " processing gamma correction for rows " << startY << " to " << endY << std::endl;
@@ -12,30 +13,28 @@ void ImageAdjustments::adjustGammaForRegion(std::vector<std::vector<uint16_t>>& 
         for (int x = startX; x < endX; ++x) {
             float normalized = img[y][x] / 65535.0f;
             float corrected = std::pow(normalized, invGamma);
-            img[y][x] = static_cast<uint16_t>(corrected * 65535.0f);
+            img[y][x] = clamp(corrected * 65535.0f, 0.0, 65535.0); // Using our clamp function
         }
     }
     std::cout << "Thread " << threadId << " completed gamma correction" << std::endl;
 }
 
 void ImageAdjustments::processContrastChunk(int top, int bottom, int left, int right,
-                                            float contrastFactor, std::vector<std::vector<uint16_t>>& img,
-                                            int threadId) {
+                                            float contrastFactor, double**& img, int threadId) {
     std::cout << "Thread " << threadId << " processing contrast for rows " << top << " to " << bottom << std::endl;
-    const float MAX_PIXEL_VALUE = 65535.0f;
-    const float midGray = MAX_PIXEL_VALUE / 2.0f;
+    const double MAX_PIXEL_VALUE = 65535.0;
+    const double midGray = MAX_PIXEL_VALUE / 2.0;
     for (int y = top; y < bottom; ++y) {
         for (int x = left; x < right; ++x) {
-            float pixel = static_cast<float>(img[y][x]);
-            img[y][x] = static_cast<uint16_t>(std::clamp((pixel - midGray) * contrastFactor + midGray, 0.0f, MAX_PIXEL_VALUE));
+            double pixel = img[y][x];
+            img[y][x] = clamp((pixel - midGray) * contrastFactor + midGray, 0.0, MAX_PIXEL_VALUE); // Using our clamp function
         }
     }
     std::cout << "Thread " << threadId << " completed contrast adjustment" << std::endl;
 }
 
 void ImageAdjustments::processSharpenChunk(int startY, int endY, int width,
-                                           std::vector<std::vector<uint16_t>>& img,
-                                           const std::vector<std::vector<uint16_t>>& tempImg,
+                                           double**& img, double** const& tempImg,
                                            float sharpenStrength, int threadId) {
     std::cout << "Thread " << threadId << " processing advanced sharpen for rows " << startY << " to " << endY << std::endl;
     float kernel[3][3] = {
@@ -44,28 +43,23 @@ void ImageAdjustments::processSharpenChunk(int startY, int endY, int width,
         { 0, -1 * sharpenStrength,  0 }
     };
 
-    for (std::vector<std::vector<uint16_t>>::size_type y = startY; y < static_cast<std::vector<std::vector<uint16_t>>::size_type>(endY); ++y) {
-        for (std::vector<uint16_t>::size_type x = 1; x < static_cast<std::vector<uint16_t>::size_type>(width) - 1; ++x) {
-            if (y > 0 && y < tempImg.size() - 1 && x > 0 && x < tempImg[0].size() - 1) {
-                float newPixelValue = 0;
+    for (int y = startY; y < endY; ++y) {
+        for (int x = 1; x < width - 1; ++x) {
+            if (y > 0 && y < endY - 1 && x > 0 && x < width - 1) {
+                double newPixelValue = 0;
                 for (int ky = -1; ky <= 1; ++ky) {
                     for (int kx = -1; kx <= 1; ++kx) {
                         newPixelValue += kernel[ky + 1][kx + 1] * tempImg[y + ky][x + kx];
                     }
                 }
-                img[y][x] = static_cast<uint16_t>(std::clamp(newPixelValue, 0.0f, 65535.0f));
+                img[y][x] = std::clamp(newPixelValue, 0.0, 65535.0);
             }
         }
     }
     std::cout << "Thread " << threadId << " completed advanced sharpen" << std::endl;
 }
 
-void ImageAdjustments::adjustContrast(std::vector<std::vector<uint16_t>>& img, float contrastFactor) {
-    const float MAX_PIXEL_VALUE = 65535.0f;
-    const float midGray = MAX_PIXEL_VALUE / 2.0f;
-    int height = img.size();
-    int width = img[0].size();
-
+void ImageAdjustments::adjustContrast(double**& img, int height, int width, float contrastFactor) {
     const int numThreads = std::thread::hardware_concurrency();
     std::vector<std::thread> threads;
     int chunkHeight = height / numThreads;
@@ -89,10 +83,7 @@ void ImageAdjustments::adjustContrast(std::vector<std::vector<uint16_t>>& img, f
     std::cout << "All threads completed contrast adjustment" << std::endl;
 }
 
-void ImageAdjustments::adjustGammaOverall(std::vector<std::vector<uint16_t>>& img, float gamma) {
-    int height = img.size();
-    int width = img[0].size();
-
+void ImageAdjustments::adjustGammaOverall(double**& img, int height, int width, float gamma) {
     const int numThreads = std::thread::hardware_concurrency();
     std::vector<std::thread> threads;
     int blockHeight = height / numThreads;
@@ -111,10 +102,17 @@ void ImageAdjustments::adjustGammaOverall(std::vector<std::vector<uint16_t>>& im
     std::cout << "All threads completed gamma adjustment" << std::endl;
 }
 
-void ImageAdjustments::sharpenImage(std::vector<std::vector<uint16_t>>& img, float sharpenStrength) {
-    int height = img.size();
-    int width = img[0].size();
-    std::vector<std::vector<uint16_t>> tempImg = img;
+void ImageAdjustments::sharpenImage(double**& img, int height, int width, float sharpenStrength) {
+    // Create temporary image
+    double** tempImg = nullptr;
+    malloc2D(tempImg, height, width);
+
+    // Copy original image to temp
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            tempImg[y][x] = img[y][x];
+        }
+    }
 
     const int numThreads = std::thread::hardware_concurrency();
     std::vector<std::thread> threads;
@@ -133,35 +131,38 @@ void ImageAdjustments::sharpenImage(std::vector<std::vector<uint16_t>>& img, flo
             thread.join();
         }
     }
+
+    // Clean up temporary image
+    for (int i = 0; i < height; ++i) {
+        free(tempImg[i]);
+    }
+    free(tempImg);
+
     std::cout << "All threads completed image sharpening" << std::endl;
 }
 
-void ImageAdjustments::processRegion(std::vector<std::vector<uint16_t>>& img, const QRect& region,
+void ImageAdjustments::processRegion(double**& img, int height, int width, const QRect& region,
                                      std::function<void(int, int, int)> operation) {
     QRect normalizedRegion = region.normalized();
     int left = std::max(0, normalizedRegion.left());
     int top = std::max(0, normalizedRegion.top());
-    int right = std::min(static_cast<int>(img[0].size()), normalizedRegion.right() + 1);
-    int bottom = std::min(static_cast<int>(img.size()), normalizedRegion.bottom() + 1);
+    int right = std::min(width, normalizedRegion.right() + 1);
+    int bottom = std::min(height, normalizedRegion.bottom() + 1);
 
     const int numThreads = std::thread::hardware_concurrency();
     std::vector<std::thread> threads;
     int heightPerThread = (bottom - top) / numThreads;
-
-    std::cout << "Starting region processing with " << numThreads << " threads" << std::endl;
 
     for (int i = 0; i < numThreads; ++i) {
         int threadStartY = top + (i * heightPerThread);
         int threadEndY = (i == numThreads - 1) ? bottom : threadStartY + heightPerThread;
 
         threads.emplace_back([=, &img]() {
-            std::cout << "Thread " << i << " processing region from row " << threadStartY << " to " << threadEndY << std::endl;
             for (int y = threadStartY; y < threadEndY; ++y) {
                 for (int x = left; x < right; ++x) {
                     operation(x, y, i);
                 }
             }
-            std::cout << "Thread " << i << " completed region processing" << std::endl;
         });
     }
 
@@ -170,37 +171,51 @@ void ImageAdjustments::processRegion(std::vector<std::vector<uint16_t>>& img, co
             thread.join();
         }
     }
-    std::cout << "All threads completed region processing" << std::endl;
 }
 
-void ImageAdjustments::adjustGammaForSelectedRegion(std::vector<std::vector<uint16_t>>& img, float gamma,
+// Region-specific operations
+void ImageAdjustments::adjustGammaForSelectedRegion(double**& img, int height, int width, float gamma,
                                                     const QRect& region) {
     float invGamma = 1.0f / gamma;
-    processRegion(img, region, [&img, invGamma](int x, int y, int threadId) {
+    processRegion(img, height, width, region, [&img, invGamma](int x, int y, int threadId) {
         float normalized = img[y][x] / 65535.0f;
         float corrected = std::pow(normalized, invGamma);
-        img[y][x] = static_cast<uint16_t>(corrected * 65535.0f);
+        img[y][x] = clamp(corrected * 65535.0f, 0.0, 65535.0);
     });
 }
 
-void ImageAdjustments::applySharpenToRegion(std::vector<std::vector<uint16_t>>& img, float sharpenStrength,
+void ImageAdjustments::applySharpenToRegion(double**& img, int height, int width, float sharpenStrength,
                                             const QRect& region) {
-    std::vector<std::vector<uint16_t>> tempImage = img;
-    processRegion(img, region, [&img, &tempImage, sharpenStrength](int x, int y, int threadId) {
-        auto width = static_cast<int>(img[0].size());
-        auto height = static_cast<int>(img.size());
+    // Create temporary image
+    double** tempImage = nullptr;
+    malloc2D(tempImage, height, width);
+
+    // Copy original image to temp
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            tempImage[y][x] = img[y][x];
+        }
+    }
+
+    processRegion(img, height, width, region, [&img, &tempImage, sharpenStrength, width, height](int x, int y, int threadId) {
         if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
-            int sum = 5 * tempImage[y][x] - tempImage[y-1][x] - tempImage[y+1][x] - tempImage[y][x-1] - tempImage[y][x+1];
-            img[y][x] = static_cast<uint16_t>(std::clamp(static_cast<float>(sum) * sharpenStrength + static_cast<float>(tempImage[y][x]), 0.0f, 65535.0f));
+            double sum = 5 * tempImage[y][x] - tempImage[y-1][x] - tempImage[y+1][x] - tempImage[y][x-1] - tempImage[y][x+1];
+            img[y][x] = std::clamp(sum * sharpenStrength + tempImage[y][x], 0.0, 65535.0);
         }
     });
+
+    // Clean up temporary image
+    for (int i = 0; i < height; ++i) {
+        free(tempImage[i]);
+    }
+    free(tempImage);
 }
 
-void ImageAdjustments::applyContrastToRegion(std::vector<std::vector<uint16_t>>& img, float contrastFactor,
+void ImageAdjustments::applyContrastToRegion(double**& img, int height, int width, float contrastFactor,
                                              const QRect& region) {
-    float midGray = 32767.5f;
-    processRegion(img, region, [&img, contrastFactor, midGray](int x, int y, int threadId) {
-        float pixel = static_cast<float>(img[y][x]);
-        img[y][x] = static_cast<uint16_t>(std::clamp((pixel - midGray) * contrastFactor + midGray, 0.0f, 65535.0f));
+    double midGray = 32767.5;
+    processRegion(img, height, width, region, [&img, contrastFactor, midGray](int x, int y, int threadId) {
+        double pixel = img[y][x];
+        img[y][x] = std::clamp((pixel - midGray) * contrastFactor + midGray, 0.0, 65535.0);
     });
 }

@@ -2,6 +2,7 @@ QT       += core gui printsupport
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
+CONFIG += qt
 
 # Path configurations
 OPENCV_DIR = D:/opencv_build/install
@@ -87,7 +88,8 @@ win32 {
 }
 
 # QCustomPlot configuration
-SOURCES += third_party/qcustomplot/qcustomplot.cpp
+SOURCES += third_party/qcustomplot/qcustomplot.cpp \
+    moc_image_processor.cpp
 HEADERS += third_party/qcustomplot/qcustomplot.h
 
 # Source files
@@ -96,7 +98,6 @@ SOURCES += \
     ThreadLogger.cpp \
     adjustments.cpp \
     control_panel.cpp \
-    dark_line.cpp \
     darkline_pointer.cpp \
     display_window.cpp \
     histogram.cpp \
@@ -114,7 +115,6 @@ HEADERS += \
     ThreadLogger.h \
     adjustments.h \
     control_panel.h \
-    dark_line.h \
     darkline_pointer.h \
     display_window.h \
     histogram.h \

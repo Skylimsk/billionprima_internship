@@ -9,7 +9,6 @@
 #include <QLabel>
 #include <QScrollArea>
 #include <memory>
-#include <vector>
 #include <QString>
 
 class DisplayWindow : public QWidget {
@@ -18,7 +17,8 @@ class DisplayWindow : public QWidget {
 public:
     explicit DisplayWindow(const QString& title, QWidget* parent = nullptr,
                            const QPoint& position = QPoint(0, 0));
-    void updateImage(const std::vector<std::vector<uint16_t>>& image);
+    ~DisplayWindow();
+    void updateImage(double** image, int height, int width);
     void clear();
 
 private slots:
@@ -28,6 +28,7 @@ private slots:
 private:
     void setupUI();
     void updateDisplayedImage();
+    void cleanupImage();
 
     QVBoxLayout* mainLayout;
     QHBoxLayout* controlsLayout;
@@ -37,7 +38,11 @@ private:
     QScrollArea* scrollArea;
     QLabel* imageLabel;
     double currentZoom;
-    std::unique_ptr<std::vector<std::vector<uint16_t>>> originalImage;
+
+    // Image data
+    double** originalImage;
+    int imageHeight;
+    int imageWidth;
 
     void setWindowPosition(const QPoint& position);
 };

@@ -1,14 +1,21 @@
 #include "display_window.h"
 #include <QFileDialog>
 #include <QMessageBox>
+#include <algorithm>
 
 DisplayWindow::DisplayWindow(const QString& title, QWidget* parent, const QPoint& position)
     : QWidget(parent)
     , currentZoom(1.0)
-    , originalImage(nullptr) {
+    , originalImage(nullptr)
+    , imageHeight(0)
+    , imageWidth(0) {
     setWindowTitle(title);
     setupUI();
     move(position);  // Set initial position
+}
+
+DisplayWindow::~DisplayWindow() {
+    cleanupImage();
 }
 
 void DisplayWindow::setupUI() {
@@ -48,7 +55,7 @@ void DisplayWindow::setupUI() {
 }
 
 void DisplayWindow::saveImage() {
-    if (!originalImage) return;
+    if (!originalImage || imageHeight <= 0 || imageWidth <= 0) return;
 
     QString fileName = QFileDialog::getSaveFileName(this,
                                                     tr("Save Image"), "",
@@ -56,11 +63,11 @@ void DisplayWindow::saveImage() {
 
     if (fileName.isEmpty()) return;
 
-    QImage qImage(originalImage->at(0).size(), originalImage->size(), QImage::Format_Grayscale16);
-    for (size_t y = 0; y < originalImage->size(); ++y) {
+    QImage qImage(imageWidth, imageHeight, QImage::Format_Grayscale16);
+    for (int y = 0; y < imageHeight; ++y) {
         uint16_t* scanLine = reinterpret_cast<uint16_t*>(qImage.scanLine(y));
-        for (size_t x = 0; x < originalImage->at(0).size(); ++x) {
-            scanLine[x] = originalImage->at(y)[x];
+        for (int x = 0; x < imageWidth; ++x) {
+            scanLine[x] = static_cast<uint16_t>(std::clamp(originalImage[y][x], 0.0, 65535.0));
         }
     }
 
@@ -79,23 +86,35 @@ void DisplayWindow::zoomChanged(int value) {
     updateDisplayedImage();
 }
 
-void DisplayWindow::updateImage(const std::vector<std::vector<uint16_t>>& image) {
-    if (!originalImage) {
-        originalImage = std::make_unique<std::vector<std::vector<uint16_t>>>(image);
-    } else {
-        *originalImage = image;
+void DisplayWindow::updateImage(double** image, int height, int width) {
+    if (!image || height <= 0 || width <= 0) return;
+
+    // Clean up old image if it exists
+    cleanupImage();
+
+    // Allocate new image memory
+    originalImage = new double*[height];
+    for (int i = 0; i < height; i++) {
+        originalImage[i] = new double[width];
+        // Copy data
+        for (int j = 0; j < width; j++) {
+            originalImage[i][j] = image[i][j];
+        }
     }
+
+    imageHeight = height;
+    imageWidth = width;
     updateDisplayedImage();
 }
 
 void DisplayWindow::updateDisplayedImage() {
-    if (!originalImage) return;
+    if (!originalImage || imageHeight <= 0 || imageWidth <= 0) return;
 
-    QImage qImage(originalImage->at(0).size(), originalImage->size(), QImage::Format_Grayscale16);
-    for (size_t y = 0; y < originalImage->size(); ++y) {
+    QImage qImage(imageWidth, imageHeight, QImage::Format_Grayscale16);
+    for (int y = 0; y < imageHeight; ++y) {
         uint16_t* scanLine = reinterpret_cast<uint16_t*>(qImage.scanLine(y));
-        for (size_t x = 0; x < originalImage->at(0).size(); ++x) {
-            scanLine[x] = originalImage->at(y)[x];
+        for (int x = 0; x < imageWidth; ++x) {
+            scanLine[x] = static_cast<uint16_t>(std::clamp(originalImage[y][x], 0.0, 65535.0));
         }
     }
 
@@ -112,6 +131,18 @@ void DisplayWindow::updateDisplayedImage() {
     imageLabel->setMinimumSize(newSize);
 }
 
+void DisplayWindow::cleanupImage() {
+    if (originalImage) {
+        for (int i = 0; i < imageHeight; i++) {
+            delete[] originalImage[i];
+        }
+        delete[] originalImage;
+        originalImage = nullptr;
+    }
+    imageHeight = 0;
+    imageWidth = 0;
+}
+
 void DisplayWindow::setWindowPosition(const QPoint& position) {
     move(position);
 }
@@ -121,7 +152,7 @@ void DisplayWindow::clear() {
         imageLabel->clear();
         imageLabel->setMinimumSize(0, 0);
     }
-    originalImage.reset();
+    cleanupImage();
     currentZoom = 1.0;
     if (zoomSlider) {
         zoomSlider->setValue(100);

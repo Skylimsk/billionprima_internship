@@ -61,33 +61,48 @@ void Histogram::initializeBuffers()
     m_cache.clear();
 }
 
-void Histogram::setupHistogramPlot()
-{
+void Histogram::setupHistogramPlot() {
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
 
-    // 创建主直方图绘图窗口
     m_histogramPlot = new QCustomPlot(this);
     m_histogramPlot->setMinimumSize(PlotSettings::PLOT_MIN_WIDTH, PlotSettings::PLOT_MIN_HEIGHT);
     layout->addWidget(m_histogramPlot);
 
-    // 设置绘图外观
+    // Set up axes
     m_histogramPlot->xAxis->setLabel("Pixel Value");
-    m_histogramPlot->yAxis->setLabel("Frequency");
+    m_histogramPlot->yAxis->setLabel("Relative Frequency");
     m_histogramPlot->setBackground(Qt::white);
 
-    // 创建图表并设置样式
+    // Original histogram (blue)
     m_histogramPlot->addGraph();
-    QPen graphPen;
-    graphPen.setColor(QColor(65, 105, 225));  // Royal Blue
-    graphPen.setWidth(1);
-    m_histogramPlot->graph(0)->setPen(graphPen);
+    QPen originalPen;
+    originalPen.setColor(QColor(65, 105, 225));  // Royal Blue
+    originalPen.setWidth(2);
+    m_histogramPlot->graph(0)->setPen(originalPen);
     m_histogramPlot->graph(0)->setBrush(QBrush(QColor(65, 105, 225, 50)));
 
-    // 禁用默认的交互
-    m_histogramPlot->setInteractions(QCP::iNone);
+    // CLAHE histogram (green)
+    m_histogramPlot->addGraph();
+    QPen clahePen;
+    clahePen.setColor(QColor(46, 139, 87));  // Sea Green
+    clahePen.setWidth(2);
+    m_histogramPlot->graph(1)->setPen(clahePen);
+    m_histogramPlot->graph(1)->setBrush(QBrush(QColor(46, 139, 87, 30)));
 
-    // 设置字体大小
+    // Clip limit line (red dashed)
+    m_histogramPlot->addGraph();
+    QPen clipLimitPen;
+    clipLimitPen.setColor(Qt::red);
+    clipLimitPen.setWidth(2);
+    clipLimitPen.setStyle(Qt::DashLine);
+    m_histogramPlot->graph(2)->setPen(clipLimitPen);
+
+    // Enable antialiasing and interactions
+    m_histogramPlot->setAntialiasedElements(QCP::aeAll);
+    m_histogramPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+
+    // Font settings
     QFont tickFont = QApplication::font();
     tickFont.setPointSize(PlotSettings::FONT_SIZE_SMALL);
     m_histogramPlot->xAxis->setTickLabelFont(tickFont);
@@ -98,14 +113,11 @@ void Histogram::setupHistogramPlot()
     m_histogramPlot->xAxis->setLabelFont(labelFont);
     m_histogramPlot->yAxis->setLabelFont(labelFont);
 
-    // 设置点击事件
-    m_histogramPlot->setCursor(Qt::PointingHandCursor);
-    connect(m_histogramPlot, &QCustomPlot::mousePress, this, &Histogram::showLargeHistogram);
-
-    // 优化渲染
-    m_histogramPlot->setNoAntialiasingOnDrag(true);
-    m_histogramPlot->setPlottingHint(QCP::phFastPolylines, true);
+    // Add tooltip support
+    m_histogramPlot->setMouseTracking(true);
+    connect(m_histogramPlot, &QCustomPlot::mouseMove, this, &Histogram::showTooltip);
 }
+
 
 void Histogram::setCollapsed(bool collapsed)
 {
@@ -154,22 +166,144 @@ bool Histogram::eventFilter(QObject* obj, QEvent* event)
     return QWidget::eventFilter(obj, event);
 }
 
-void Histogram::updateHistogram(const std::vector<std::vector<uint16_t>>& image)
-{
-    if (image.empty() || m_isCollapsed) return;
+void Histogram::updateHistogram(const std::vector<std::vector<uint16_t>>& image, int height, int width) {
+    if (m_isCollapsed || image.empty() || height <= 0 || width <= 0) return;
 
-    // 只存储指针
-    m_imagePtr = &image;
-
-    // 添加更新节流
-    if (m_lastUpdate.elapsed() < MIN_UPDATE_INTERVAL) {
-        if (!m_updateTimer->isActive()) {
-            m_updateTimer->start(UPDATE_INTERVAL_MS);
-        }
-        return;
+    // Initialize histogram bins
+    std::vector<std::atomic<int>> histogram(HISTOGRAM_BUFFER_SIZE);
+    for (auto& bin : histogram) {
+        bin.store(0, std::memory_order_relaxed);
     }
 
-    scheduleUpdate();
+    // Calculate histogram in parallel
+#pragma omp parallel for collapse(2)
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            uint16_t val = image[y][x];
+            histogram[val].fetch_add(1, std::memory_order_relaxed);
+        }
+    }
+
+    // Find maximum count for normalization
+    double maxCount = 0;
+    for (const auto& bin : histogram) {
+        maxCount = std::max(maxCount, static_cast<double>(bin.load(std::memory_order_relaxed)));
+    }
+
+    // Prepare data for plotting
+    m_currentHistogram.resize(DEFAULT_BIN_COUNT);
+    m_xData.resize(DEFAULT_BIN_COUNT);
+    double binWidth = HISTOGRAM_BUFFER_SIZE / static_cast<double>(DEFAULT_BIN_COUNT);
+
+    // Apply smoothing
+    const int smoothingWindow = 5;
+    std::vector<double> rawValues(DEFAULT_BIN_COUNT);
+
+    // First pass: collect raw values
+    for (int i = 0; i < DEFAULT_BIN_COUNT; ++i) {
+        double binSum = 0;
+        int startBin = static_cast<int>(i * binWidth);
+        int endBin = static_cast<int>((i + 1) * binWidth);
+
+        for (int j = startBin; j < endBin; ++j) {
+            binSum += histogram[j].load(std::memory_order_relaxed);
+        }
+        rawValues[i] = binSum / maxCount;
+        m_xData[i] = i * binWidth;
+    }
+
+    // Second pass: apply Gaussian smoothing
+    for (int i = 0; i < DEFAULT_BIN_COUNT; ++i) {
+        double smoothedValue = 0;
+        double weightSum = 0;
+
+        for (int j = -smoothingWindow; j <= smoothingWindow; ++j) {
+            int idx = i + j;
+            if (idx >= 0 && idx < DEFAULT_BIN_COUNT) {
+                double weight = std::exp(-0.5 * (j * j) / (smoothingWindow * smoothingWindow));
+                smoothedValue += rawValues[idx] * weight;
+                weightSum += weight;
+            }
+        }
+
+        m_currentHistogram[i] = smoothedValue / weightSum;
+    }
+
+    // Update display
+    updateHistogramDisplay(histogram);
+
+    // Update cache
+    updateHistogramCache(histogram);
+}
+
+void Histogram::updateHistogram(double** image, int height, int width) {
+    if (m_isCollapsed || !image || height <= 0 || width <= 0) return;
+
+    // Initialize histogram bins
+    std::vector<std::atomic<int>> histogram(HISTOGRAM_BUFFER_SIZE);
+    for (auto& bin : histogram) {
+        bin.store(0, std::memory_order_relaxed);
+    }
+
+    // Calculate histogram in parallel
+#pragma omp parallel for collapse(2)
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            int val = static_cast<int>(std::clamp(image[y][x], 0.0, 65535.0));
+            histogram[val].fetch_add(1, std::memory_order_relaxed);
+        }
+    }
+
+    // Find maximum count for normalization
+    double maxCount = 0;
+    for (const auto& bin : histogram) {
+        maxCount = std::max(maxCount, static_cast<double>(bin.load(std::memory_order_relaxed)));
+    }
+
+    // Prepare data for plotting
+    m_currentHistogram.resize(DEFAULT_BIN_COUNT);
+    m_xData.resize(DEFAULT_BIN_COUNT);
+    double binWidth = HISTOGRAM_BUFFER_SIZE / static_cast<double>(DEFAULT_BIN_COUNT);
+
+    // Apply smoothing
+    const int smoothingWindow = 5;
+    std::vector<double> rawValues(DEFAULT_BIN_COUNT);
+
+    // First pass: collect raw values
+    for (int i = 0; i < DEFAULT_BIN_COUNT; ++i) {
+        double binSum = 0;
+        int startBin = static_cast<int>(i * binWidth);
+        int endBin = static_cast<int>((i + 1) * binWidth);
+
+        for (int j = startBin; j < endBin; ++j) {
+            binSum += histogram[j].load(std::memory_order_relaxed);
+        }
+        rawValues[i] = binSum / maxCount;
+        m_xData[i] = i * binWidth;
+    }
+
+    // Second pass: apply Gaussian smoothing
+    for (int i = 0; i < DEFAULT_BIN_COUNT; ++i) {
+        double smoothedValue = 0;
+        double weightSum = 0;
+
+        for (int j = -smoothingWindow; j <= smoothingWindow; ++j) {
+            int idx = i + j;
+            if (idx >= 0 && idx < DEFAULT_BIN_COUNT) {
+                double weight = std::exp(-0.5 * (j * j) / (smoothingWindow * smoothingWindow));
+                smoothedValue += rawValues[idx] * weight;
+                weightSum += weight;
+            }
+        }
+
+        m_currentHistogram[i] = smoothedValue / weightSum;
+    }
+
+    // Update display
+    updateHistogramDisplay(histogram);
+
+    // Update cache
+    updateHistogramCache(histogram);
 }
 
 void Histogram::performDelayedUpdate()
@@ -181,17 +315,19 @@ void Histogram::performDelayedUpdate()
 
 void Histogram::calculateFullHistogram()
 {
+    if (!m_imagePtr || m_imagePtr->empty()) return;
+
     const auto& image = *m_imagePtr;
     int rows = image.size();
     int cols = image[0].size();
 
-    // 创建原子计数器数组
+    // Create atomic counter array
     std::vector<std::atomic<int>> histogram(HISTOGRAM_BUFFER_SIZE);
     for (auto& bin : histogram) {
         bin.store(0, std::memory_order_relaxed);
     }
 
-    // 并行计算直方图
+    // Calculate histogram
 #pragma omp parallel for collapse(2)
     for (int y = 0; y < rows; ++y) {
         for (int x = 0; x < cols; ++x) {
@@ -199,60 +335,81 @@ void Histogram::calculateFullHistogram()
         }
     }
 
-    // 计算最大值用于归一化
+    // Find maximum count
     double maxCount = 0;
     for (const auto& bin : histogram) {
         maxCount = std::max(maxCount, static_cast<double>(bin.load(std::memory_order_relaxed)));
     }
 
-    // 归一化并存储到显示缓冲区
+    // Apply smoothing and create display data
+    const int smoothingWindow = 5;  // Adjust this value to control smoothing amount
     m_currentHistogram.resize(DEFAULT_BIN_COUNT);
+    m_xData.resize(DEFAULT_BIN_COUNT);
     double binWidth = HISTOGRAM_BUFFER_SIZE / static_cast<double>(DEFAULT_BIN_COUNT);
 
+    // First pass: collect raw values
+    std::vector<double> rawValues(DEFAULT_BIN_COUNT);
     for (int i = 0; i < DEFAULT_BIN_COUNT; ++i) {
-        double sum = 0;
+        double binSum = 0;
         int startBin = static_cast<int>(i * binWidth);
         int endBin = static_cast<int>((i + 1) * binWidth);
 
         for (int j = startBin; j < endBin; ++j) {
-            sum += histogram[j].load(std::memory_order_relaxed);
+            binSum += histogram[j].load(std::memory_order_relaxed);
         }
-        m_currentHistogram[i] = sum / maxCount;
+        rawValues[i] = binSum / maxCount;
+        m_xData[i] = i * binWidth;  // Store x coordinates
     }
 
-    // 更新缓存
-    m_cache.data.clear();
-    m_cache.data.reserve(HISTOGRAM_BUFFER_SIZE);
-    for (const auto& bin : histogram) {
-        m_cache.data.push_back(bin.load(std::memory_order_relaxed));
-    }
-    m_cache.imageWidth = cols;
-    m_cache.imageHeight = rows;
-    m_cache.checksum = calculateChecksum(image);
+    // Second pass: apply Gaussian smoothing
+    for (int i = 0; i < DEFAULT_BIN_COUNT; ++i) {
+        double smoothedValue = 0;
+        double weightSum = 0;
 
-    // 更新显示
+        for (int j = -smoothingWindow; j <= smoothingWindow; ++j) {
+            int idx = i + j;
+            if (idx >= 0 && idx < DEFAULT_BIN_COUNT) {
+                // Gaussian weight
+                double weight = std::exp(-0.5 * (j * j) / (smoothingWindow * smoothingWindow));
+                smoothedValue += rawValues[idx] * weight;
+                weightSum += weight;
+            }
+        }
+
+        m_currentHistogram[i] = smoothedValue / weightSum;
+    }
+
+    // Update cache and display
+    updateHistogramCache(histogram);
     updateHistogramDisplay(histogram);
 }
 
-void Histogram::updateHistogramDisplay(const std::vector<std::atomic<int>>& histogram)
-{
+void Histogram::updateHistogramDisplay(const std::vector<std::atomic<int>>& histogram) {
     if (!m_histogramPlot) return;
 
-    // 更新数据范围
-    m_currentXRange = QCPRange(0, 65535);
-    double maxValue = *std::max_element(m_currentHistogram.begin(), m_currentHistogram.end());
-    m_currentYRange = QCPRange(0, maxValue * 1.1);
-
-    // 批量更新绘图数据
+    // Update the main curve
     m_histogramPlot->graph(0)->setData(m_xData, m_currentHistogram);
-    m_histogramPlot->xAxis->setRange(m_currentXRange);
-    m_histogramPlot->yAxis->setRange(m_currentYRange);
 
-    // 使用队列重绘以提高性能
+    // Find maximum value
+    double maxValue = 0;
+    for (const auto& value : m_currentHistogram) {
+        maxValue = std::max(maxValue, value);
+    }
+
+    // Set axis ranges with padding
+    m_histogramPlot->xAxis->setRange(0, 65535);
+    double maxYRange = std::max(maxValue, m_clipLimit > 0 ? m_clipLimit : 0.0) * 1.1;
+    m_histogramPlot->yAxis->setRange(0, maxYRange);
+
+    // Store ranges
+    m_currentXRange = m_histogramPlot->xAxis->range();
+    m_currentYRange = m_histogramPlot->yAxis->range();
+
+    // Replot with queued replot for better performance
     m_histogramPlot->replot(QCustomPlot::rpQueuedReplot);
 
-    // 如果大直方图窗口可见，也更新它
-    if (m_histogramDialog && m_histogramDialog->isVisible()) {
+    // Update large histogram if visible
+    if (m_largeHistogramPlot && m_histogramDialog && m_histogramDialog->isVisible()) {
         updateLargeHistogram();
     }
 }
@@ -399,24 +556,24 @@ void Histogram::showTooltip(QMouseEvent* event)
     double x = m_largeHistogramPlot->xAxis->pixelToCoord(event->pos().x());
     double y = m_largeHistogramPlot->yAxis->pixelToCoord(event->pos().y());
 
-    // 找到最近的数据点
+    // Find nearest data point
     int index = findNearestDataPoint(x);
     if (index >= 0 && index < m_currentHistogram.size()) {
-        // 计算实际的像素值和频率
+        // Get pixel value and relative height
         double pixelValue = m_xData[index];
-        double frequency = m_currentHistogram[index];
+        double relativeHeight = m_currentHistogram[index];
 
-        // 格式化tooltip文本
+        // Format tooltip text showing relative to clip limit
         QString tooltipText = QString(
                                   "Pixel Value: %1\n"
-                                  "Frequency: %2%"
+                                  "Relative Height: %2x"
                                   ).arg(qRound(pixelValue))
-                                  .arg(frequency * 100, 0, 'f', 2);
+                                  .arg(relativeHeight, 0, 'f', 3);  // Show as multiplier of clip limit
 
-        // 计算tooltip位置
+        // Calculate tooltip position
         QPoint pos = event->pos() + QPoint(10, 10);
 
-        // 确保tooltip不会超出绘图区域
+        // Ensure tooltip stays within plot area
         if (pos.x() + m_tooltip->width() > m_largeHistogramPlot->width()) {
             pos.setX(event->pos().x() - m_tooltip->width() - 10);
         }
@@ -432,6 +589,7 @@ void Histogram::showTooltip(QMouseEvent* event)
         m_tooltip->hide();
     }
 }
+
 
 void Histogram::resetZoom()
 {
@@ -495,4 +653,254 @@ void Histogram::updateLargeHistogram()
 
     // 使用队列重绘以提高性能
     m_largeHistogramPlot->replot(QCustomPlot::rpQueuedReplot);
+}
+
+void Histogram::setupClaheGraph() {
+    if (!m_histogramPlot) return;
+
+    // Add a second graph for CLAHE histogram
+    m_histogramPlot->addGraph();
+    QPen clahePen;
+    clahePen.setColor(QColor(46, 139, 87));  // Sea Green
+    clahePen.setWidth(1);
+    m_histogramPlot->graph(1)->setPen(clahePen);
+    m_histogramPlot->graph(1)->setVisible(false);
+
+    // Style for clip limit line
+    m_histogramPlot->addGraph();
+    QPen clipLimitPen;
+    clipLimitPen.setColor(Qt::red);
+    clipLimitPen.setWidth(2);
+    clipLimitPen.setStyle(Qt::DashLine);
+    m_histogramPlot->graph(2)->setPen(clipLimitPen);
+    m_histogramPlot->graph(2)->setVisible(false);
+}
+
+void Histogram::updateClaheHistogram(double** image, int height, int width, double clipLimit) {
+    if (!image || height <= 0 || width <= 0 || m_isCollapsed) return;
+
+    m_clipLimit = clipLimit;
+
+    // Create atomic counters for thread-safe histogram calculation
+    std::vector<std::atomic<int>> histogram(HISTOGRAM_BUFFER_SIZE);
+    for (auto& bin : histogram) {
+        bin.store(0, std::memory_order_relaxed);
+    }
+
+    // Calculate histogram in parallel
+#pragma omp parallel for collapse(2)
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            auto val = static_cast<int>(std::clamp(image[y][x], 0.0, 65535.0));
+            histogram[val].fetch_add(1, std::memory_order_relaxed);
+        }
+    }
+
+    // Find maximum count for normalization
+    double maxCount = 0;
+    for (const auto& bin : histogram) {
+        maxCount = std::max(maxCount, static_cast<double>(bin.load(std::memory_order_relaxed)));
+    }
+
+    // Calculate clip limit threshold
+    double clipThreshold = clipLimit * maxCount;
+    double redistributeCount = 0;
+
+    // Calculate excess for redistribution
+    for (const auto& bin : histogram) {
+        double count = bin.load(std::memory_order_relaxed);
+        if (count > clipThreshold) {
+            redistributeCount += count - clipThreshold;
+        }
+    }
+
+    // Redistribute excess
+    double redistributePerBin = redistributeCount / DEFAULT_BIN_COUNT;
+
+    // Prepare histogram data
+    QVector<double> xData(DEFAULT_BIN_COUNT), yData(DEFAULT_BIN_COUNT), claheData(DEFAULT_BIN_COUNT);
+    double binWidth = HISTOGRAM_BUFFER_SIZE / static_cast<double>(DEFAULT_BIN_COUNT);
+
+    for (int i = 0; i < DEFAULT_BIN_COUNT; ++i) {
+        xData[i] = i * binWidth;
+        double sum = 0;
+        double claheSum = 0;
+        int startBin = static_cast<int>(i * binWidth);
+        int endBin = static_cast<int>((i + 1) * binWidth);
+
+        for (int j = startBin; j < endBin; ++j) {
+            double count = histogram[j].load(std::memory_order_relaxed);
+            sum += count;
+            claheSum += std::min(count, clipThreshold);
+        }
+
+        yData[i] = sum / maxCount;
+        claheData[i] = (claheSum + redistributePerBin) / maxCount;
+    }
+
+    // Update plots
+    m_histogramPlot->graph(0)->setData(xData, yData);
+    m_histogramPlot->graph(1)->setData(xData, claheData);
+    m_histogramPlot->graph(1)->setVisible(true);
+
+    // Update clip limit line
+    QVector<double> clipX = {0, 65535};
+    QVector<double> clipY = {clipLimit, clipLimit};
+    m_histogramPlot->graph(2)->setData(clipX, clipY);
+    m_histogramPlot->graph(2)->setVisible(true);
+
+    // Set axis ranges
+    double maxY = *std::max_element(yData.begin(), yData.end());
+    maxY = std::max(maxY, clipLimit) * 1.1; // Add 10% padding
+    m_histogramPlot->xAxis->setRange(0, 65535);
+    m_histogramPlot->yAxis->setRange(0, maxY);
+
+    // Update stored data
+    m_hasClaheData = true;
+    m_claheHistogram = claheData;
+
+    // Replot
+    m_histogramPlot->replot(QCustomPlot::rpQueuedReplot);
+}
+
+void Histogram::updateClaheDisplay() {
+    if (!m_histogramPlot || !m_hasClaheData) return;
+
+    // Update CLAHE histogram
+    m_histogramPlot->graph(1)->setVisible(true);
+    m_histogramPlot->graph(1)->setData(m_xData, m_claheHistogram);
+
+    // Find maximum frequency between original and CLAHE histograms
+    m_maxFreq = 0.0;
+    for (int i = 0; i < DEFAULT_BIN_COUNT; ++i) {
+        m_maxFreq = std::max(m_maxFreq, m_currentHistogram[i]);
+        if (m_hasClaheData) {
+            m_maxFreq = std::max(m_maxFreq, m_claheHistogram[i]);
+        }
+    }
+
+    // Update clip limit line if available
+    if (m_clipLimit > 0) {
+        m_histogramPlot->graph(2)->setVisible(true);
+        QVector<double> clipX = {0, 65535};
+        QVector<double> clipY = {m_clipLimit, m_clipLimit};
+        m_histogramPlot->graph(2)->setData(clipX, clipY);
+    }
+
+    m_histogramPlot->replot(QCustomPlot::rpQueuedReplot);
+
+    // Update large histogram if visible
+    if (m_largeHistogramPlot && m_histogramDialog && m_histogramDialog->isVisible()) {
+        // Add and update CLAHE data for large histogram
+        if (m_largeHistogramPlot->graphCount() < 3) {
+            m_largeHistogramPlot->addGraph();
+            m_largeHistogramPlot->graph(1)->setPen(QPen(QColor(46, 139, 87), 2));
+            m_largeHistogramPlot->addGraph();
+            m_largeHistogramPlot->graph(2)->setPen(QPen(Qt::red, 2, Qt::DashLine));
+        }
+
+        m_largeHistogramPlot->graph(1)->setVisible(true);
+        m_largeHistogramPlot->graph(1)->setData(m_xData, m_claheHistogram);
+
+        if (m_clipLimit > 0) {
+            m_largeHistogramPlot->graph(2)->setVisible(true);
+            QVector<double> clipX = {0, 65535};
+            QVector<double> clipY = {m_clipLimit, m_clipLimit};
+            m_largeHistogramPlot->graph(2)->setData(clipX, clipY);
+        }
+
+        m_largeHistogramPlot->replot(QCustomPlot::rpQueuedReplot);
+    }
+}
+
+void Histogram::toggleClaheVisibility() {
+    if (!m_histogramPlot || !m_hasClaheData) return;
+
+    bool currentVisible = m_histogramPlot->graph(1)->visible();
+    m_histogramPlot->graph(1)->setVisible(!currentVisible);
+    m_histogramPlot->graph(2)->setVisible(!currentVisible);
+    m_histogramPlot->replot(QCustomPlot::rpQueuedReplot);
+
+    if (m_claheButton) {
+        m_claheButton->setText(currentVisible ? "Show CLAHE" : "Hide CLAHE");
+    }
+}
+
+void Histogram::clearClaheData() {
+    m_hasClaheData = false;
+    m_clipLimit = -1;
+    if (m_histogramPlot) {
+        m_histogramPlot->graph(1)->setVisible(false);
+        m_histogramPlot->graph(2)->setVisible(false);
+        m_histogramPlot->replot(QCustomPlot::rpQueuedReplot);
+    }
+    if (m_claheButton) {
+        m_claheButton->setText("Show CLAHE");
+    }
+}
+
+void Histogram::updateHistogramCache(const std::vector<std::atomic<int>>& histogram)
+{
+    m_cache.data.clear();
+    m_cache.data.reserve(HISTOGRAM_BUFFER_SIZE);
+
+    // Copy histogram data to cache
+    for (const auto& bin : histogram) {
+        m_cache.data.push_back(bin.load(std::memory_order_relaxed));
+    }
+
+    // Update cache dimensions if we have an image pointer
+    if (m_imagePtr && !m_imagePtr->empty()) {
+        m_cache.imageHeight = m_imagePtr->size();
+        m_cache.imageWidth = (*m_imagePtr)[0].size();
+        m_cache.checksum = calculateChecksum(*m_imagePtr);
+    }
+}
+
+void Histogram::updateHistogramCommon(const std::vector<std::atomic<int>>& histogram) {
+    // Find maximum count
+    double maxCount = 0;
+    for (const auto& bin : histogram) {
+        maxCount = std::max(maxCount, static_cast<double>(bin.load(std::memory_order_relaxed)));
+    }
+
+    // Apply smoothing and create display data
+    const int smoothingWindow = 5;
+    m_currentHistogram.resize(DEFAULT_BIN_COUNT);
+    m_xData.resize(DEFAULT_BIN_COUNT);
+    double binWidth = HISTOGRAM_BUFFER_SIZE / static_cast<double>(DEFAULT_BIN_COUNT);
+
+    // First pass: collect raw values
+    std::vector<double> rawValues(DEFAULT_BIN_COUNT);
+    for (int i = 0; i < DEFAULT_BIN_COUNT; ++i) {
+        double binSum = 0;
+        int startBin = static_cast<int>(i * binWidth);
+        int endBin = static_cast<int>((i + 1) * binWidth);
+
+        for (int j = startBin; j < endBin; ++j) {
+            binSum += histogram[j].load(std::memory_order_relaxed);
+        }
+        rawValues[i] = binSum / maxCount;
+        m_xData[i] = i * binWidth;
+    }
+
+    // Second pass: apply Gaussian smoothing
+    for (int i = 0; i < DEFAULT_BIN_COUNT; ++i) {
+        double smoothedValue = 0;
+        double weightSum = 0;
+
+        for (int j = -smoothingWindow; j <= smoothingWindow; ++j) {
+            int idx = i + j;
+            if (idx >= 0 && idx < DEFAULT_BIN_COUNT) {
+                double weight = std::exp(-0.5 * (j * j) / (smoothingWindow * smoothingWindow));
+                smoothedValue += rawValues[idx] * weight;
+                weightSum += weight;
+            }
+        }
+
+        m_currentHistogram[i] = smoothedValue / weightSum;
+    }
+
+    updateHistogramCache(histogram);
+    updateHistogramDisplay(histogram);
 }

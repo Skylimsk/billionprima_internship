@@ -1,221 +1,210 @@
 #ifndef IMAGE_PROCESSOR_H
 #define IMAGE_PROCESSOR_H
 
-#include <vector>
-#include <string>
-#include <QRect>
-#include <QImage>
-#include <QPixmap>
+#include <QObject>
 #include <QLabel>
-#include <QWidget>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QPushButton>
-#include <QSlider>
-#include <QScrollArea>
-#include <QFileDialog>
-#include <QMessageBox>
+#include <QRect>
+#include <QString>
+#include <QRegularExpression>
 #include <stack>
-#include <memory>
 #include <opencv2/core.hpp>
-#include <opencv2/imgproc.hpp>
+#include <vector>
+#include <utility>
 #include "image_processing_params.h"
 #include "CLAHE.h"
-#include "dark_line.h"
+#include "darkline_pointer.h"
 #include "adjustments.h"
 #include "interlace.h"
-//#include "display_window.h"
 #include "zoom.h"
+#include "pch.h"
 
-class ImageProcessor {
+class ImageProcessor : public QObject {
+
 public:
     struct ActionRecord {
         QString action;
         QString parameters;
 
         QString toString() const {
-            if (parameters.isEmpty()) {
-                return action;
-            }
-            return action + " - " + parameters;
+            return parameters.isEmpty() ? action : action + " - " + parameters;
         }
     };
 
-    using DarkLine = DarkLineProcessor::DarkLine;
-
     struct ImageState {
-        std::vector<std::vector<uint16_t>> image;
-        std::vector<DarkLine> detectedLines;
-    };
+        double** image;
+        int height;
+        int width;
+        DarkLineArray* darkLines;
 
-    enum class SplitMode {
-        ALL_PARTS,
-        LEFT_MOST,    // First two quarters (LeftLeft & LeftRight)
-        RIGHT_MOST    // Last two quarters (RightLeft & RightRight)
-    };
+        ImageState() : image(nullptr), height(0), width(0), darkLines(nullptr) {}
 
-    enum class LineRemovalMethod {
-        NEIGHBOR_VALUES,
-        DIRECT_STITCH
+        ~ImageState() {
+            if (image) {
+                for (int i = 0; i < height; i++) {
+                    if (image[i]) {  // Add null check for each row
+                        delete[] image[i];
+                    }
+                }
+                delete[] image;
+                image = nullptr;  // Set to nullptr after deletion
+            }
+            if (darkLines) {
+                DarkLinePointerProcessor::destroyDarkLineArray(darkLines);
+                darkLines = nullptr;  // Set to nullptr after deletion
+            }
+        }
+
+        // Add copy constructor for proper deep copying
+        ImageState(const ImageState& other)
+            : height(other.height), width(other.width), darkLines(nullptr) {
+            if (other.image) {
+                image = new double*[height];
+                for (int i = 0; i < height; i++) {
+                    image[i] = new double[width];
+                    std::memcpy(image[i], other.image[i], width * sizeof(double));
+                }
+            } else {
+                image = nullptr;
+            }
+
+            if (other.darkLines) {
+                darkLines = new DarkLineArray();
+                DarkLinePointerProcessor::copyDarkLineArray(other.darkLines, darkLines);
+            }
+        }
+
+        // Delete assignment operator to prevent accidental shallow copies
+        ImageState& operator=(const ImageState&) = delete;
     };
 
     ImageProcessor(QLabel* imageLabel);
+    ~ImageProcessor();
 
     // Basic Operations
     void loadImage(const std::string& filePath);
     static bool isImageFile(const std::string& filePath);
-    void saveImage(const QString& filePath);
-    void cropRegion(const QRect& region);
     void processImage();
     QString revertImage();
+    void resetToOriginal();
+    void clearImage();
 
     // Image Processing Functions
-    void processYXAxis(std::vector<std::vector<uint16_t>>& image, int linesToAvgY, int linesToAvgX);
-    void applyMedianFilter(std::vector<std::vector<uint16_t>>& image, int filterKernelSize);
-    void applyHighPassFilter(std::vector<std::vector<uint16_t>>& image);
-
-    // Adjustment Methods
-    void adjustContrast(float contrastFactor) {
-        saveCurrentState();
-        ImageAdjustments::adjustContrast(finalImage, contrastFactor);
-    }
-
-    void adjustGammaOverall(float gamma) {
-        saveCurrentState();
-        ImageAdjustments::adjustGammaOverall(finalImage, gamma);
-    }
-
-    void sharpenImage(float sharpenStrength) {
-        saveCurrentState();
-        ImageAdjustments::sharpenImage(finalImage, sharpenStrength);
-    }
-
-    void adjustGammaForSelectedRegion(float gamma, const QRect& region) {
-        saveCurrentState();
-        ImageAdjustments::adjustGammaForSelectedRegion(finalImage, gamma, region);
-    }
-
-    void applySharpenToRegion(float sharpenStrength, const QRect& region) {
-        saveCurrentState();
-        ImageAdjustments::applySharpenToRegion(finalImage, sharpenStrength, region);
-    }
-
-    void applyContrastToRegion(float contrastFactor, const QRect& region) {
-        saveCurrentState();
-        ImageAdjustments::applyContrastToRegion(finalImage, contrastFactor, region);
-    }
+    void processYXAxis(double**& image, int height, int width, int linesToAvgY, int linesToAvgX);
+    void applyMedianFilter(double**& image, int height, int width, int filterKernelSize);
+    void applyHighPassFilter(double**& image, int height, int width);
+    void applyEdgeEnhancement(double**& image, int height, int width, float strength);
 
     // Transformation Functions
-    std::vector<std::vector<uint16_t>> rotateImage(const std::vector<std::vector<uint16_t>>& image, int angle);
-    void stretchImageY(std::vector<std::vector<uint16_t>>& img, float stretchFactor);
-    void stretchImageX(std::vector<std::vector<uint16_t>>& img, float stretchFactor);
-    std::vector<std::vector<uint16_t>> distortImage(const std::vector<std::vector<uint16_t>>& image, float distortionFactor, const std::string& direction);
-    std::vector<std::vector<uint16_t>> addPadding(const std::vector<std::vector<uint16_t>>& image, int paddingSize);
+    void rotateImage(int angle);
+    void stretchImageY(double**& image, int& height, int width, float yStretchFactor);
+    void stretchImageX(double**& image, int height, int& width, float xStretchFactor);
+    void distortImage(double**& image, int height, int width, float distortionFactor, const std::string& direction);
+    void addPadding(double**& image, int& height, int& width, int paddingSize);
 
-    // Conversion Functions
-    cv::Mat vectorToMat(const std::vector<std::vector<uint16_t>>& image);
-    std::vector<std::vector<uint16_t>> matToVector(const cv::Mat& mat);
+    // Interlace Processing
+    InterlaceProcessor::InterlacedResult processEnhancedInterlacedSections(
+        InterlaceProcessor::StartPoint lowEnergyStart,
+        InterlaceProcessor::StartPoint highEnergyStart,
+        InterlaceProcessor::MergeMethod mergeMethod);
 
-    // CLAHE Functions
-    void applyCLAHE(const cv::Mat& inputImage, double clipLimit, const cv::Size& tileSize);
-    void applyCLAHE_CPU(const cv::Mat& inputImage, double clipLimit, const cv::Size& tileSize);
-    void applyThresholdCLAHE_GPU(uint16_t threshold, double clipLimit, const cv::Size& tileSize);
-    void applyThresholdCLAHE_CPU(uint16_t threshold, double clipLimit, const cv::Size& tileSize);
+    InterlaceProcessor::InterlacedResult processEnhancedInterlacedSections(
+        InterlaceProcessor::StartPoint lowEnergyStart,
+        InterlaceProcessor::StartPoint highEnergyStart,
+        const InterlaceProcessor::MergeParams& mergeParams);
+
+    // Dark Line Operations
+    void removeDarkLines(const DarkLineArray* lines, bool removeInObject, bool removeIsolated,
+                         DarkLinePointerProcessor::RemovalMethod method = DarkLinePointerProcessor::RemovalMethod::NEIGHBOR_VALUES);
+    void removeDarkLinesSequential(const DarkLineArray* lines, DarkLine** selectedLines, int selectedCount,
+                                   bool removeInObject, bool removeIsolated,
+                                   DarkLinePointerProcessor::RemovalMethod method = DarkLinePointerProcessor::RemovalMethod::NEIGHBOR_VALUES);
+    void clearDetectedLines();
+
+    // Format Conversion
+    static double** matToDoublePtr(const cv::Mat& mat, int& height, int& width);
+    CGData cropRegion(double** inputImage, int inputHeight, int inputWidth,
+                      int left, int top, int right, int bottom);
+
+    // Performance Metrics
     CLAHEProcessor::PerformanceMetrics getLastPerformanceMetrics() const;
-
-    // Dark Line Processing
-    std::vector<DarkLine> detectDarkLines();
-    void removeDarkLines(const std::vector<DarkLine>& lines);
-    void removeAllDarkLines();
-    void removeInObjectDarkLines();
-    void removeIsolatedDarkLines();
 
     // State Management
     void saveCurrentState();
     void setLastAction(const QString& action, const QString& parameters = QString());
     QString getCurrentAction() const;
     ActionRecord getLastActionRecord() const;
-    void clearDetectedLines() { m_detectedLines.clear(); }
-    const std::vector<DarkLine>& getDetectedLines() const { return m_detectedLines; }
-    const std::vector<size_t>& getLastRemovedLines() const { return m_lastRemovedLines; }
+    const DarkLineArray* getCurrentDarkLines() const { return m_currentDarkLines; }
 
     // Getters and Setters
-    const std::vector<std::vector<uint16_t>>& getFinalImage() const;
-    void updateAndSaveFinalImage(const std::vector<std::vector<uint16_t>>& newImage);
-
-    // Zoom Functions
+    double** getFinalImage() const { return m_finalImage; }
+    int getFinalImageHeight() const { return m_height; }
+    int getFinalImageWidth() const { return m_width; }
+    void updateAndSaveFinalImage(double** newImage, int height, int width, bool saveCurrentStateFlag = true);
     ZoomManager& getZoomManager() { return m_zoomManager; }
-    const ZoomManager& getZoomManager() const { return m_zoomManager; }
 
-    InterlaceProcessor::InterlacedResult processEnhancedInterlacedSections(
-        InterlaceProcessor::StartPoint lowEnergyStart,
-        InterlaceProcessor::StartPoint highEnergyStart,
-        InterlaceProcessor::MergeMethod mergeMethod
-        );
+    bool validateState() const;
 
-    void processYXAxisWithStoredParams(std::vector<std::vector<uint16_t>>& image) {
-        if (InterlaceProcessor::hasCalibrationParams()) {
-            saveCurrentState();
-            InterlaceProcessor::applyCalibration(image);
-        }
+    // Memory Management
+    static double** allocateImage(int height, int width);
+    static void freeImage(double**& image, int height);
+    static double** cloneImage(double** src, int height, int width);
+
+    int getHistorySize() const { return imageHistory.size(); }
+    int getActionHistorySize() const { return actionHistory.size(); }
+
+    bool canUndo() const {
+        bool result = !imageHistory.empty();
+        qDebug() << "Checking canUndo() - History size:" << imageHistory.size() << "Result:" << result;
+        return result;
+    }
+    void undo();
+
+    void setOriginalImage(double** image, int height, int width) {
+        // Free existing original image
+        freeImage(m_originalImg, m_height);
+
+        // Store new original image
+        m_originalImg = cloneImage(image, height, width);
     }
 
-    void removeDarkLinesSequential(
-        const std::vector<DarkLine>& selectedLines,
-        bool removeInObject,
-        bool removeIsolated,
-        LineRemovalMethod method);
-
-    void removeDarkLinesSelective(
-        bool removeInObject,
-        bool removeIsolated,
-        LineRemovalMethod method = LineRemovalMethod::NEIGHBOR_VALUES);
-
-
-    void resetToOriginal();
-    void clearImage();
-
-    void applyEdgeEnhancement(float strength);
-
-    InterlaceProcessor::InterlacedResult processEnhancedInterlacedSections(
-        InterlaceProcessor::StartPoint lowEnergyStart,
-        InterlaceProcessor::StartPoint highEnergyStart,
-        const InterlaceProcessor::MergeParams& mergeParams  // Change from MergeMethod to MergeParams
-        );
-
 private:
-    std::vector<std::vector<uint16_t>> imgData;
-    std::vector<std::vector<uint16_t>> originalImg;
-    std::vector<std::vector<uint16_t>> finalImage;
+    // Image Data
+    double** m_imgData;
+    double** m_originalImg;
+    double** m_finalImage;
+    int m_height;
+    int m_width;
+
+    // Dark Line Data
+    DarkLineArray* m_currentDarkLines;
+    std::vector<std::pair<int, int>> m_detectedLines;
+
+    // State Management
     std::stack<ImageState> imageHistory;
     std::stack<ActionRecord> actionHistory;
     QString lastAction;
 
+    // UI Elements
     QLabel* imageLabel;
     QRect selectedRegion;
     bool regionSelected;
     int rotationState;
     int kernelSize;
 
-    void saveImageState();
-
+    // Processing Components
     ImageProcessingParams params;
     CLAHEProcessor claheProcessor;
-
-    std::vector<std::vector<uint16_t>> preProcessedImage;
-    bool hasCLAHEBeenApplied;
-
-    // Zoom related
     ZoomManager m_zoomManager;
 
-    std::vector<DarkLine> m_detectedLines;
-    std::vector<size_t> m_lastRemovedLines;
+    // Constants
+    static constexpr int SEGMENT_WIDTH = 100;
+    static constexpr int WIDTH_THRESHOLD = 50;
 
-    static constexpr int SEGMENT_WIDTH = 100;    // Default segment width for processing
-    static constexpr int WIDTH_THRESHOLD = 50;  // Threshold for using segmented processing
-
-    bool isValidPixel(uint16_t pixel);
-
+    // Private Helper Functions
+    void saveImageState();
+    bool isValidPixel(double pixel);
+    ImageData convertToImageData(double** image, int height, int width) const;
+    void updateFromImageData(const ImageData& imgData);
 
 };
 
