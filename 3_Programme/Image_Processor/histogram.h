@@ -28,6 +28,7 @@ public:
     void updateClaheHistogram(double** image, int height, int width, double clipLimit);
     void clearClaheData();
     void toggleClaheVisibility();
+    void clearHistogram();
 
 protected:
     bool eventFilter(QObject* obj, QEvent* event) override;

@@ -639,6 +639,15 @@ void ImageProcessor::distortImage(double**& image, int height, int width, float 
     }
 }
 
+void ImageProcessor::clearHistory() {
+    while (!imageHistory.empty()) {
+        imageHistory.pop();
+    }
+    while (!actionHistory.empty()) {
+        actionHistory.pop();
+    }
+}
+
 void ImageProcessor::addPadding(double**& image, int& height, int& width, int paddingSize) {
     saveCurrentState();
     if (!image || height <= 0 || width <= 0 || paddingSize < 0) {
@@ -719,56 +728,6 @@ void ImageProcessor::updateAndSaveFinalImage(double** newImage, int height, int 
     for (int i = 0; i < height; i++) {
         m_finalImage[i] = new double[width];
         std::copy(newImage[i], newImage[i] + width, m_finalImage[i]);
-    }
-}
-
-void ImageProcessor::clearImage() {
-    freeImage(m_imgData, m_height);
-    freeImage(m_originalImg, m_height);
-    freeImage(m_finalImage, m_height);
-
-    if (m_currentDarkLines) {
-        DarkLinePointerProcessor::destroyDarkLineArray(m_currentDarkLines);
-        m_currentDarkLines = nullptr;
-    }
-
-    m_height = 0;
-    m_width = 0;
-
-    // Clear all history states
-    while (!imageHistory.empty()) {
-        imageHistory.pop();
-    }
-    while (!actionHistory.empty()) {
-        actionHistory.pop();
-    }
-}
-
-void ImageProcessor::resetToOriginal() {
-    if (m_originalImg) {
-        // Free current working image
-        freeImage(m_finalImage, m_height);
-
-        // Create fresh copy from original
-        m_finalImage = cloneImage(m_originalImg, m_height, m_width);
-
-        // Clear any dark lines
-        if (m_currentDarkLines) {
-            DarkLinePointerProcessor::destroyDarkLineArray(m_currentDarkLines);
-            m_currentDarkLines = nullptr;
-        }
-
-        // Clear all history states
-        while (!imageHistory.empty()) {
-            imageHistory.pop();
-        }
-        while (!actionHistory.empty()) {
-            actionHistory.pop();
-        }
-
-        qDebug() << "Image reset to original state and history cleared";
-    } else {
-        qDebug() << "No original image available for reset";
     }
 }
 
@@ -974,5 +933,45 @@ void ImageProcessor::undo() {
             m_width = 0;
         }
         throw;
+    }
+}
+
+bool ImageProcessor::saveImage(const QString& filePath) {
+    if (!m_finalImage || m_height <= 0 || m_width <= 0) {
+        qDebug() << "No valid image data to save";
+        return false;
+    }
+
+    // Create buffer for 8-bit RGB image
+    std::vector<uint8_t> outputBuffer(m_width * m_height * 3);
+
+    // Convert from 16-bit grayscale to 8-bit RGB
+    for (int y = 0; y < m_height; ++y) {
+        for (int x = 0; x < m_width; ++x) {
+            // Normalize from 16-bit (0-65535) to 8-bit (0-255)
+            uint8_t pixelValue = static_cast<uint8_t>(std::clamp(m_finalImage[y][x] / 256.0, 0.0, 255.0));
+
+            // Set RGB channels (grayscale, so all channels are the same)
+            int idx = 3 * (y * m_width + x);
+            outputBuffer[idx] = pixelValue;     // R
+            outputBuffer[idx + 1] = pixelValue; // G
+            outputBuffer[idx + 2] = pixelValue; // B
+        }
+    }
+
+    // Save using stbi_write_png
+    if (stbi_write_png(
+            filePath.toStdString().c_str(),
+            m_width,
+            m_height,
+            3, // RGB components
+            outputBuffer.data(),
+            m_width * 3 // stride in bytes
+            )) {
+        qDebug() << "Image saved successfully:" << filePath;
+        return true;
+    } else {
+        qDebug() << "Failed to save image:" << filePath;
+        return false;
     }
 }

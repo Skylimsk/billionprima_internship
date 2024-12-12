@@ -904,3 +904,18 @@ void Histogram::updateHistogramCommon(const std::vector<std::atomic<int>>& histo
     updateHistogramCache(histogram);
     updateHistogramDisplay(histogram);
 }
+
+void Histogram::clearHistogram() {
+    // Clear existing histogram data
+    m_currentBinCenters.clear();
+    m_currentHistogram.clear();
+    m_histogramBuffer.clear();
+    m_xData.clear();
+    m_yData.clear();
+    m_cache.clear();
+
+    if (m_histogramPlot) {
+        m_histogramPlot->clearGraphs();
+        m_histogramPlot->replot();
+    }
+}

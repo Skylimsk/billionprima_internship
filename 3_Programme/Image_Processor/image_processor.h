@@ -7,6 +7,7 @@
 #include <QString>
 #include <QRegularExpression>
 #include <stack>
+#include <mutex>
 #include <opencv2/core.hpp>
 #include <vector>
 #include <utility>
@@ -80,13 +81,13 @@ public:
     ImageProcessor(QLabel* imageLabel);
     ~ImageProcessor();
 
+    std::mutex m_mutex;
+
     // Basic Operations
     void loadImage(const std::string& filePath);
     static bool isImageFile(const std::string& filePath);
     void processImage();
     QString revertImage();
-    void resetToOriginal();
-    void clearImage();
 
     // Image Processing Functions
     void processYXAxis(double**& image, int height, int width, int linesToAvgY, int linesToAvgX);
@@ -100,6 +101,10 @@ public:
     void stretchImageX(double**& image, int height, int& width, float xStretchFactor);
     void distortImage(double**& image, int height, int width, float distortionFactor, const std::string& direction);
     void addPadding(double**& image, int& height, int& width, int paddingSize);
+
+    bool saveImage(const QString& filePath);
+
+    void resetToOriginal();
 
     // Interlace Processing
     InterlaceProcessor::InterlacedResult processEnhancedInterlacedSections(
@@ -167,6 +172,8 @@ public:
         m_originalImg = cloneImage(image, height, width);
     }
 
+    void clearHistory();
+
 private:
     // Image Data
     double** m_imgData;
@@ -205,6 +212,9 @@ private:
     bool isValidPixel(double pixel);
     ImageData convertToImageData(double** image, int height, int width) const;
     void updateFromImageData(const ImageData& imgData);
+
+    int m_originalImageHeight;
+    int m_originalImageWidth;
 
 };
 

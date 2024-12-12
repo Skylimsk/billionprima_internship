@@ -86,6 +86,12 @@ public:
                                  uint16_t threshold, double clipLimit,
                                  const cv::Size& tileSize, bool afterNormalCLAHE = false);
 
+    void applyCombinedCLAHE(double** outputImage, double** inputImage,
+                                            int height, int width,
+                                            double normalClipLimit, const cv::Size& normalTileSize,
+                                            double thresholdClipLimit, const cv::Size& thresholdTileSize,
+                            uint16_t threshold);
+
     // Configuration and metrics
     void setThreadConfig(const ThreadConfig& config) { threadConfig = config; }
     ThreadConfig getThreadConfig() const { return threadConfig; }

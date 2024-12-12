@@ -155,21 +155,114 @@ void ControlPanel::enableButtons(bool enable) {
     qDebug() << "Current history size:" << m_imageProcessor.getHistorySize();
     qDebug() << "Can undo:" << m_imageProcessor.canUndo();
 
+    // Check if zoom mode is active
+    bool zoomModeActive = m_imageProcessor.getZoomManager().isZoomModeActive();
+    bool zoomFixed = m_imageProcessor.getZoomManager().isZoomFixed();
+
+    // Process each button based on its type and current application state
     for (QPushButton* button : m_allButtons) {
-        if (button) {
-            QString buttonText = button->text();
-            if (buttonText == "Browse") {
-                button->setEnabled(true);
-                qDebug() << "Browse button enabled";
-            } else if (buttonText == "Undo") {
-                // Enable undo button if there's history
-                button->setEnabled(enable); // Will be enabled when file is loaded
-                qDebug() << "Undo button state:" << enable;
+        if (!button) continue;
+
+        QString buttonText = button->text();
+        bool shouldEnable = false;
+
+        // Special case handling for different button types
+        if (buttonText == "Browse") {
+            // Browse is enabled when no file is loaded
+            shouldEnable = !enable;
+        }
+        else if (buttonText == "Undo") {
+            // Undo is enabled only when there's history and not in unfixed zoom mode
+            shouldEnable = enable || m_imageProcessor.canUndo() || (!zoomModeActive || zoomFixed);
+            qDebug() << "Setting Undo button state:" << shouldEnable;
+        }
+        else if (buttonText == "Activate Zoom" || buttonText == "Deactivate Zoom") {
+            // Zoom activation button follows file loaded state
+            shouldEnable = enable;
+
+            // Update button appearance
+            if (!shouldEnable) {
+                button->setStyleSheet(
+                    "QPushButton {"
+                    "    background-color: #f3f4f6;"
+                    "    color: #999999;"  // Grayed out text
+                    "    border: 1px solid #e5e7eb;"
+                    "    border-radius: 4px;"
+                    "    padding: 5px;"
+                    "}"
+                    );
             } else {
-                button->setEnabled(enable);
+                button->setStyleSheet(
+                    "QPushButton {"
+                    "    background-color: #ffffff;"
+                    "    color: #000000;"
+                    "    border: 1px solid #e5e7eb;"
+                    "    border-radius: 4px;"
+                    "    padding: 5px;"
+                    "}"
+                    "QPushButton:hover {"
+                    "    background-color: #f3f4f6;"
+                    "}"
+                    // State-specific styles for deactivate mode
+                    "QPushButton[state=\"deactivate-unfix\"] {"
+                    "    background-color: #3b82f6;"
+                    "    color: #ffffff;"
+                    "    border: none;"
+                    "}"
+                    "QPushButton[state=\"deactivate-fix\"] {"
+                    "    background-color: #ef4444;"
+                    "    color: #ffffff;"
+                    "    border: none;"
+                    "}"
+                    );
+            }
+        }
+        else if (buttonText == "Zoom In" || buttonText == "Zoom Out" ||
+                 buttonText == "Reset Zoom" || buttonText == "Fix Zoom" ||
+                 buttonText == "Unfix Zoom") {
+            // Zoom control buttons are enabled in zoom mode and not fixed
+            shouldEnable = enable && zoomModeActive && !zoomFixed;
+            if (buttonText == "Fix Zoom" || buttonText == "Unfix Zoom") {
+                shouldEnable = enable && zoomModeActive;
+            }
+        }
+        else {
+            // All other operation buttons
+            if (zoomModeActive && !zoomFixed) {
+                // Disable operations during unfixed zoom mode
+                shouldEnable = false;
+            } else {
+                // Enable based on file loaded state
+                shouldEnable = enable;
+            }
+        }
+
+        // Apply the calculated state
+        button->setEnabled(shouldEnable);
+    }
+
+    // Update histogram buttons if present
+    if (m_histogram) {
+        bool histogramEnabled = enable && (!zoomModeActive || zoomFixed);
+        for (QPushButton* button : m_allButtons) {
+            if (button && (button->text() == "Histogram" || button->text() == "Toggle CLAHE View")) {
+                button->setEnabled(histogramEnabled);
             }
         }
     }
+
+    // Special handling for zoom group visibility
+    if (m_zoomControlsGroup) {
+        m_zoomControlsGroup->setVisible(zoomModeActive);
+    }
+
+    // Force immediate update of the UI
+    if (m_zoomButton) {
+        m_zoomButton->style()->unpolish(m_zoomButton);
+        m_zoomButton->style()->polish(m_zoomButton);
+    }
+
+    qDebug() << "=== Button State Update Complete ===\n";
 }
 
 bool ControlPanel::checkZoomMode() {
@@ -333,25 +426,52 @@ void ControlPanel::updatePixelInfo(const QPoint& pos)
 }
 
 void ControlPanel::setupZoomControls() {
-    m_zoomControlsGroup = new QGroupBox("Zoom Controls");
-    QVBoxLayout* zoomLayout = new QVBoxLayout(m_zoomControlsGroup);
+    // Create a subgroup for zoom controls that will be added to Basic Operations
+    m_zoomControlsGroup = new QGroupBox();
+    m_zoomControlsGroup->setStyleSheet(
+        "QGroupBox {"
+        "    border: none;"
+        "    margin-left: 15px;"  // Indent from main button
+        "    margin-top: 5px;"    // Space from zoom button
+        "    margin-bottom: 10px;" // Space before next control
+        "    padding: 0px;"
+        "}"
+        );
 
+    QVBoxLayout* zoomLayout = new QVBoxLayout(m_zoomControlsGroup);
+    zoomLayout->setSpacing(5);
+    zoomLayout->setContentsMargins(0, 0, 0, 0);
+
+    // Create zoom control buttons
     QPushButton* zoomInBtn = new QPushButton("Zoom In");
     QPushButton* zoomOutBtn = new QPushButton("Zoom Out");
-    QPushButton* resetZoomBtn = new QPushButton("Reset Zoom");
     m_fixZoomButton = new QPushButton("Fix Zoom");
-    m_fixZoomButton->setCheckable(true);
+    QPushButton* resetZoomBtn = new QPushButton("Reset Zoom");
 
-    // Store pointers to zoom buttons for enabling/disabling
+    // Store pointers for later use
     m_zoomInButton = zoomInBtn;
     m_zoomOutButton = zoomOutBtn;
     m_resetZoomButton = resetZoomBtn;
+    m_fixZoomButton->setCheckable(true);
 
-    // Initially disable all zoom buttons
-    zoomInBtn->setEnabled(false);
-    zoomOutBtn->setEnabled(false);
-    resetZoomBtn->setEnabled(false);
-    m_fixZoomButton->setEnabled(false);
+    // Set fixed height and style for buttons
+    const int buttonHeight = 35;
+    const QString buttonStyle =
+        "QPushButton {"
+        "    background-color: #f3f4f6;"  // Matching mockup gray background
+        "    border: 1px solid #e5e7eb;"
+        "    border-radius: 4px;"
+        "    padding: 5px;"
+        "}"
+        "QPushButton:hover {"
+        "    background-color: #e5e7eb;"
+        "}";
+
+    for (QPushButton* btn : {zoomInBtn, zoomOutBtn, m_fixZoomButton, resetZoomBtn}) {
+        btn->setFixedHeight(buttonHeight);
+        btn->setStyleSheet(buttonStyle);
+        btn->setEnabled(false);
+    }
 
     // Add to m_allButtons for automatic enabling/disabling
     m_allButtons.push_back(zoomInBtn);
@@ -359,23 +479,17 @@ void ControlPanel::setupZoomControls() {
     m_allButtons.push_back(resetZoomBtn);
     m_allButtons.push_back(m_fixZoomButton);
 
-    // Set fixed height for buttons
-    const int buttonHeight = 35;
-    zoomInBtn->setFixedHeight(buttonHeight);
-    zoomOutBtn->setFixedHeight(buttonHeight);
-    resetZoomBtn->setFixedHeight(buttonHeight);
-    m_fixZoomButton->setFixedHeight(buttonHeight);
-
     // Add tooltips
     zoomInBtn->setToolTip("Increase zoom level by 20%");
     zoomOutBtn->setToolTip("Decrease zoom level by 20%");
     resetZoomBtn->setToolTip("Reset to original size (100%)");
     m_fixZoomButton->setToolTip("Fix current zoom level for image processing");
 
+    // Add buttons to layout
     zoomLayout->addWidget(zoomInBtn);
     zoomLayout->addWidget(zoomOutBtn);
-    zoomLayout->addWidget(resetZoomBtn);
     zoomLayout->addWidget(m_fixZoomButton);
+    zoomLayout->addWidget(resetZoomBtn);
 
     // Connect zoom buttons
     connect(zoomInBtn, &QPushButton::clicked, [this]() {
@@ -405,8 +519,16 @@ void ControlPanel::setupZoomControls() {
         auto& zoomManager = m_imageProcessor.getZoomManager();
         zoomManager.toggleFixedZoom(checked);
 
-        // Enable all processing buttons regardless of fix state
-        // Only control zoom buttons based on fix state
+        // Update fix zoom button text
+        m_fixZoomButton->setText(checked ? "Unfix Zoom" : "Fix Zoom");
+
+        // Update main zoom button state if it's in deactivate mode
+        if (m_zoomButton->text() == "Deactivate Zoom") {
+            m_zoomButton->setProperty("state", checked ? "deactivate-fix" : "deactivate-unfix");
+            m_zoomButton->style()->unpolish(m_zoomButton);
+            m_zoomButton->style()->polish(m_zoomButton);
+        }
+
         for (QPushButton* button : m_allButtons) {
             if (button) {
                 QString buttonText = button->text();
@@ -449,6 +571,46 @@ void ControlPanel::toggleZoomMode(bool active) {
                              "Cannot deactivate zoom mode while zoom is fixed.\nPlease unfix zoom first.");
         m_zoomButton->setChecked(true);
         return;
+    }
+
+    if (active) {
+        // When activating zoom
+        zoomManager.toggleZoomMode(true);
+        m_zoomButton->setText("Deactivate Zoom");
+        // Set state based on whether zoom is fixed
+        m_zoomButton->setProperty("state",
+                                  m_fixZoomButton->isChecked() ? "deactivate-fix" : "deactivate-unfix");
+    } else {
+        // When deactivating zoom
+        zoomManager.toggleZoomMode(false);
+        m_zoomButton->setText("Activate Zoom");
+        m_zoomButton->setProperty("state", "");  // Remove state property
+    }
+
+    // Force style refresh
+    m_zoomButton->style()->unpolish(m_zoomButton);
+    m_zoomButton->style()->polish(m_zoomButton);
+
+    if (active && std::abs(zoomManager.getZoomLevel() - 1.0f) > 0.001f) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("Zoom Level Reminder");
+        msgBox.setText(QString("Zoom mode will be activated at %1x zoom level.")
+                           .arg(zoomManager.getZoomLevel(), 0, 'f', 2));
+        msgBox.setIcon(QMessageBox::Information);
+
+        // Add custom buttons
+        QPushButton* okButton = msgBox.addButton(QMessageBox::Ok);
+        QPushButton* resetButton = msgBox.addButton("Reset", QMessageBox::ActionRole);
+
+        msgBox.exec();
+
+        if (msgBox.clickedButton() == resetButton) {
+            zoomManager.resetZoom();
+            m_fixZoomButton->setChecked(false);
+            zoomManager.toggleFixedZoom(false);
+            updateImageDisplay();
+            updateLastAction("Reset Zoom", "1x");
+        }
     }
 
     if (!active) {
@@ -607,7 +769,6 @@ void ControlPanel::setupFileOperations() {
                                                connect(buttonBox, &QDialogButtonBox::accepted, &formatDialog, &QDialog::accept);
                                                connect(buttonBox, &QDialogButtonBox::rejected, &formatDialog, &QDialog::reject);
 
-                                               // 这里开始使用原有的处理逻辑
                                                if (formatDialog.exec() == QDialog::Accepted) {
                                                    QString filter;
                                                    if (loadImageBtn->isChecked()) {
@@ -627,7 +788,6 @@ void ControlPanel::setupFileOperations() {
                                                            resetDetectedLinesPointer();
                                                            m_darkLineInfoLabel->hide();
 
-                                                           // Determine load type based on selection
                                                            QString loadType;
                                                            if (loadImageBtn->isChecked()) {
                                                                loadType = "Image";
@@ -723,13 +883,13 @@ void ControlPanel::setupFileOperations() {
 
                                                            updateLastAction("Load File", timingInfo);
 
-                                                           // File loaded successfully, enable undo button
                                                            emit fileLoaded(true);
 
                                                        } catch (const std::exception& e) {
                                                            QMessageBox::critical(this, "Error",
                                                                                  QString("Failed to load file: %1").arg(e.what()));
-                                                           qDebug() << "Error loading file:" << e.what();
+                                                           // Enable Browse button again if loading fails
+                                                           emit fileLoaded(false);
                                                        }
                                                    }
                                                }
@@ -780,103 +940,86 @@ void ControlPanel::setupFileOperations() {
                                                    this,
                                                    "Save Image",
                                                    "",
-                                                   "PNG Files (*.png);;JPEG Files (*.jpg *.jpeg);;TIFF Files (*.tiff *.tif);;BMP Files (*.bmp)");
+                                                   "PNG Files (*.png);;JPEG Files (*.jpg *.jpeg);;TIFF Files (*.tiff *.tif);;BMP Files (*.bmp)"
+                                                   );
 
                                                if (!filePath.isEmpty()) {
-                                                   // Get current image data
                                                    const auto& finalImage = m_imageProcessor.getFinalImage();
-                                                   if (!finalImage) {  // Changed from finalImage.empty()
+                                                   if (!finalImage) {
                                                        QMessageBox::warning(this, "Save Error", "No image data to save.");
                                                        return;
                                                    }
 
-                                                   // Get dimensions
-                                                   int rows = m_imageProcessor.getFinalImageHeight();  // Changed from finalImage.size()
-                                                   int cols = m_imageProcessor.getFinalImageWidth();   // Changed from finalImage[0].size()
-
-                                                   double** data = nullptr;
-                                                   try {
-                                                       // Allocate memory
-                                                       data = new double*[rows];
-                                                       for(int i = 0; i < rows; i++) {
-                                                           data[i] = new double[cols];
-                                                           for(int j = 0; j < cols; j++) {
-                                                               // Convert to 0-1 range double value
-                                                               data[i][j] = finalImage[i][j] / 65535.0;
-                                                           }
-                                                       }
-
-                                                       // Save image
-                                                       bool success = ImageReader::SaveImage(filePath.toStdString(), data, rows, cols, 65535);
-
-                                                       // Clean up memory
-                                                       for(int i = 0; i < rows; i++) {
-                                                           delete[] data[i];
-                                                       }
-                                                       delete[] data;
-
-                                                       if (!success) {
-                                                           QMessageBox::critical(this, "Error", "Failed to save image.");
-                                                           return;
-                                                       }
-
+                                                   if (m_imageProcessor.saveImage(filePath)) {
                                                        QFileInfo fileInfo(filePath);
                                                        updateLastAction("Save Image", fileInfo.fileName());
-
-                                                   } catch (const std::exception& e) {
-                                                       // Ensure memory cleanup on exception
-                                                       if (data) {
-                                                           for(int i = 0; i < rows; i++) {
-                                                               delete[] data[i];
-                                                           }
-                                                           delete[] data;
-                                                       }
-                                                       QMessageBox::critical(this, "Error",
-                                                                             QString("Failed to save image: %1").arg(e.what()));
+                                                   } else {
+                                                       QMessageBox::critical(this, "Error", "Failed to save image.");
                                                    }
                                                }
                                            }}
                                       });
 }
 
-void ControlPanel::setupBasicOperations()
-{
+void ControlPanel::setupBasicOperations() {
+    QGroupBox* groupBox = new QGroupBox("Basic Operations");
+    QVBoxLayout* mainLayout = new QVBoxLayout(groupBox);
+    mainLayout->setSpacing(10);
+
+    // Create and setup zoom button if not exists
     if (!m_zoomButton) {
-        m_zoomButton = new QPushButton("Activate Zoom", this);
+        m_zoomButton = new QPushButton("Activate Zoom");
         m_zoomButton->setCheckable(true);
         m_zoomButton->setFixedHeight(35);
-        m_zoomButton->setEnabled(false);  // Initially disabled
+        m_zoomButton->setEnabled(false);
         m_allButtons.push_back(m_zoomButton);
 
+        // Updated button styles to match the requirements
         m_zoomButton->setStyleSheet(
             "QPushButton {"
-            "    background-color: #f0f0f0;"
-            "    border: 1px solid #c0c0c0;"
+            "    background-color: #ffffff;"  // White background by default
+            "    color: #6b7280;"            // Black text by default
+            "    border: 1px solid #e5e7eb;"
             "    border-radius: 4px;"
             "    padding: 5px;"
             "}"
             "QPushButton:hover {"
-            "    background-color: #e0e0e0;"
+            "    background-color: #f3f4f6;"
             "}"
-            "QPushButton[state=\"deactivate-fix\"] {"  // Red background for Deactivate + Fix
-            "    background-color: #ff4444;"
-            "    color: white;"
-            "    border: 1px solid #cc0000;"
+            // When text is "Deactivate Zoom" without fix
+            "QPushButton[state=\"deactivate-unfix\"] {"
+            "    background-color: #3b82f6;"  // Blue background
+            "    color: #6b7280;"  // Darker gray for disabled state
+            "    color: #ffffff;"             // White text
+            "    border: none;"
             "}"
-            "QPushButton[state=\"deactivate-fix\"]:hover {"
-            "    background-color: #ff6666;"
-            "}"
-            "QPushButton[state=\"deactivate-unfix\"] {"  // Blue background for Deactivate + Unfix
-            "    background-color: #4444ff;"
-            "    color: white;"
-            "    border: 1px solid #0000cc;"
-            "}"
-            "QPushButton[state=\"deactivate-unfix\"]:hover {"
-            "    background-color: #6666ff;"
+            // When text is "Deactivate Zoom" with fix
+            "QPushButton[state=\"deactivate-fix\"] {"
+            "    background-color: #ef4444;"  // Red background
+            "    color: #ffffff;"             // White text
+            "    border: none;"
             "}"
             );
 
-        // Connect the zoom button signal
+        // Update fix zoom button style
+        m_fixZoomButton->setStyleSheet(
+            "QPushButton {"
+            "    background-color: #ffffff;"
+            "    color: #000000;"
+            "    border: 1px solid #e5e7eb;"
+            "    border-radius: 4px;"
+            "    padding: 5px;"
+            "}"
+            "QPushButton:checked {"
+            "    background-color: #3b82f6;"  // Blue when showing "Unfix Zoom"
+            "    color: #ffffff;"
+            "    border: none;"
+            "}"
+            "QPushButton:hover {"
+            "    background-color: #f3f4f6;"
+            "}"
+            );
+
         if (m_zoomButton) {  // Add null check
             connect(m_zoomButton, &QPushButton::clicked, this, [this]() {
                 auto& zoomManager = m_imageProcessor.getZoomManager();
@@ -905,116 +1048,177 @@ void ControlPanel::setupBasicOperations()
             m_zoomButton->style()->polish(m_zoomButton);
         }
     });
-    createGroupBox("Basic Operations", {
-                                           {"Zoom", m_zoomButton},  // Pass the button instead of creating a new one
-                                           {"Crop", [this]() {
-                                                if (checkZoomMode()) return;
-                                                m_imageProcessor.saveCurrentState();
-                                                m_darkLineInfoLabel->hide();
-                                                resetDetectedLinesPointer();
 
-                                                if (m_imageLabel->isRegionSelected()) {
-                                                    QRect selectedRegion = m_imageLabel->getSelectedRegion();
-                                                    QRect normalizedRegion = selectedRegion.normalized();
+    // Add zoom button and controls group
+    mainLayout->addWidget(m_zoomButton);
+    mainLayout->addWidget(m_zoomControlsGroup);
 
-                                                    if (!normalizedRegion.isEmpty()) {
-                                                        try {
-                                                            const auto& inputImage = m_imageProcessor.getFinalImage();
-                                                            // Get dimensions using the getter methods instead of vector size
-                                                            int inputHeight = m_imageProcessor.getFinalImageHeight();
-                                                            int inputWidth = m_imageProcessor.getFinalImageWidth();
+    // Add crop button
+    QPushButton* cropBtn = new QPushButton("Crop");
+    cropBtn->setFixedHeight(35);
+    cropBtn->setEnabled(false);
+    m_allButtons.push_back(cropBtn);
+    mainLayout->addWidget(cropBtn);
 
-                                                            if (!inputImage || inputHeight <= 0 || inputWidth <= 0) {
-                                                                QMessageBox::warning(this, "Crop Error", "Invalid input image.");
-                                                                return;
-                                                            }
+    // Create horizontal layout for rotate buttons
+    QHBoxLayout* rotateLayout = new QHBoxLayout();
+    rotateLayout->setSpacing(10);
 
-                                                            // Convert vector to double pointer using malloc2D
-                                                            double** inputPtr = nullptr;
-                                                            malloc2D(inputPtr, inputHeight, inputWidth);
+    // Create rotate buttons
+    QPushButton* rotateCCWBtn = new QPushButton("Rotate CCW");
+    QPushButton* rotateCWBtn = new QPushButton("Rotate CW");
 
-                                                            // Copy data to inputPtr
-                                                            for (int y = 0; y < inputHeight; y++) {
-                                                                for (int x = 0; x < inputWidth; x++) {
-                                                                    inputPtr[y][x] = inputImage[y][x];
-                                                                }
-                                                            }
+    // Set properties for rotate buttons
+    for (QPushButton* btn : {rotateCCWBtn, rotateCWBtn}) {
+        btn->setFixedHeight(35);
+        btn->setEnabled(false);
+        m_allButtons.push_back(btn);
+        btn->setStyleSheet(
+            "QPushButton {"
+            "    background-color: #ffffff;"
+            "    border: 1px solid #e5e7eb;"
+            "    border-radius: 4px;"
+            "    padding: 5px;"
+            "}"
+            "QPushButton:hover {"
+            "    background-color: #e5e7eb;"
+            "}"
+            );
+    }
 
-                                                            // Perform crop operation
-                                                            CGData croppedData = m_imageProcessor.cropRegion(
-                                                                inputPtr, inputHeight, inputWidth,
-                                                                normalizedRegion.left(), normalizedRegion.top(),
-                                                                normalizedRegion.right(), normalizedRegion.bottom()
-                                                                );
+    // Add rotate buttons to horizontal layout
+    rotateLayout->addWidget(rotateCCWBtn);
+    rotateLayout->addWidget(rotateCWBtn);
 
-                                                            // Convert CGData to double** for updateAndSaveFinalImage
-                                                            double** resultPtr = nullptr;
-                                                            malloc2D(resultPtr, croppedData.Row, croppedData.Column);
+    // Add rotate layout to main layout
+    mainLayout->addLayout(rotateLayout);
 
-                                                            for (int y = 0; y < croppedData.Row; y++) {
-                                                                for (int x = 0; x < croppedData.Column; x++) {
-                                                                    resultPtr[y][x] = std::clamp(croppedData.Data[y][x], 0.0, 65535.0);
-                                                                }
-                                                            }
+    // Connect button signals
+    connect(cropBtn, &QPushButton::clicked, [this]() {
+        if (checkZoomMode()) return;
+        m_imageProcessor.saveCurrentState();
+        m_darkLineInfoLabel->hide();
+        resetDetectedLinesPointer();
 
-                                                            // Clean up allocated memory
-                                                            for (int i = 0; i < inputHeight; i++) {
-                                                                free(inputPtr[i]);
-                                                            }
-                                                            free(inputPtr);
+        if (m_imageLabel->isRegionSelected()) {
+            QRect selectedRegion = m_imageLabel->getSelectedRegion();
+            QRect normalizedRegion = selectedRegion.normalized();
 
-                                                            for (int i = 0; i < croppedData.Row; i++) {
-                                                                free(croppedData.Data[i]);
-                                                            }
-                                                            free(croppedData.Data);
+            // Handle zoom mode
+            auto& zoomManager = m_imageProcessor.getZoomManager();
+            if (zoomManager.isZoomModeActive()) {
+                float zoomLevel = zoomManager.getZoomLevel();
+                // Convert zoomed coordinates back to original image coordinates
+                normalizedRegion = QRect(
+                    static_cast<int>(normalizedRegion.x() / zoomLevel),
+                    static_cast<int>(normalizedRegion.y() / zoomLevel),
+                    static_cast<int>(normalizedRegion.width() / zoomLevel),
+                    static_cast<int>(normalizedRegion.height() / zoomLevel)
+                    );
+            }
 
-                                                            // Update image with double** version
-                                                            m_imageProcessor.updateAndSaveFinalImage(resultPtr, croppedData.Row, croppedData.Column);
+            if (!normalizedRegion.isEmpty()) {
+                try {
+                    const auto& inputImage = m_imageProcessor.getFinalImage();
+                    // Get dimensions using the getter methods instead of vector size
+                    int inputHeight = m_imageProcessor.getFinalImageHeight();
+                    int inputWidth = m_imageProcessor.getFinalImageWidth();
 
-                                                            // Clean up result pointer after updating
-                                                            for (int i = 0; i < croppedData.Row; i++) {
-                                                                free(resultPtr[i]);
-                                                            }
-                                                            free(resultPtr);
+                    if (!inputImage || inputHeight <= 0 || inputWidth <= 0) {
+                        QMessageBox::warning(this, "Crop Error", "Invalid input image.");
+                        return;
+                    }
 
-                                                            m_imageLabel->clearSelection();
-                                                            updateImageDisplay();
-                                                            updateLastAction("Crop");
+                    // Convert vector to double pointer using malloc2D
+                    double** inputPtr = nullptr;
+                    malloc2D(inputPtr, inputHeight, inputWidth);
 
-                                                        } catch (const std::exception& e) {
-                                                            QMessageBox::critical(this, "Crop Error",
-                                                                                  QString("Failed to crop image: %1").arg(e.what()));
-                                                        }
-                                                    } else {
-                                                        QMessageBox::warning(this, "Crop Error",
-                                                                             "Invalid region selected for cropping.");
-                                                    }
-                                                } else {
-                                                    QMessageBox::information(this, "Crop Info",
-                                                                             "Please select a region first.");
-                                                }
-                                            }},
-                                           {"Rotate CW", [this]() {
-                                                if (checkZoomMode()) return;
-                                                m_imageProcessor.saveCurrentState();
-                                                m_darkLineInfoLabel->hide();
-                                                resetDetectedLinesPointer();
-                                                m_imageProcessor.rotateImage(90);
-                                                m_imageLabel->clearSelection();
-                                                updateImageDisplay();
-                                                updateLastAction("Rotate Clockwise");
-                                            }},
-                                           {"Rotate CCW", [this]() {
-                                                if (checkZoomMode()) return;
-                                                m_imageProcessor.saveCurrentState();
-                                                m_darkLineInfoLabel->hide();
-                                                resetDetectedLinesPointer();
-                                                m_imageProcessor.rotateImage(270);
-                                                m_imageLabel->clearSelection();
-                                                updateImageDisplay();
-                                                updateLastAction("Rotate CCW");
-                                            }}
-                                       });
+                    // Copy data to inputPtr
+                    for (int y = 0; y < inputHeight; y++) {
+                        for (int x = 0; x < inputWidth; x++) {
+                            inputPtr[y][x] = inputImage[y][x];
+                        }
+                    }
+
+                    // Perform crop operation
+                    CGData croppedData = m_imageProcessor.cropRegion(
+                        inputPtr, inputHeight, inputWidth,
+                        normalizedRegion.left(), normalizedRegion.top(),
+                        normalizedRegion.right(), normalizedRegion.bottom()
+                        );
+
+                    // Convert CGData to double** for updateAndSaveFinalImage
+                    double** resultPtr = nullptr;
+                    malloc2D(resultPtr, croppedData.Row, croppedData.Column);
+
+                    for (int y = 0; y < croppedData.Row; y++) {
+                        for (int x = 0; x < croppedData.Column; x++) {
+                            resultPtr[y][x] = std::clamp(croppedData.Data[y][x], 0.0, 65535.0);
+                        }
+                    }
+
+                    // Clean up allocated memory
+                    for (int i = 0; i < inputHeight; i++) {
+                        free(inputPtr[i]);
+                    }
+                    free(inputPtr);
+
+                    for (int i = 0; i < croppedData.Row; i++) {
+                        free(croppedData.Data[i]);
+                    }
+                    free(croppedData.Data);
+
+                    // Update image with double** version
+                    m_imageProcessor.updateAndSaveFinalImage(resultPtr, croppedData.Row, croppedData.Column);
+
+                    // Clean up result pointer after updating
+                    for (int i = 0; i < croppedData.Row; i++) {
+                        free(resultPtr[i]);
+                    }
+                    free(resultPtr);
+
+                    m_imageLabel->clearSelection();
+                    updateImageDisplay();
+                    updateLastAction("Crop");
+
+                } catch (const std::exception& e) {
+                    QMessageBox::critical(this, "Crop Error",
+                                          QString("Failed to crop image: %1").arg(e.what()));
+                }
+            } else {
+                QMessageBox::warning(this, "Crop Error",
+                                     "Invalid region selected for cropping.");
+            }
+        } else {
+            QMessageBox::information(this, "Crop Info",
+                                     "Please select a region first.");
+        }
+    });
+
+    connect(rotateCCWBtn, &QPushButton::clicked, [this]() {
+        if (checkZoomMode()) return;
+        m_imageProcessor.saveCurrentState();
+        m_darkLineInfoLabel->hide();
+        resetDetectedLinesPointer();
+        m_imageProcessor.rotateImage(90);
+        m_imageLabel->clearSelection();
+        updateImageDisplay();
+        updateLastAction("Rotate Clockwise");
+    });
+
+    connect(rotateCWBtn, &QPushButton::clicked, [this]() {
+        if (checkZoomMode()) return;
+        m_imageProcessor.saveCurrentState();
+        m_darkLineInfoLabel->hide();
+        resetDetectedLinesPointer();
+        m_imageProcessor.rotateImage(270);
+        m_imageLabel->clearSelection();
+        updateImageDisplay();
+        updateLastAction("Rotate CCW");
+    });
+
+    // Add the group box to scroll layout
+    m_scrollLayout->addWidget(groupBox);
 }
 
 void ControlPanel::setupPreProcessingOperations() {
@@ -1481,7 +1685,10 @@ void ControlPanel::setupPreProcessingOperations() {
     updateCalibrationButtonText();
 }
 
+
+
 void ControlPanel::setupFilteringOperations() {
+
     createGroupBox("Image Enhancement", {
                                             {"CLAHE", [this]() {
                                                  if (checkZoomMode()) return;
@@ -1489,75 +1696,104 @@ void ControlPanel::setupFilteringOperations() {
                                                  m_darkLineInfoLabel->hide();
                                                  resetDetectedLinesPointer();
 
-                                                 // Get current image dimensions
-                                                 const auto& currentImage = m_imageProcessor.getFinalImage();
-                                                 if (!currentImage) {
-                                                     QMessageBox::warning(this, "Error", "No image data available for CLAHE processing");
-                                                     return;
-                                                 }
-
-                                                 int height = m_imageProcessor.getFinalImageHeight();
-                                                 int width = m_imageProcessor.getFinalImageWidth();
-
                                                  // Create dialog for CLAHE options
                                                  QDialog dialog(this);
                                                  dialog.setWindowTitle("CLAHE Options");
-                                                 dialog.setMinimumWidth(300);
+                                                 dialog.setMinimumWidth(400);
                                                  QVBoxLayout* layout = new QVBoxLayout(&dialog);
 
                                                  // Processing mode selection
                                                  QGroupBox* modeBox = new QGroupBox("Processing Mode");
                                                  QVBoxLayout* modeLayout = new QVBoxLayout(modeBox);
                                                  QRadioButton* gpuRadio = new QRadioButton("GPU Processing");
-                                                 QRadioButton* cpuRadio = new QRadioButton("CPU Processing");
                                                  gpuRadio->setChecked(true);
 
                                                  modeLayout->addWidget(gpuRadio);
-                                                 modeLayout->addWidget(cpuRadio);
                                                  layout->addWidget(modeBox);
 
-                                                 // Threshold option
-                                                 QCheckBox* useThresholdCheck = new QCheckBox("Apply Threshold");
-                                                 layout->addWidget(useThresholdCheck);
+                                                 // CLAHE Mode selection
+                                                 QGroupBox* claheTypeBox = new QGroupBox("CLAHE Type");
+                                                 QVBoxLayout* claheTypeLayout = new QVBoxLayout(claheTypeBox);
+                                                 QRadioButton* normalRadio = new QRadioButton("Normal CLAHE");
+                                                 QRadioButton* thresholdRadio = new QRadioButton("Threshold CLAHE");
+                                                 QRadioButton* combinedRadio = new QRadioButton("Combined CLAHE");
+                                                 normalRadio->setChecked(true);
 
-                                                 // Threshold value input
-                                                 QLabel* thresholdLabel = new QLabel("Threshold Value:");
-                                                 QSpinBox* thresholdSpinBox = new QSpinBox();
-                                                 thresholdSpinBox->setRange(0, 65535);
-                                                 thresholdSpinBox->setValue(5000);
-                                                 thresholdSpinBox->setEnabled(false);
-                                                 layout->addWidget(thresholdLabel);
-                                                 layout->addWidget(thresholdSpinBox);
+                                                 claheTypeLayout->addWidget(normalRadio);
+                                                 claheTypeLayout->addWidget(thresholdRadio);
+                                                 claheTypeLayout->addWidget(combinedRadio);
+                                                 layout->addWidget(claheTypeBox);
 
-                                                 // Connect threshold checkbox to spinbox
-                                                 connect(useThresholdCheck, &QCheckBox::toggled, thresholdSpinBox, &QSpinBox::setEnabled);
+                                                 // Normal CLAHE parameters
+                                                 QGroupBox* normalBox = new QGroupBox("Normal CLAHE Parameters");
+                                                 QVBoxLayout* normalLayout = new QVBoxLayout(normalBox);
 
-                                                 // CLAHE parameters
                                                  QLabel* clipLabel = new QLabel("Clip Limit:");
                                                  QDoubleSpinBox* clipSpinBox = new QDoubleSpinBox();
                                                  clipSpinBox->setRange(0.1, 1000.0);
                                                  clipSpinBox->setValue(2.0);
                                                  clipSpinBox->setSingleStep(0.1);
-                                                 layout->addWidget(clipLabel);
-                                                 layout->addWidget(clipSpinBox);
 
                                                  QLabel* tileLabel = new QLabel("Tile Size:");
                                                  QSpinBox* tileSpinBox = new QSpinBox();
                                                  tileSpinBox->setRange(2, 1000);
                                                  tileSpinBox->setValue(8);
-                                                 layout->addWidget(tileLabel);
-                                                 layout->addWidget(tileSpinBox);
+
+                                                 normalLayout->addWidget(clipLabel);
+                                                 normalLayout->addWidget(clipSpinBox);
+                                                 normalLayout->addWidget(tileLabel);
+                                                 normalLayout->addWidget(tileSpinBox);
+                                                 layout->addWidget(normalBox);
+
+                                                 // Threshold CLAHE parameters
+                                                 QGroupBox* thresholdBox = new QGroupBox("Threshold CLAHE Parameters");
+                                                 QVBoxLayout* thresholdLayout = new QVBoxLayout(thresholdBox);
+
+                                                 QLabel* thresholdClipLabel = new QLabel("Threshold Clip Limit:");
+                                                 QDoubleSpinBox* thresholdClipSpinBox = new QDoubleSpinBox();
+                                                 thresholdClipSpinBox->setRange(0.1, 1000.0);
+                                                 thresholdClipSpinBox->setValue(3.0);
+                                                 thresholdClipSpinBox->setSingleStep(0.1);
+
+                                                 QLabel* thresholdTileLabel = new QLabel("Threshold Tile Size:");
+                                                 QSpinBox* thresholdTileSpinBox = new QSpinBox();
+                                                 thresholdTileSpinBox->setRange(2, 1000);
+                                                 thresholdTileSpinBox->setValue(12);
+
+                                                 QLabel* thresholdValueLabel = new QLabel("Threshold Value:");
+                                                 QSpinBox* thresholdValueSpinBox = new QSpinBox();
+                                                 thresholdValueSpinBox->setRange(0, 65535);
+                                                 thresholdValueSpinBox->setValue(5000);
+
+                                                 thresholdLayout->addWidget(thresholdClipLabel);
+                                                 thresholdLayout->addWidget(thresholdClipSpinBox);
+                                                 thresholdLayout->addWidget(thresholdTileLabel);
+                                                 thresholdLayout->addWidget(thresholdTileSpinBox);
+                                                 thresholdLayout->addWidget(thresholdValueLabel);
+                                                 thresholdLayout->addWidget(thresholdValueSpinBox);
+                                                 layout->addWidget(thresholdBox);
 
                                                  // Real-time preview option
                                                  QCheckBox* previewCheck = new QCheckBox("Show Real-time Histogram Preview");
                                                  previewCheck->setChecked(true);
                                                  layout->addWidget(previewCheck);
 
+                                                 // Enable/disable parameter groups based on CLAHE type selection
+                                                 auto updateGroupBoxes = [=]() {
+                                                     normalBox->setEnabled(normalRadio->isChecked() || combinedRadio->isChecked());
+                                                     thresholdBox->setEnabled(thresholdRadio->isChecked() || combinedRadio->isChecked());
+                                                 };
+
+                                                 connect(normalRadio, &QRadioButton::toggled, updateGroupBoxes);
+                                                 connect(thresholdRadio, &QRadioButton::toggled, updateGroupBoxes);
+                                                 connect(combinedRadio, &QRadioButton::toggled, updateGroupBoxes);
+                                                 updateGroupBoxes();
+
                                                  // Connect preview checkbox to update histogram
                                                  connect(clipSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-                                                         [this, previewCheck, &currentImage](double value) {
+                                                         [this, previewCheck](double value) {
                                                              if (previewCheck->isChecked() && m_histogram) {
-                                                                 m_histogram->updateClaheHistogram(currentImage,
+                                                                 m_histogram->updateClaheHistogram(m_imageProcessor.getFinalImage(),
                                                                                                    m_imageProcessor.getFinalImageHeight(),
                                                                                                    m_imageProcessor.getFinalImageWidth(),
                                                                                                    value);
@@ -1573,10 +1809,9 @@ void ControlPanel::setupFilteringOperations() {
 
                                                  if (dialog.exec() == QDialog::Accepted) {
                                                      try {
-                                                         // Get current image data
                                                          const auto& currentImage = m_imageProcessor.getFinalImage();
                                                          if (!currentImage) {
-                                                             QMessageBox::warning(this, "Error", "No image data available for CLAHE processing");
+                                                             QMessageBox::warning(this, "Error", "No image data available");
                                                              return;
                                                          }
 
@@ -1587,91 +1822,91 @@ void ControlPanel::setupFilteringOperations() {
                                                          double** inputBuffer = CLAHEProcessor::allocateImageBuffer(height, width);
                                                          double** outputBuffer = CLAHEProcessor::allocateImageBuffer(height, width);
 
-                                                         // Convert input image to normalized double format
+                                                         // Copy and normalize input data
                                                          for (int y = 0; y < height; ++y) {
                                                              for (int x = 0; x < width; ++x) {
                                                                  inputBuffer[y][x] = currentImage[y][x] / 65535.0;
                                                              }
                                                          }
 
-                                                         bool useThreshold = useThresholdCheck->isChecked();
-                                                         uint16_t threshold = thresholdSpinBox->value();
-                                                         double clipLimit = clipSpinBox->value();
-                                                         cv::Size tileSize(tileSpinBox->value(), tileSpinBox->value());
-
                                                          CLAHEProcessor claheProcessor;
-                                                         if (useThreshold) {
-                                                             // Apply threshold CLAHE directly to final buffer
-                                                             claheProcessor.applyThresholdCLAHE(inputBuffer, height, width, threshold,
-                                                                                                clipLimit, tileSize, false);
+                                                         QString methodStr;
+                                                         auto startTime = std::chrono::high_resolution_clock::now();
 
+                                                         if (normalRadio->isChecked()) {
+                                                             claheProcessor.applyCLAHE(outputBuffer, inputBuffer, height, width,
+                                                                                       clipSpinBox->value(),
+                                                                                       cv::Size(tileSpinBox->value(), tileSpinBox->value()));
+                                                             methodStr = "Normal";
+                                                         }
+                                                         else if (thresholdRadio->isChecked()) {
+                                                             claheProcessor.applyThresholdCLAHE(inputBuffer, height, width,
+                                                                                                thresholdValueSpinBox->value(),
+                                                                                                thresholdClipSpinBox->value(),
+                                                                                                cv::Size(thresholdTileSpinBox->value(), thresholdTileSpinBox->value()),
+                                                                                                false);
                                                              // Copy results
                                                              for (int y = 0; y < height; ++y) {
                                                                  for (int x = 0; x < width; ++x) {
                                                                      outputBuffer[y][x] = inputBuffer[y][x];
                                                                  }
                                                              }
-                                                         } else {
-                                                             if (gpuRadio->isChecked()) {
-                                                                 claheProcessor.applyCLAHE(outputBuffer, inputBuffer, height, width,
-                                                                                           clipLimit, tileSize);
-                                                                 m_lastGpuTime = claheProcessor.getLastPerformanceMetrics().processingTime;
-                                                                 m_hasGpuClaheTime = true;
-                                                                 m_gpuTimingLabel->setText(QString("CLAHE Processing Time (GPU): %1 ms")
-                                                                                               .arg(m_lastGpuTime, 0, 'f', 2));
-                                                                 m_gpuTimingLabel->setVisible(true);
-                                                             } else {
-                                                                 claheProcessor.applyCLAHE_CPU(outputBuffer, inputBuffer, height, width,
-                                                                                               clipLimit, tileSize);
-                                                                 m_lastCpuTime = claheProcessor.getLastPerformanceMetrics().processingTime;
-                                                                 m_hasCpuClaheTime = true;
-                                                                 m_cpuTimingLabel->setText(QString("CLAHE Processing Time (CPU): %1 ms")
-                                                                                               .arg(m_lastCpuTime, 0, 'f', 2));
-                                                                 m_cpuTimingLabel->setVisible(true);
-                                                             }
+                                                             methodStr = "Threshold";
+                                                         }
+                                                         else { // Combined mode
+                                                             claheProcessor.applyCombinedCLAHE(outputBuffer, inputBuffer,
+                                                                                               height, width,
+                                                                                               clipSpinBox->value(),
+                                                                                               cv::Size(tileSpinBox->value(), tileSpinBox->value()),
+                                                                                               thresholdClipSpinBox->value(),
+                                                                                               cv::Size(thresholdTileSpinBox->value(), thresholdTileSpinBox->value()),
+                                                                                               thresholdValueSpinBox->value());
+                                                             methodStr = "Combined";
                                                          }
 
-                                                         // Rescale the output back to 0-65535 range
-                                                         double** finalOutput = CLAHEProcessor::allocateImageBuffer(height, width);
+                                                         auto endTime = std::chrono::high_resolution_clock::now();
+                                                         double processingTime = std::chrono::duration<double, std::milli>(endTime - startTime).count();
+
+                                                         // Rescale output to 16-bit range
                                                          for (int y = 0; y < height; ++y) {
                                                              for (int x = 0; x < width; ++x) {
-                                                                 finalOutput[y][x] = std::clamp(outputBuffer[y][x] * 65535.0, 0.0, 65535.0);
+                                                                 outputBuffer[y][x] *= 65535.0;
                                                              }
                                                          }
 
-                                                         // Update the image
-                                                         m_imageProcessor.updateAndSaveFinalImage(finalOutput, height, width);
+                                                         m_imageProcessor.updateAndSaveFinalImage(outputBuffer, height, width);
 
-                                                         // Cleanup allocated buffers
+                                                         // Clean up
                                                          CLAHEProcessor::deallocateImageBuffer(inputBuffer, height);
                                                          CLAHEProcessor::deallocateImageBuffer(outputBuffer, height);
-                                                         CLAHEProcessor::deallocateImageBuffer(finalOutput, height);
 
                                                          m_imageLabel->clearSelection();
                                                          updateImageDisplay();
 
-                                                         // Update histogram with final CLAHE result
-                                                         if (m_histogram) {
-                                                             m_histogram->updateClaheHistogram(m_imageProcessor.getFinalImage(),
-                                                                                               m_imageProcessor.getFinalImageHeight(),
-                                                                                               m_imageProcessor.getFinalImageWidth(),
-                                                                                               clipLimit);
+                                                         // Update status with appropriate parameters
+                                                         QString paramsStr = QString("Method: %1, Processing Time: %2ms\n")
+                                                                                 .arg(methodStr)
+                                                                                 .arg(processingTime, 0, 'f', 2);
+
+                                                         if (normalRadio->isChecked() || combinedRadio->isChecked()) {
+                                                             paramsStr += QString("Normal(Clip=%1, Tile=%2)")
+                                                             .arg(clipSpinBox->value(), 0, 'f', 2)
+                                                                 .arg(tileSpinBox->value());
+                                                         }
+                                                         if (thresholdRadio->isChecked() || combinedRadio->isChecked()) {
+                                                             if (combinedRadio->isChecked()) paramsStr += "\n";
+                                                             paramsStr += QString("Threshold(Clip=%1, Tile=%2, Value=%3)")
+                                                                              .arg(thresholdClipSpinBox->value(), 0, 'f', 2)
+                                                                              .arg(thresholdTileSpinBox->value())
+                                                                              .arg(thresholdValueSpinBox->value());
                                                          }
 
-                                                         // Update status
-                                                         QString methodStr = useThreshold ? "Threshold" : (gpuRadio->isChecked() ? "GPU" : "CPU");
-                                                         QString paramsStr = QString("Method: %1, Clip: %2, Tile: %3%4")
-                                                                                 .arg(methodStr)
-                                                                                 .arg(clipLimit, 0, 'f', 2)
-                                                                                 .arg(tileSpinBox->value())
-                                                                                 .arg(useThreshold ? QString(", Threshold: %1").arg(threshold) : "");
                                                          updateLastAction("CLAHE", paramsStr);
 
-                                                     } catch (const cv::Exception& e) {
+                                                     }
+                                                     catch (const std::exception& e) {
                                                          QMessageBox::critical(this, "Error",
-                                                                               QString("%1 CLAHE processing failed: %2")
-                                                                                   .arg(gpuRadio->isChecked() ? "GPU" : "CPU")
-                                                                                   .arg(e.what()));
+                                                                               QString("CLAHE processing failed: %1").arg(e.what()));
                                                      }
                                                  }
                                              }},
@@ -1836,6 +2071,7 @@ void ControlPanel::setupAdvancedOperations() {
     // Stretch Operations
     QPushButton* stretchBtn = new QPushButton("Stretch Image");
     stretchBtn->setFixedHeight(35);
+    stretchBtn->setEnabled(false);
     mainLayout->addWidget(stretchBtn);
 
     connect(stretchBtn, &QPushButton::clicked, [this]() {
@@ -1905,6 +2141,7 @@ void ControlPanel::setupAdvancedOperations() {
     // Padding Operations
     QPushButton* applyPaddingBtn = new QPushButton("Apply Padding");
     applyPaddingBtn->setFixedHeight(35);
+    applyPaddingBtn->setEnabled(false);
     mainLayout->addWidget(applyPaddingBtn);
 
     connect(applyPaddingBtn, &QPushButton::clicked, [this]() {
@@ -1961,6 +2198,7 @@ void ControlPanel::setupAdvancedOperations() {
     // Distortion Operations
     QPushButton* applyDistortionBtn = new QPushButton("Apply Distortion");
     applyDistortionBtn->setFixedHeight(35);
+    applyDistortionBtn->setEnabled(false);
     mainLayout->addWidget(applyDistortionBtn);
 
     connect(applyDistortionBtn, &QPushButton::clicked, [this]() {
@@ -2117,6 +2355,7 @@ void ControlPanel::setupBlackLineDetection() {
     layout->addWidget(detectBtn);
     layout->addWidget(removeBtn);
 
+    // Inside ControlPanel::setupBlackLineDetection()
     connect(detectBtn, &QPushButton::clicked, [this, removeBtn]() {
         if (checkZoomMode()) return;
         m_imageProcessor.saveCurrentState();
@@ -2135,8 +2374,8 @@ void ControlPanel::setupBlackLineDetection() {
         QCheckBox* horizontalCheck = new QCheckBox("Detect Horizontal Lines");
 
         QLabel* lineTypeExplanation = new QLabel(
-            "Select line types to detect.\n"
-            "Leave unchecked to use comprehensive detection."
+            "Select at least one line type to detect.\n"
+            "Detection will only process selected types."
             );
         lineTypeExplanation->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
 
@@ -2155,11 +2394,16 @@ void ControlPanel::setupBlackLineDetection() {
         connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
         if (dialog.exec() == QDialog::Accepted) {
+            // Check if at least one option is selected
+            if (!verticalCheck->isChecked() && !horizontalCheck->isChecked()) {
+                QMessageBox::warning(this, "Detection Error",
+                                     "Please select at least one line type to detect (Vertical and/or Horizontal).");
+                return;
+            }
+
             try {
                 int height, width;
                 ImageData imageData;
-
-                // 使用 RAII 来管理 imageData
                 ImageDataGuard guard(imageData);
 
                 if (!initializeImageData(imageData, height, width)) {
@@ -2172,11 +2416,9 @@ void ControlPanel::setupBlackLineDetection() {
                 bool detectVertical = verticalCheck->isChecked();
                 bool detectHorizontal = horizontalCheck->isChecked();
 
-                // 执行检测
+                // Execute detection based on selection
                 try {
-                    if (!detectVertical && !detectHorizontal) {
-                        success = DarkLinePointerProcessor::checkforBoth(imageData, outLines);
-                    } else if (detectVertical && detectHorizontal) {
+                    if (detectVertical && detectHorizontal) {
                         success = DarkLinePointerProcessor::checkforBoth(imageData, outLines);
                     } else if (detectVertical) {
                         success = DarkLinePointerProcessor::checkforVertical(imageData, outLines);
@@ -2184,25 +2426,20 @@ void ControlPanel::setupBlackLineDetection() {
                         success = DarkLinePointerProcessor::checkforHorizontal(imageData, outLines);
                     }
 
-                    // 处理检测结果
+                    // Process detection results
                     if (processDetectedLines(outLines, success)) {
                         QString detectionInfo = PointerOperations::generateDarkLineInfo(m_detectedLinesPointer);
                         updateDarkLineDisplay(detectionInfo);
 
-                        // 启用移除按钮
+                        // Enable remove button
                         removeBtn->setEnabled(true);
                         updateImageDisplay();
 
-                        // 生成检测类型字符串
-                        QString typeStr;
-                        if (!detectVertical && !detectHorizontal) {
-                            typeStr = "All Lines";
-                        } else {
-                            QStringList types;
-                            if (detectVertical) types << "Vertical";
-                            if (detectHorizontal) types << "Horizontal";
-                            typeStr = types.join(" and ");
-                        }
+                        // Generate detection type string
+                        QStringList types;
+                        if (detectVertical) types << "Vertical";
+                        if (detectHorizontal) types << "Horizontal";
+                        QString typeStr = types.join(" and ");
                         updateLastAction("Detect Dark Lines", typeStr);
                     } else {
                         QMessageBox::information(this, "Detection Result", "No dark lines detected.");
@@ -2520,92 +2757,6 @@ void ControlPanel::clearAllDetectionResults() {
     updateImageDisplay();
 }
 
-void ControlPanel::resetAllParameters() {
-    // Reset calibration parameters
-    InterlaceProcessor::resetCalibrationParams();
-    updateCalibrationButtonText();
-
-    // Reset timing information
-    m_lastGpuTime = -1;
-    m_lastCpuTime = -1;
-    m_hasCpuClaheTime = false;
-    m_hasGpuClaheTime = false;
-    m_gpuTimingLabel->clear();
-    m_gpuTimingLabel->setVisible(false);
-    m_cpuTimingLabel->clear();
-    m_cpuTimingLabel->setVisible(false);
-
-    // Reset histogram
-    if (m_histogram) {
-        m_histogram->setVisible(false);
-    }
-
-    // Reset zoom settings and button states
-    auto& zoomManager = m_imageProcessor.getZoomManager();
-    zoomManager.resetZoom();
-    zoomManager.toggleZoomMode(false);
-    zoomManager.toggleFixedZoom(false);
-
-    // Reset zoom controls group visibility
-    if (m_zoomControlsGroup) {
-        m_zoomControlsGroup->hide();
-    }
-
-    // Reset fix zoom button
-    if (m_fixZoomButton) {
-        m_fixZoomButton->setChecked(false);
-        m_fixZoomButton->setText("Fix Zoom");
-        m_fixZoomButton->setEnabled(false);
-    }
-
-    // Reset main zoom button state and appearance
-    if (m_zoomButton) {
-        m_zoomButton->setChecked(false);
-        m_zoomButton->setText("Activate Zoom");
-        m_zoomButton->setProperty("state", "");
-        m_zoomButton->setEnabled(false);
-        m_zoomButton->style()->unpolish(m_zoomButton);
-        m_zoomButton->style()->polish(m_zoomButton);
-    }
-
-    // Reset zoom control buttons
-    if (m_zoomInButton) m_zoomInButton->setEnabled(false);
-    if (m_zoomOutButton) m_zoomOutButton->setEnabled(false);
-    if (m_resetZoomButton) m_resetZoomButton->setEnabled(false);
-
-    // Reset display windows
-    if (m_lowEnergyWindow) {
-        m_lowEnergyWindow->hide();
-        m_lowEnergyWindow->clear();
-    }
-    if (m_highEnergyWindow) {
-        m_highEnergyWindow->hide();
-        m_highEnergyWindow->clear();
-    }
-    if (m_finalWindow) {
-        m_finalWindow->hide();
-        m_finalWindow->clear();
-    }
-    m_showDisplayWindows = false;
-
-    // Reset labels
-    m_imageSizeLabel->setText("Image Size: No image loaded");
-    m_pixelInfoLabel->setText("Pixel Info: ");
-    m_lastActionLabel->setText("Last Action: None");
-    m_lastActionParamsLabel->clear();
-    m_lastActionParamsLabel->setVisible(false);
-
-    // Reset detection info
-    clearAllDetectionResults();
-
-    // Re-enable all buttons except Browse
-    for (QPushButton* button : m_allButtons) {
-        if (button && button->text() != "Browse") {
-            button->setEnabled(false);
-        }
-    }
-}
-
 void ControlPanel::setupResetOperations() {
     createGroupBox("Reset Operations", {
                                            {"Reset Detection", [this]() {
@@ -2622,74 +2773,49 @@ void ControlPanel::setupResetOperations() {
                                                     QMessageBox::information(this, "Success", "All detection results have been cleared.");
                                                 }
                                             }},
-                                           {"Reset All", [this]() {
+                                           {"Clear All", [this]() {
                                                 QMessageBox::StandardButton reply = QMessageBox::warning(
                                                     this,
-                                                    "Reset All",
-                                                    "Are you sure you want to reset everything to initial state?\n"
-                                                    "This will reset the image to its state right after loading and clear all parameters and history.\n"
-                                                    "This action cannot be undone.",
+                                                    "Clear All",
+                                                    "Are you sure you want to clear everything?\nThis will remove the image and all settings.",
                                                     QMessageBox::Yes | QMessageBox::No
                                                     );
 
                                                 if (reply == QMessageBox::Yes) {
-                                                    // First reset the image processor
-                                                    m_imageProcessor.resetToOriginal();
+                                                    // Clear history and parameters
+                                                    InterlaceProcessor::resetCalibrationParams();
+                                                    m_resetCalibrationButton->setEnabled(false);
+                                                    updateCalibrationButtonText();
 
-                                                    // Reset all UI parameters
-                                                    resetAllParameters();
-                                                    m_imageLabel->clearSelection();
+                                                    // Clear detection results
+                                                    clearAllDetectionResults();
 
-                                                    // Force image display update
-                                                    updateImageDisplay();
+                                                    // Reset zoom if active
+                                                    if (m_imageProcessor.getZoomManager().isZoomModeActive()) {
+                                                        m_imageProcessor.getZoomManager().resetZoom();
+                                                        m_fixZoomButton->setChecked(false);
+                                                        m_imageProcessor.getZoomManager().toggleFixedZoom(false);
+                                                        toggleZoomMode(false);
+                                                    }
 
-                                                    // Explicitly disable all buttons except Browse
+                                                    // Clear image and display
+                                                    m_imageLabel->clear();
+                                                    m_imageSizeLabel->setText("Image Size: No image loaded");
+                                                    m_lastActionLabel->setText("Last Action: None");
+                                                    m_lastActionParamsLabel->clear();
+                                                    m_lastActionParamsLabel->setVisible(false);
+                                                    m_imageProcessor.clearHistory(); // Clear the image processing history
+
+                                                    // Disable all buttons including Undo
                                                     for (QPushButton* button : m_allButtons) {
                                                         if (button) {
+                                                            // Only enable Browse button
                                                             button->setEnabled(button->text() == "Browse");
                                                         }
                                                     }
 
-                                                    // Re-enable buttons for loaded image
-                                                    emit fileLoaded(true);
-
-                                                    updateLastAction("Reset All");
-                                                    QMessageBox::information(this, "Success",
-                                                                             "Image has been reset to initial state and all parameters and history have been cleared.");
-                                                }
-                                            }},
-                                           {"Clear Image", [this]() {
-                                                QMessageBox::StandardButton reply = QMessageBox::warning(
-                                                    this,
-                                                    "Clear Image",
-                                                    "Are you sure you want to clear the loaded image?\n"
-                                                    "This will remove the image and reset all parameters and history.\n"
-                                                    "This action cannot be undone.",
-                                                    QMessageBox::Yes | QMessageBox::No
-                                                    );
-
-                                                if (reply == QMessageBox::Yes) {
-                                                    // Clear image and history from processor
-                                                    m_imageProcessor.clearImage();
-
-                                                    // Reset UI parameters
-                                                    resetAllParameters();
-
-                                                    // Clear the display
-                                                    m_imageLabel->clearSelection();
-                                                    m_imageLabel->clear();
-                                                    m_imageLabel->setPixmap(QPixmap());
-
-                                                    // Disable all buttons except Browse
-                                                    emit fileLoaded(false);
-
-                                                    updateLastAction("Clear Image");
-
-                                                    // Reset image size label
-                                                    m_imageSizeLabel->setText("Image Size: No image loaded");
-
-                                                    QMessageBox::information(this, "Success",
-                                                                             "Image has been cleared and all parameters and history have been reset.");
+                                                    updateLastAction("Clear All");
+                                                    QMessageBox::information(this, "Success", "All data has been cleared.");
                                                 }
                                             }}
                                        });
@@ -3244,9 +3370,6 @@ void ControlPanel::processCalibration(int linesToProcessY, int linesToProcessX, 
         // Update the image processor with the modified image
         m_imageProcessor.updateAndSaveFinalImage(workingImage, height, width);
 
-        // Update stored calibration parameters
-        InterlaceProcessor::setCalibrationParams(newY, newX);
-
         QString paramString = QString("Mode: %1\nParameters: Y=%2, X=%3")
                                   .arg(actionDescription)
                                   .arg(newY)
@@ -3254,11 +3377,7 @@ void ControlPanel::processCalibration(int linesToProcessY, int linesToProcessX, 
 
         updateLastAction("Calibration", paramString);
 
-        // Clean up working image after it's been transferred to image processor
-        for (int i = 0; i < height; i++) {
-            free(workingImage[i]);
-        }
-        free(workingImage);
+        InterlaceProcessor::setCalibrationParams(newY, newX);
 
     } catch (const std::exception& e) {
         QMessageBox::critical(this, "Calibration Error",
@@ -3463,7 +3582,7 @@ double** ControlPanel::convertFromImageData(const ImageData& imageData) {
     }
 
     double** result = new double*[imageData.rows];
-        for (int i = 0; i < imageData.rows; i++) {
+    for (int i = 0; i < imageData.rows; i++) {
         result[i] = new double[imageData.cols];
         for (int j = 0; j < imageData.cols; j++) {
             result[i][j] = std::clamp(imageData.data[i][j], 0.0, 65535.0);
@@ -3495,3 +3614,5 @@ void ControlPanel::cleanupImageArray(double** array, int rows) {
         delete[] array;
     }
 }
+
+

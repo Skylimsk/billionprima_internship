@@ -219,6 +219,10 @@ private:
         ImageDataGuard(ImageData& d) : data(d) {}
         ~ImageDataGuard() { cleanupImageData(data); }
     };
+
+    QString getTimingString(double processingTime) {
+        return QString("\nProcessing Time: %1 ms").arg(processingTime, 0, 'f', 2);
+    }
 };
 
 #endif // CONTROL_PANEL_H

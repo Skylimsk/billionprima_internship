@@ -88,8 +88,7 @@ win32 {
 }
 
 # QCustomPlot configuration
-SOURCES += third_party/qcustomplot/qcustomplot.cpp \
-    moc_image_processor.cpp
+SOURCES += third_party/qcustomplot/qcustomplot.cpp
 HEADERS += third_party/qcustomplot/qcustomplot.h
 
 # Source files
