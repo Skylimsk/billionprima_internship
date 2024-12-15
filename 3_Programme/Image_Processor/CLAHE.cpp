@@ -269,96 +269,96 @@ void CLAHEProcessor::applyThresholdCLAHE(double** image, int height, int width,
             }
         }
 
-        // 2. Convert to 16-bit
+        // 2. Convert to 16-bit for processing
         cv::Mat matImage16U;
         matImage.convertTo(matImage16U, CV_16UC1, 65535.0);
 
-        // 3. Create threshold region mask - ensure conversion to 8-bit
-        cv::Mat thresholdMask;
-        cv::threshold(matImage16U, thresholdMask, threshold, 255, cv::THRESH_BINARY);
-        thresholdMask.convertTo(thresholdMask, CV_8U);
+        // 3. Create dark mask based on threshold (using BINARY_INV to mark dark regions)
+        cv::Mat darkMask;
+        cv::threshold(matImage16U, darkMask, threshold, 255, cv::THRESH_BINARY_INV);
+        darkMask.convertTo(darkMask, CV_8U);
 
-        // 4. Get original image range
-        double minVal, maxVal;
-        cv::minMaxLoc(matImage16U, &minVal, &maxVal);
+        // Display dark mask before CLAHE
+        cv::imshow("Dark Mask Before CLAHE", darkMask);
 
-        // 5. Extract threshold and non-threshold regions
-        cv::Mat thresholdRegion, nonThresholdRegion;
-        matImage16U.copyTo(thresholdRegion, thresholdMask);
-        matImage16U.copyTo(nonThresholdRegion, ~thresholdMask);
+        // 4. Extract dark regions for CLAHE processing
+        cv::Mat darkRegion;
+        matImage16U.copyTo(darkRegion, darkMask);
 
-        // 6. Apply CLAHE to threshold region
-        cv::Mat thresholdRegion8bit;
-        thresholdRegion.convertTo(thresholdRegion8bit, CV_8UC1, 255.0/65535.0);
+        // Display threshold region before CLAHE
+        cv::Mat darkRegionDisplay;
+        // Normalize to 0-255 range for display
+        cv::normalize(darkRegion, darkRegionDisplay, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+        cv::imshow("Threshold Region Before CLAHE", darkRegionDisplay);
+
+        // 5. Apply CLAHE to dark region
+        cv::Mat darkRegion8bit;
+        darkRegion.convertTo(darkRegion8bit, CV_8UC1, 255.0/65535.0);
         cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(clipLimit, tileSize);
-        cv::Mat processedThreshold8bit;
-        clahe->apply(thresholdRegion8bit, processedThreshold8bit);
+        cv::Mat processedDark8bit;
+        clahe->apply(darkRegion8bit, processedDark8bit);
 
-        // 7. Convert back to 16-bit and remap to wider range
-        cv::Mat processedThreshold;
-        processedThreshold8bit.convertTo(processedThreshold, CV_16UC1, 65535.0/255.0);
+        // Convert back to 16-bit
+        cv::Mat processedDark;
+        processedDark8bit.convertTo(processedDark, CV_16UC1, 65535.0/255.0);
 
-        // 8. Calculate new range: using original image range as reference
-        double targetMin = minVal;  // Use original minimum value
-        double targetMax = maxVal * 1.5;  // Allow maximum to expand to 1.5 times original maximum
-        double thresholdMin, thresholdMax;
-        cv::minMaxLoc(processedThreshold, &thresholdMin, &thresholdMax, nullptr, nullptr, thresholdMask);
+        // Display threshold region after CLAHE
+        cv::Mat processedDarkDisplay;
+        cv::normalize(processedDark, processedDarkDisplay, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+        cv::imshow("Threshold Region After CLAHE", processedDarkDisplay);
 
-        // Linear mapping to new range
-        processedThreshold = (processedThreshold - thresholdMin) * (targetMax - targetMin) /
-                                 (thresholdMax - thresholdMin) + targetMin;
-
-        // 9. Collect dark region pixels and distribute more boldly
-        std::vector<uint16_t> darkPixels;
-        uint16_t blackThreshold = 10000;  // Raise dark region threshold to collect more dark pixels
-        uint16_t whiteThreshold = 60000;  // Protect areas near pure white
-
-        // Collect dark pixels only from threshold region
+        // 6. Calculate average darkness for distribution
+        double avgDarkness = 0.0;
+        int darkPixelCount = 0;
+        uint16_t whiteThreshold = 60000;  // Protect pure white areas
         for(int y = 0; y < height; y++) {
             for(int x = 0; x < width; x++) {
-                if(thresholdMask.at<uint8_t>(y, x) > 0 &&  // Within threshold region
-                    processedThreshold.at<uint16_t>(y, x) < blackThreshold) {
-                    darkPixels.push_back(processedThreshold.at<uint16_t>(y, x));
+                if(darkMask.at<uint8_t>(y, x) > 0) {
+                    avgDarkness += processedDark.at<uint16_t>(y, x);
+                    darkPixelCount++;
                 }
             }
         }
 
-        // 10. More aggressively distribute dark values
-        cv::Mat result = matImage16U.clone();
-        if(!darkPixels.empty()) {
-            double totalDarkness = std::accumulate(darkPixels.begin(), darkPixels.end(), 0.0);
-            int totalPixels = height * width;
-            // Increase darkness impact
-            double darknessPerPixel = (totalDarkness / totalPixels) * 3.0;  // Double darkness impact
-
-            for(int y = 0; y < height; y++) {
-                for(int x = 0; x < width; x++) {
-                    // Merge threshold region processing results
-                    if(thresholdMask.at<uint8_t>(y, x) > 0) {
-                        result.at<uint16_t>(y, x) = processedThreshold.at<uint16_t>(y, x);
-                    }
-
-                    // Add dark values to non-white regions
-                    if(result.at<uint16_t>(y, x) < whiteThreshold) {
-                        // Dynamically adjust dark value addition based on pixel value
-                        double darknessFactor = 1.0 - (result.at<uint16_t>(y, x) / static_cast<double>(whiteThreshold));
-                        result.at<uint16_t>(y, x) += static_cast<uint16_t>(darknessPerPixel * darknessFactor);
+        if(darkPixelCount > 0) {
+            avgDarkness /= darkPixelCount;
+            // If average darkness is high, distribute to non-white areas
+            if(avgDarkness < threshold) {
+                double darknessContribution = (threshold - avgDarkness) * 0.3; // Adjustable factor
+                for(int y = 0; y < height; y++) {
+                    for(int x = 0; x < width; x++) {
+                        if(matImage16U.at<uint16_t>(y, x) < whiteThreshold) {
+                            // Apply darkness contribution based on current pixel value
+                            double factor = 1.0 - (matImage16U.at<uint16_t>(y, x) / static_cast<double>(whiteThreshold));
+                            matImage16U.at<uint16_t>(y, x) += static_cast<uint16_t>(darknessContribution * factor);
+                        }
                     }
                 }
             }
         }
 
-        // 11. Convert back to double and output debug information
+        // 7. Replace original dark regions with CLAHE processed regions
+        processedDark.copyTo(matImage16U, darkMask);
+
+        // Display dark mask after processing
+        cv::Mat finalDarkMask;
+        cv::threshold(matImage16U, finalDarkMask, threshold, 255, cv::THRESH_BINARY_INV);
+        finalDarkMask.convertTo(finalDarkMask, CV_8U);
+        cv::imshow("Dark Mask After CLAHE", finalDarkMask);
+
+        // 8. Convert back to double format
         cv::Mat resultDouble;
-        result.convertTo(resultDouble, CV_64F, 1.0/65535.0);
-        cv::minMaxLoc(resultDouble, &minVal, &maxVal);
+        matImage16U.convertTo(resultDouble, CV_64F, 1.0/65535.0);
 
-        // 12. Copy back to original array
+        // 9. Copy back to original array
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 image[y][x] = resultDouble.at<double>(y, x);
             }
         }
+
+        // Wait for a key press to close the windows
+        cv::waitKey(1);  // Changed to 1ms wait to avoid blocking
     }
     catch (const cv::Exception& e) {
         qDebug() << "Error in threshold CLAHE processing:" << e.what();

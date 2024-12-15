@@ -163,14 +163,21 @@ public:
         DIRECT_STITCH    // Directly stitch image parts after line removal
     };
 
-
+    // Detect dark lines in the image
     static DarkLineArray* detectDarkLines(const ImageData& image);
     static DarkLineArray* detectVerticalLines(const ImageData& image);
     static DarkLineArray* detectHorizontalLines(const ImageData& image);
 
+    // Check for lines in specific directions
     static bool checkforHorizontal(const ImageData& image, DarkLineArray*& outLines);
     static bool checkforVertical(const ImageData& image, DarkLineArray*& outLines);
     static bool checkforBoth(const ImageData& image, DarkLineArray*& outLines);
+
+    // Manage DarkLineArray
+    static DarkLineArray* createDarkLineArray(int rows, int cols);
+    static void destroyDarkLineArray(DarkLineArray* array);
+    static void copyDarkLineArray(const DarkLineArray* source, DarkLineArray* destination);
+    static DarkLineArray* createSafeDarkLineArray(int rows, int cols);
 
     static void removeDarkLinesSelective(
         ImageData& image,
@@ -191,15 +198,11 @@ public:
         RemovalMethod method = RemovalMethod::NEIGHBOR_VALUES
         );
 
-    // Array management functions
-    static DarkLineArray* createDarkLineArray(int rows, int cols);
-    static void destroyDarkLineArray(DarkLineArray* array);
-    static void copyDarkLineArray(const DarkLineArray* source, DarkLineArray* destination);
-
 private:
 
     static int calculateSearchRadius(int lineWidth);
 
+    // Check if a position is within an object in the image
     static bool isInObject(
         const ImageData& image,
         int pos,
@@ -207,6 +210,10 @@ private:
         bool isVertical,
         int threadId
         );
+
+    // Image manipulation helpers
+    static std::unique_ptr<ImageData> createImageCopy(const ImageData& source);
+    static void copyImageData(const ImageData& source, ImageData& destination);
 
     static double findReplacementValue(
         const ImageData& image,
@@ -216,11 +223,7 @@ private:
         int lineWidth
         );
 
-    // Image manipulation helpers
-    static std::unique_ptr<ImageData> createImageCopy(const ImageData& source);
-    static void copyImageData(const ImageData& source, ImageData& destination);
 
-    static DarkLineArray* createSafeDarkLineArray(int rows, int cols);
 };
 
 #endif // DARKLINE_POINTER_H
