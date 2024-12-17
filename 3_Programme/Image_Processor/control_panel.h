@@ -82,6 +82,8 @@ public:
     ImageData convertToImageData(double** data, int rows, int cols);
     double** convertFromImageData(const ImageData& imageData);
 
+    QLabel* m_imageSizeLabel;
+
 protected:
     struct LineVisualProperties {
         QColor color;
@@ -154,7 +156,6 @@ private:
     QLabel* m_gpuTimingLabel;
     QLabel* m_cpuTimingLabel;
     QLabel* m_darkLineInfoLabel;
-    QLabel* m_imageSizeLabel;
 
     double m_lastGpuTime;
     double m_lastCpuTime;

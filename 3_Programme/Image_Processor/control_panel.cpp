@@ -1692,153 +1692,204 @@ void ControlPanel::setupFilteringOperations() {
     createGroupBox("Image Enhancement", {
                                             {"CLAHE", [this]() {
                                                  if (checkZoomMode()) return;
-                                                 m_imageProcessor.saveCurrentState();
-                                                 m_darkLineInfoLabel->hide();
-                                                 resetDetectedLinesPointer();
 
-                                                 // Get current image dimensions
-                                                 const auto& currentImage = m_imageProcessor.getFinalImage();
-                                                 if (!currentImage) {
-                                                     QMessageBox::warning(this, "Error", "No image data available for CLAHE processing");
-                                                     return;
-                                                 }
+                                                 // Use non-const pointer to allow modifications
+                                                 QDialog* dialog = new QDialog(this);
+                                                 dialog->setWindowTitle("CLAHE Settings");
+                                                 dialog->setMinimumWidth(350);
+                                                 QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
 
-                                                 int height = m_imageProcessor.getFinalImageHeight();
-                                                 int width = m_imageProcessor.getFinalImageWidth();
+                                                 // CLAHE Type Selection
+                                                 QGroupBox* typeBox = new QGroupBox("CLAHE Type");
+                                                 QVBoxLayout* typeLayout = new QVBoxLayout(typeBox);
+                                                 QRadioButton* standardRadio = new QRadioButton("Standard CLAHE");
+                                                 QRadioButton* thresholdRadio = new QRadioButton("Threshold CLAHE");
+                                                 QRadioButton* combinedRadio = new QRadioButton("Combined CLAHE");
+                                                 standardRadio->setChecked(true);
 
-                                                 // Create dialog for CLAHE options
-                                                 QDialog dialog(this);
-                                                 dialog.setWindowTitle("CLAHE Options");
-                                                 dialog.setMinimumWidth(300);
-                                                 QVBoxLayout* layout = new QVBoxLayout(&dialog);
+                                                 typeLayout->addWidget(standardRadio);
+                                                 typeLayout->addWidget(thresholdRadio);
+                                                 typeLayout->addWidget(combinedRadio);
 
-                                                 // Processing mode selection
-                                                 QGroupBox* modeBox = new QGroupBox("Processing Mode");
-                                                 QVBoxLayout* modeLayout = new QVBoxLayout(modeBox);
+                                                 // Add explanation labels for each type
+                                                 QLabel* standardLabel = new QLabel("Applies standard CLAHE processing to the entire image");
+                                                 QLabel* thresholdLabel = new QLabel("Applies CLAHE only to pixels below a threshold value");
+                                                 QLabel* combinedLabel = new QLabel("Applies standard CLAHE first, then adjusts based on pixel brightness");
+
+                                                 standardLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+                                                 thresholdLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+                                                 combinedLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+
+                                                 typeLayout->addWidget(standardLabel);
+                                                 typeLayout->addWidget(thresholdLabel);
+                                                 typeLayout->addWidget(combinedLabel);
+                                                 mainLayout->addWidget(typeBox);
+
+                                                 // Processing Mode Selection
+                                                 QGroupBox* processingBox = new QGroupBox("Processing Hardware");
+                                                 QVBoxLayout* processingLayout = new QVBoxLayout(processingBox);
                                                  QRadioButton* gpuRadio = new QRadioButton("GPU Processing");
                                                  QRadioButton* cpuRadio = new QRadioButton("CPU Processing");
                                                  gpuRadio->setChecked(true);
+                                                 processingLayout->addWidget(gpuRadio);
+                                                 processingLayout->addWidget(cpuRadio);
+                                                 mainLayout->addWidget(processingBox);
 
-                                                 modeLayout->addWidget(gpuRadio);
-                                                 modeLayout->addWidget(cpuRadio);
-                                                 layout->addWidget(modeBox);
+                                                 // Parameters Section
+                                                 QGroupBox* paramsBox = new QGroupBox("Parameters");
+                                                 QVBoxLayout* paramsLayout = new QVBoxLayout(paramsBox);
 
-                                                 // Threshold option
-                                                 QCheckBox* useThresholdCheck = new QCheckBox("Apply Threshold");
-                                                 layout->addWidget(useThresholdCheck);
-
-                                                 // Threshold value input
-                                                 QLabel* thresholdLabel = new QLabel("Threshold Value:");
-                                                 QSpinBox* thresholdSpinBox = new QSpinBox();
-                                                 thresholdSpinBox->setRange(0, 65535);
-                                                 thresholdSpinBox->setValue(5000);
-                                                 thresholdSpinBox->setEnabled(false);
-                                                 layout->addWidget(thresholdLabel);
-                                                 layout->addWidget(thresholdSpinBox);
-
-                                                 // Connect threshold checkbox to spinbox
-                                                 connect(useThresholdCheck, &QCheckBox::toggled, thresholdSpinBox, &QSpinBox::setEnabled);
-
-                                                 // CLAHE parameters
+                                                 // Standard CLAHE parameters (always visible)
                                                  QLabel* clipLabel = new QLabel("Clip Limit:");
                                                  QDoubleSpinBox* clipSpinBox = new QDoubleSpinBox();
                                                  clipSpinBox->setRange(0.1, 1000.0);
                                                  clipSpinBox->setValue(2.0);
                                                  clipSpinBox->setSingleStep(0.1);
-                                                 layout->addWidget(clipLabel);
-                                                 layout->addWidget(clipSpinBox);
 
                                                  QLabel* tileLabel = new QLabel("Tile Size:");
                                                  QSpinBox* tileSpinBox = new QSpinBox();
                                                  tileSpinBox->setRange(2, 1000);
                                                  tileSpinBox->setValue(8);
-                                                 layout->addWidget(tileLabel);
-                                                 layout->addWidget(tileSpinBox);
 
-                                                 // Real-time preview option
-                                                 QCheckBox* previewCheck = new QCheckBox("Show Real-time Histogram Preview");
-                                                 previewCheck->setChecked(true);
-                                                 layout->addWidget(previewCheck);
+                                                 paramsLayout->addWidget(clipLabel);
+                                                 paramsLayout->addWidget(clipSpinBox);
+                                                 paramsLayout->addWidget(tileLabel);
+                                                 paramsLayout->addWidget(tileSpinBox);
 
-                                                 // Connect preview checkbox to update histogram
-                                                 connect(clipSpinBox, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-                                                         [this, previewCheck, &currentImage](double value) {
-                                                             if (previewCheck->isChecked() && m_histogram) {
-                                                                 m_histogram->updateClaheHistogram(currentImage,
-                                                                                                   m_imageProcessor.getFinalImageHeight(),
-                                                                                                   m_imageProcessor.getFinalImageWidth(),
-                                                                                                   value);
-                                                             }
-                                                         });
+                                                 // Threshold value (only for threshold CLAHE)
+                                                 QLabel* thresholdValueLabel = new QLabel("Threshold Value:");
+                                                 QSpinBox* thresholdValueSpinBox = new QSpinBox();
+                                                 thresholdValueSpinBox->setRange(0, 65535);
+                                                 thresholdValueSpinBox->setValue(5000);
+                                                 thresholdValueSpinBox->setVisible(false);
+                                                 thresholdValueLabel->setVisible(false);
+
+                                                 paramsLayout->addWidget(thresholdValueLabel);
+                                                 paramsLayout->addWidget(thresholdValueSpinBox);
+
+                                                 mainLayout->addWidget(paramsBox);
+
+                                                 // Connect radio button changes to show/hide threshold value
+                                                 // Use resize() instead of adjustSize() to avoid const issues
+                                                 connect(standardRadio, &QRadioButton::toggled, dialog, [=](bool checked) {
+                                                     thresholdValueLabel->setVisible(!checked);
+                                                     thresholdValueSpinBox->setVisible(!checked);
+                                                     dialog->resize(dialog->sizeHint());
+                                                 });
+
+                                                 connect(thresholdRadio, &QRadioButton::toggled, dialog, [=](bool checked) {
+                                                     thresholdValueLabel->setVisible(checked);
+                                                     thresholdValueSpinBox->setVisible(checked);
+                                                     dialog->resize(dialog->sizeHint());
+                                                 });
+
+                                                 connect(combinedRadio, &QRadioButton::toggled, dialog, [=](bool checked) {
+                                                     thresholdValueLabel->setVisible(false);
+                                                     thresholdValueSpinBox->setVisible(false);
+                                                     dialog->resize(dialog->sizeHint());
+                                                 });
 
                                                  QDialogButtonBox* buttonBox = new QDialogButtonBox(
                                                      QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-                                                 layout->addWidget(buttonBox);
+                                                 mainLayout->addWidget(buttonBox);
 
-                                                 connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-                                                 connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+                                                 connect(buttonBox, &QDialogButtonBox::accepted, dialog, &QDialog::accept);
+                                                 connect(buttonBox, &QDialogButtonBox::rejected, dialog, &QDialog::reject);
 
-                                                 if (dialog.exec() == QDialog::Accepted) {
+                                                 if (dialog->exec() == QDialog::Accepted) {
                                                      try {
                                                          // Get current image data
-                                                         const auto& currentImage = m_imageProcessor.getFinalImage();
-                                                         if (!currentImage) {
-                                                             QMessageBox::warning(this, "Error", "No image data available for CLAHE processing");
+                                                         const auto& finalImage = m_imageProcessor.getFinalImage();
+                                                         if (!finalImage) {
+                                                             QMessageBox::warning(this, "Error", "No image data available");
                                                              return;
                                                          }
 
                                                          int height = m_imageProcessor.getFinalImageHeight();
                                                          int width = m_imageProcessor.getFinalImageWidth();
 
-                                                         // Allocate input and output buffers
+                                                         // Allocate buffers
                                                          double** inputBuffer = CLAHEProcessor::allocateImageBuffer(height, width);
                                                          double** outputBuffer = CLAHEProcessor::allocateImageBuffer(height, width);
 
-                                                         // Convert input image to normalized double format
+                                                         // Copy input data and normalize to 0-1 range
                                                          for (int y = 0; y < height; ++y) {
                                                              for (int x = 0; x < width; ++x) {
-                                                                 inputBuffer[y][x] = currentImage[y][x] / 65535.0;
+                                                                 inputBuffer[y][x] = finalImage[y][x] / 65535.0;
                                                              }
                                                          }
 
-                                                         bool useThreshold = useThresholdCheck->isChecked();
-                                                         uint16_t threshold = thresholdSpinBox->value();
-                                                         double clipLimit = clipSpinBox->value();
-                                                         cv::Size tileSize(tileSpinBox->value(), tileSpinBox->value());
-
                                                          CLAHEProcessor claheProcessor;
-                                                         if (useThreshold) {
-                                                             // Apply threshold CLAHE directly to final buffer
-                                                             claheProcessor.applyThresholdCLAHE(inputBuffer, height, width, threshold,
-                                                                                                clipLimit, tileSize, false);
+                                                         bool useGPU = gpuRadio->isChecked();
+                                                         QString statusMsg;
 
+                                                         // Start timing
+                                                         auto startTime = std::chrono::high_resolution_clock::now();
+
+                                                         if (standardRadio->isChecked()) {
+                                                             // Standard CLAHE
+                                                             if (useGPU) {
+                                                                 claheProcessor.applyCLAHE(outputBuffer, inputBuffer, height, width,
+                                                                                           clipSpinBox->value(),
+                                                                                           cv::Size(tileSpinBox->value(), tileSpinBox->value()));
+                                                             } else {
+                                                                 claheProcessor.applyCLAHE_CPU(outputBuffer, inputBuffer, height, width,
+                                                                                               clipSpinBox->value(),
+                                                                                               cv::Size(tileSpinBox->value(), tileSpinBox->value()));
+                                                             }
+                                                             statusMsg = QString("Standard (%1)\nClip: %2, Tile: %3")
+                                                                             .arg(useGPU ? "GPU" : "CPU")
+                                                                             .arg(clipSpinBox->value(), 0, 'f', 2)
+                                                                             .arg(tileSpinBox->value());
+                                                         } else if (thresholdRadio->isChecked()) {
+                                                             // Threshold CLAHE
+                                                             if (useGPU) {
+                                                                 claheProcessor.applyThresholdCLAHE(inputBuffer, height, width,
+                                                                                                    thresholdValueSpinBox->value(),
+                                                                                                    clipSpinBox->value(),
+                                                                                                    cv::Size(tileSpinBox->value(), tileSpinBox->value()));
+                                                             } else {
+                                                                 claheProcessor.applyThresholdCLAHE_CPU(inputBuffer, height, width,
+                                                                                                        thresholdValueSpinBox->value(),
+                                                                                                        clipSpinBox->value(),
+                                                                                                        cv::Size(tileSpinBox->value(), tileSpinBox->value()));
+                                                             }
                                                              // Copy results
                                                              for (int y = 0; y < height; ++y) {
                                                                  for (int x = 0; x < width; ++x) {
                                                                      outputBuffer[y][x] = inputBuffer[y][x];
                                                                  }
                                                              }
+                                                             statusMsg = QString("Threshold (%1)\nThreshold: %2, Clip: %3, Tile: %4")
+                                                                             .arg(useGPU ? "GPU" : "CPU")
+                                                                             .arg(thresholdValueSpinBox->value())
+                                                                             .arg(clipSpinBox->value(), 0, 'f', 2)
+                                                                             .arg(tileSpinBox->value());
                                                          } else {
-                                                             if (gpuRadio->isChecked()) {
-                                                                 claheProcessor.applyCLAHE(outputBuffer, inputBuffer, height, width,
-                                                                                           clipLimit, tileSize);
-                                                                 m_lastGpuTime = claheProcessor.getLastPerformanceMetrics().processingTime;
-                                                                 m_hasGpuClaheTime = true;
-                                                                 m_gpuTimingLabel->setText(QString("CLAHE Processing Time (GPU): %1 ms")
-                                                                                               .arg(m_lastGpuTime, 0, 'f', 2));
-                                                                 m_gpuTimingLabel->setVisible(true);
+                                                             // Combined CLAHE
+                                                             if (useGPU) {
+                                                                 claheProcessor.applyCombinedCLAHE(outputBuffer, inputBuffer, height, width,
+                                                                                                   clipSpinBox->value(),
+                                                                                                   cv::Size(tileSpinBox->value(), tileSpinBox->value()));
                                                              } else {
-                                                                 claheProcessor.applyCLAHE_CPU(outputBuffer, inputBuffer, height, width,
-                                                                                               clipLimit, tileSize);
-                                                                 m_lastCpuTime = claheProcessor.getLastPerformanceMetrics().processingTime;
-                                                                 m_hasCpuClaheTime = true;
-                                                                 m_cpuTimingLabel->setText(QString("CLAHE Processing Time (CPU): %1 ms")
-                                                                                               .arg(m_lastCpuTime, 0, 'f', 2));
-                                                                 m_cpuTimingLabel->setVisible(true);
+                                                                 claheProcessor.applyCombinedCLAHE_CPU(outputBuffer, inputBuffer, height, width,
+                                                                                                       clipSpinBox->value(),
+                                                                                                       cv::Size(tileSpinBox->value(), tileSpinBox->value()));
                                                              }
+                                                             statusMsg = QString("Combined (%1)\nClip: %2, Tile: %3")
+                                                                             .arg(useGPU ? "GPU" : "CPU")
+                                                                             .arg(clipSpinBox->value(), 0, 'f', 2)
+                                                                             .arg(tileSpinBox->value());
                                                          }
 
-                                                         // Rescale the output back to 0-65535 range
+                                                         // End timing
+                                                         auto endTime = std::chrono::high_resolution_clock::now();
+                                                         double processingTime = std::chrono::duration<double, std::milli>(endTime - startTime).count();
+
+                                                         // Add processing time to status message
+                                                         statusMsg += QString("\nProcessing Time: %1 ms").arg(processingTime, 0, 'f', 2);
+
+                                                         // Scale back to 16-bit range
                                                          double** finalOutput = CLAHEProcessor::allocateImageBuffer(height, width);
                                                          for (int y = 0; y < height; ++y) {
                                                              for (int x = 0; x < width; ++x) {
@@ -1846,39 +1897,33 @@ void ControlPanel::setupFilteringOperations() {
                                                              }
                                                          }
 
-                                                         // Update the image
+                                                         // Update image
                                                          m_imageProcessor.updateAndSaveFinalImage(finalOutput, height, width);
 
-                                                         // Cleanup allocated buffers
+                                                         // Cleanup
                                                          CLAHEProcessor::deallocateImageBuffer(inputBuffer, height);
                                                          CLAHEProcessor::deallocateImageBuffer(outputBuffer, height);
                                                          CLAHEProcessor::deallocateImageBuffer(finalOutput, height);
 
+                                                         // Update display
                                                          m_imageLabel->clearSelection();
                                                          updateImageDisplay();
+                                                         updateLastAction("CLAHE", statusMsg);
 
-                                                         // Update histogram with final CLAHE result
-                                                         if (m_histogram) {
-                                                             m_histogram->updateClaheHistogram(m_imageProcessor.getFinalImage(),
-                                                                                               m_imageProcessor.getFinalImageHeight(),
-                                                                                               m_imageProcessor.getFinalImageWidth(),
-                                                                                               clipLimit);
+                                                         // Update timing labels
+                                                         if (useGPU) {
+                                                             m_gpuTimingLabel->setText(QString("GPU Time: %1 ms").arg(processingTime, 0, 'f', 2));
+                                                             m_gpuTimingLabel->setVisible(true);
+                                                             m_lastGpuTime = processingTime;
+                                                         } else {
+                                                             m_cpuTimingLabel->setText(QString("CPU Time: %1 ms").arg(processingTime, 0, 'f', 2));
+                                                             m_cpuTimingLabel->setVisible(true);
+                                                             m_lastCpuTime = processingTime;
                                                          }
-
-                                                         // Update status
-                                                         QString methodStr = useThreshold ? "Threshold" : (gpuRadio->isChecked() ? "GPU" : "CPU");
-                                                         QString paramsStr = QString("Method: %1, Clip: %2, Tile: %3%4")
-                                                                                 .arg(methodStr)
-                                                                                 .arg(clipLimit, 0, 'f', 2)
-                                                                                 .arg(tileSpinBox->value())
-                                                                                 .arg(useThreshold ? QString(", Threshold: %1").arg(threshold) : "");
-                                                         updateLastAction("CLAHE", paramsStr);
 
                                                      } catch (const cv::Exception& e) {
                                                          QMessageBox::critical(this, "Error",
-                                                                               QString("%1 CLAHE processing failed: %2")
-                                                                                   .arg(gpuRadio->isChecked() ? "GPU" : "CPU")
-                                                                                   .arg(e.what()));
+                                                                               QString("CLAHE processing failed: %1").arg(e.what()));
                                                      }
                                                  }
                                              }},
@@ -2745,7 +2790,7 @@ void ControlPanel::setupResetOperations() {
                                                     QMessageBox::information(this, "Success", "All detection results have been cleared.");
                                                 }
                                             }},
-                                            {"Clear All", [this]() {
+                                           {"Clear All", [this]() {
                                                 QMessageBox::StandardButton reply = QMessageBox::warning(
                                                     this,
                                                     "Clear All",

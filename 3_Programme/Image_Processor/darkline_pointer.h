@@ -226,4 +226,5 @@ private:
 
 };
 
+
 #endif // DARKLINE_POINTER_H

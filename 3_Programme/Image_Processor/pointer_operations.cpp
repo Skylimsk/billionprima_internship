@@ -16,6 +16,10 @@ void PointerOperations::handleDirectStitchRemoval(
     if (!panel || !lines || lineIndices.empty()) return;
 
     try {
+        // Store initial dimensions
+        int originalHeight = panel->getImageProcessor().getFinalImageHeight();
+        int originalWidth = panel->getImageProcessor().getFinalImageWidth();
+
         // Initialize and store initial state
         std::unique_ptr<DarkLineArray, DarkLineArrayDeleter> initialLines(createCopy(lines));
 
@@ -49,34 +53,32 @@ void PointerOperations::handleDirectStitchRemoval(
 
         panel->getImageProcessor().saveCurrentState();
 
-        // Suppress the resource deadlock warning by using a single operation block
+        // Process line removal
         {
-            // Use a single lock for the entire operation
             std::unique_ptr<DarkLine*[]> selectedLinesGuard(new DarkLine*[lineIndices.size()]);
             DarkLine** selectedLines = selectedLinesGuard.get();
             int selectedCount = 0;
 
-            // Setup selected lines without locking
+            // Setup selected lines
             for (const auto& [i, j] : lineIndices) {
                 if (i >= lines->rows || j >= lines->cols) continue;
                 selectedLines[selectedCount++] = &(const_cast<DarkLineArray*>(lines)->lines[i][j]);
             }
 
             if (selectedCount > 0) {
-                // Perform the removal operation without showing warning
                 DarkLinePointerProcessor::removeDarkLinesSequential(
                     imageData,
                     const_cast<DarkLineArray*>(lines),
                     selectedLines,
                     selectedCount,
                     isInObject,
-                    true,  // Set to true to suppress warnings
+                    true,
                     DarkLinePointerProcessor::RemovalMethod::DIRECT_STITCH
                     );
             }
         }
 
-        // Update image
+        // Update processed image
         double** processedImage = new double*[imageData.rows];
         for (int y = 0; y < imageData.rows; y++) {
             processedImage[y] = new double[imageData.cols];
@@ -85,36 +87,54 @@ void PointerOperations::handleDirectStitchRemoval(
             }
         }
 
-        // Update the processed image
+        // Update the image display with new dimensions
         panel->getImageProcessor().updateAndSaveFinalImage(processedImage, imageData.rows, imageData.cols);
 
-        // Cleanup
+        // Get final dimensions
+        int finalHeight = imageData.rows;
+        int finalWidth = imageData.cols;
+
+        // Update image size label with both original and new dimensions
+        QString imageSizeText = QString("Image Size: %1 x %2 (Original: %3 x %4)")
+                                    .arg(finalWidth)
+                                    .arg(finalHeight)
+                                    .arg(originalWidth)
+                                    .arg(originalHeight);
+        panel->m_imageSizeLabel->setText(imageSizeText);
+
+        // Clean up processed image
         for (int y = 0; y < imageData.rows; y++) delete[] processedImage[y];
         delete[] processedImage;
 
-        // Auto detect and redraw lines
-        {
-            std::lock_guard<std::mutex> lock(panel->m_detectedLinesMutex);
-            panel->resetDetectedLinesPointer();
-            DarkLineArray* newLines = DarkLinePointerProcessor::detectDarkLines(imageData);
-            panel->setDetectedLinesPointer(newLines);
-        }
-
-        // Update UI
+        // Generate removal summary before clearing detection
         QString removalInfo = generateRemovalSummary(
             initialLines.get(),
-            panel->getDetectedLinesPointer(),
+            lines,
             lineIndices,
             isInObject,
             "Direct Stitch"
             );
 
+        // Clear detection results
+        panel->resetDetectedLinesPointer();
+
+        // Update UI components
         panel->getDarkLineInfoLabel()->setText(removalInfo);
+        panel->getDarkLineInfoLabel()->setVisible(true);
         panel->updateDarkLineInfoDisplayPointer();
+
+        // Update last action information with size changes
+        QString actionParams = QString("Method: Direct Stitch\nSize: %1x%2 -> %3x%4")
+                                   .arg(originalWidth)
+                                   .arg(originalHeight)
+                                   .arg(finalWidth)
+                                   .arg(finalHeight);
+        panel->updateLastAction("Remove Dark Lines", actionParams);
+
+        // Update the display
         panel->updateImageDisplay();
 
     } catch (const std::exception& e) {
-        // Only show error for actual failures, not the resource warning
         if (!QString(e.what()).contains("resource deadlock")) {
             QMessageBox::critical(panel, "Error",
                                   QString("Error in direct stitch removal: %1").arg(e.what()));
