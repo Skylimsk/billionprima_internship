@@ -94,11 +94,6 @@ public:
                                 int height, int width, double clipLimit,
                                 const cv::Size& tileSize);
 
-    // Configuration and metrics
-    void setThreadConfig(const ThreadConfig& config) { threadConfig = config; }
-    ThreadConfig getThreadConfig() const { return threadConfig; }
-    PerformanceMetrics getLastPerformanceMetrics() const { return metrics; }
-
     // Memory management helpers
     static double** allocateImageBuffer(int height, int width);
     static void deallocateImageBuffer(double** buffer, int height);
@@ -107,23 +102,17 @@ public:
     cv::Mat doubleToMat(double** image, int height, int width);
     void matToDouble(const cv::Mat& mat, double** image);
 
+    // Configuration and metrics
+    void setThreadConfig(const ThreadConfig& config) { threadConfig = config; }
+    ThreadConfig getThreadConfig() const { return threadConfig; }
+    PerformanceMetrics getLastPerformanceMetrics() const { return metrics; }
+
     // Logging utilities
     static void logMessage(const std::string& message, int threadId);
     void logThreadStart(int threadId, const std::string& function, int startRow, int endRow);
     void logThreadComplete(int threadId, const std::string& function);
 
 protected:
-    // Helper methods for image processing
-    void processImageChunk(cv::Mat& result, const cv::Mat& original,
-                           const cv::Mat& claheResult, const cv::Mat& darkMask,
-                           uint16_t threshold, int startRow, int endRow,
-                           int threadId);
-
-    // Conversion helpers
-    cv::Mat convertTo8Bit(const cv::Mat& input);
-    cv::Mat convertTo16Bit(const cv::Mat& input);
-    void preserveValueRange(const cv::Mat& original, cv::Mat& processed);
-
     // Member variables
     PerformanceMetrics metrics;
     ThreadConfig threadConfig;
@@ -132,14 +121,6 @@ protected:
     std::mutex processingMutex;
     static std::mutex logMutex;
 
-private:
-
-    DarkPixelInfo** createDarkPixelBuffer(int maxSize);
-    void releaseDarkPixelBuffer(DarkPixelInfo** buffer, int size);
-    int collectDarkPixels(double** image, int height, int width,
-                          uint16_t threshold, DarkPixelInfo** darkPixels);
-    void applyDarkPixelsBack(double** image, DarkPixelInfo** darkPixels,
-                             int darkPixelCount);
 };
 
 class ScopedTimer {

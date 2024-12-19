@@ -44,38 +44,6 @@ void CLAHEProcessor::logThreadComplete(int threadId, const std::string& function
                     .toStdString().c_str();
 }
 
-// Conversion helper functions
-cv::Mat CLAHEProcessor::convertTo8Bit(const cv::Mat& input) {
-    double minVal, maxVal;
-    cv::minMaxLoc(input, &minVal, &maxVal);
-
-    cv::Mat output;
-    double scale = 255.0 / (maxVal - minVal);
-    input.convertTo(output, CV_8UC1, scale, -minVal * scale);
-
-    return output;
-}
-
-cv::Mat CLAHEProcessor::convertTo16Bit(const cv::Mat& input) {
-    double minVal, maxVal;
-    cv::minMaxLoc(input, &minVal, &maxVal);
-
-    cv::Mat output;
-    double scale = 65535.0 / (maxVal - minVal);
-    input.convertTo(output, CV_16UC1, scale, -minVal * scale);
-
-    return output;
-}
-
-void CLAHEProcessor::preserveValueRange(const cv::Mat& original, cv::Mat& processed) {
-    double origMin, origMax, procMin, procMax;
-    cv::minMaxLoc(original, &origMin, &origMax);
-    cv::minMaxLoc(processed, &procMin, &procMax);
-
-    double scale = (origMax - origMin) / (procMax - procMin);
-    processed.convertTo(processed, processed.type(), scale, origMin - procMin * scale);
-}
-
 void CLAHEProcessor::logMessage(const std::string& message, int threadId) {
     std::lock_guard<std::mutex> lock(logMutex);
     std::stringstream ss;
@@ -258,15 +226,18 @@ void CLAHEProcessor::applyCLAHE_CPU(double** outputImage, double** inputImage,
 }
 
 void CLAHEProcessor::applyCombinedCLAHE_CPU(double** outputImage, double** inputImage,
-                                        int height, int width, double clipLimit,
-                                        const cv::Size& tileSize) {
+                                            int height, int width, double clipLimit,
+                                            const cv::Size& tileSize) {
+
     metrics.reset();
     metrics.isCLAHE = true;
     metrics.threadsUsed = threadConfig.numThreads;
+
+    // Start timing the processing
     auto startTime = std::chrono::high_resolution_clock::now();
 
     try {
-        // 1. 转换输入图像到Mat格式
+        // 1. Convert input 2D array to OpenCV Mat format for processing
         cv::Mat matImage(height, width, CV_64F);
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
@@ -274,50 +245,55 @@ void CLAHEProcessor::applyCombinedCLAHE_CPU(double** outputImage, double** input
             }
         }
 
-        // 2. 转换到16位以便处理
+        // 2. Convert image to 16-bit unsigned integer format
         cv::Mat matImage16U;
         matImage.convertTo(matImage16U, CV_16UC1, 65535.0);
 
-        // 3. 对整张图进行CLAHE处理
+        // 3. Convert to 8-bit for OpenCV's CLAHE implementation
         cv::Mat image8bit;
         matImage16U.convertTo(image8bit, CV_8UC1, 255.0/65535.0);
 
+        // Create CLAHE object with specified clip limit and tile size
         cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(clipLimit, tileSize);
+
+        // Apply CLAHE to enhance local contrast
         cv::Mat processed8bit;
         clahe->apply(image8bit, processed8bit);
 
-        // 4. CLAHE结果转回16位
+        // 4. Convert CLAHE result back to 16-bit format
         cv::Mat processed16U;
         processed8bit.convertTo(processed16U, CV_16UC1, 65535.0/255.0);
 
-        // 5. 比较整张图片，选择较亮的pixel
+        // 5. Compare original and CLAHE-processed images
         cv::Mat result = cv::Mat::zeros(height, width, CV_16UC1);
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 uint16_t originalVal = matImage16U.at<uint16_t>(y, x);
                 uint16_t claheVal = processed16U.at<uint16_t>(y, x);
-                // 对整张图片都选择较亮的值
+
+                // Choose the maximum value to retain the brightest information
                 result.at<uint16_t>(y, x) = std::max(originalVal, claheVal);
             }
         }
 
-        // 6. 转回double格式
+        // 6. Convert result back to double format
         cv::Mat resultDouble;
         result.convertTo(resultDouble, CV_64F, 1.0/65535.0);
 
-        // 7. 复制回原始数组
+        // 7. Copy processed image back to output 2D array
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
                 outputImage[y][x] = resultDouble.at<double>(y, x);
             }
         }
 
+        // Calculate and store processing time
         auto endTime = std::chrono::high_resolution_clock::now();
         metrics.processingTime = std::chrono::duration<double, std::milli>(endTime - startTime).count();
         metrics.totalTime = metrics.processingTime;
-
     }
     catch (const cv::Exception& e) {
+
         qDebug() << "Error in threshold CLAHE processing:" << e.what();
         throw;
     }
@@ -387,65 +363,87 @@ void CLAHEProcessor::applyCombinedCLAHE(double** outputImage, double** inputImag
     }
 }
 
-void CLAHEProcessor::applyThresholdCLAHE(double** image, int height, int width,
-                                         uint16_t threshold, double clipLimit,
-                                         const cv::Size& tileSize, bool afterNormalCLAHE) {
+void CLAHEProcessor::applyThresholdCLAHE(double** finalImage, int height, int width,
+                                             uint16_t threshold, double clipLimit,
+                                             const cv::Size& tileSize, bool afterNormalCLAHE) {
+    metrics.reset();
+    metrics.isCLAHE = true;
+    metrics.threadsUsed = 1; // GPU version uses 1 host thread
+    auto startTime = std::chrono::high_resolution_clock::now();
+
     try {
-        // 1. 转换为Mat格式
-        cv::Mat matImage(height, width, CV_16UC1);
+        // Allocate GPU memory and copy input image
+        cv::cuda::GpuMat d_matImage(height, width, CV_16UC1);
+        cv::Mat h_matImage(height, width, CV_16UC1);
+
+        // Convert input to Mat format on CPU first
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
-                matImage.at<uint16_t>(y, x) = static_cast<uint16_t>(image[y][x] * 65535.0);
+                h_matImage.at<uint16_t>(y, x) = static_cast<uint16_t>(finalImage[y][x] * 65535.0);
             }
         }
+        d_matImage.upload(h_matImage);
 
-        // 2. 创建暗区域掩码
-        cv::Mat darkMask;
-        cv::threshold(matImage, darkMask, threshold, 255, cv::THRESH_BINARY_INV);
-        darkMask.convertTo(darkMask, CV_8UC1);
+        // Create dark region mask on GPU
+        cv::cuda::GpuMat d_darkMask;
+        cv::cuda::threshold(d_matImage, d_darkMask, threshold, 255, cv::THRESH_BINARY_INV);
+        d_darkMask.convertTo(d_darkMask, CV_8UC1);
 
-        if (cv::countNonZero(darkMask) > 0) {
-            // 3. 提取暗区域
-            cv::Mat darkRegion;
-            matImage.copyTo(darkRegion, darkMask);
+        // Check if there are dark regions to process
+        cv::Mat h_darkMask;
+        d_darkMask.download(h_darkMask);
+        if (cv::countNonZero(h_darkMask) > 0) {
+            // Extract dark regions
+            cv::cuda::GpuMat d_darkRegion;
+            d_matImage.copyTo(d_darkRegion, d_darkMask);
 
-            // 转换到8位进行CLAHE处理
-            cv::Mat darkRegion8bit;
-            darkRegion.convertTo(darkRegion8bit, CV_8UC1, 255.0/65535.0);
+            // Convert to 8-bit for CLAHE
+            cv::cuda::GpuMat d_darkRegion8bit;
+            d_darkRegion.convertTo(d_darkRegion8bit, CV_8UC1, 255.0/65535.0);
 
-            // 修改1：调整CLAHE参数
-            double adjustedClipLimit = clipLimit * 0.8;  // 降低clip limit
-            cv::Size adjustedTileSize(tileSize.width * 2, tileSize.height * 2);  // 增加tile size
+            // Adjust CLAHE parameters
+            double adjustedClipLimit = clipLimit * 0.8;
+            cv::Size adjustedTileSize(tileSize.width * 2, tileSize.height * 2);
 
-            cv::Mat processedDark8bit;
-            cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(adjustedClipLimit, adjustedTileSize);
-            clahe->apply(darkRegion8bit, processedDark8bit);
+            // Apply CLAHE to dark regions
+            cv::cuda::GpuMat d_processedDark8bit;
+            cv::Ptr<cv::cuda::CLAHE> clahe = cv::cuda::createCLAHE(adjustedClipLimit, adjustedTileSize);
+            clahe->apply(d_darkRegion8bit, d_processedDark8bit);
 
-            // 4. 计算CLAHE后的值范围
+            // Calculate value range
             double minVal, maxVal;
-            cv::minMaxLoc(processedDark8bit, &minVal, &maxVal, nullptr, nullptr);
+            cv::Mat h_processedDark8bit;
+            d_processedDark8bit.download(h_processedDark8bit);
+            cv::minMaxLoc(h_processedDark8bit, &minVal, &maxVal);
 
-            // 修改2：调整值域拉伸
-            cv::Mat processedDark16;
-            double stretchFactor = 0.7;  // 控制拉伸程度的因子
+            // Adjust value range stretching on GPU
+            cv::cuda::GpuMat d_processedDark16;
+            double stretchFactor = 0.7;
             double scale = (65535.0 / (maxVal - minVal)) * stretchFactor;
             double offset = -minVal * scale;
-            processedDark8bit.convertTo(processedDark16, CV_16UC1, scale, offset);
+            d_processedDark8bit.convertTo(d_processedDark16, CV_16UC1, scale, offset);
 
-            // 5. 合并结果
-            cv::Mat result = matImage.clone();
-            processedDark16.copyTo(result, darkMask);
+            // Merge results on GPU
+            cv::cuda::GpuMat d_result;
+            d_matImage.copyTo(d_result);
+            d_processedDark16.copyTo(d_result, d_darkMask);
 
-            // 6. 转换回normalized double范围
+            // Download result and convert back to normalized double range
+            cv::Mat h_result;
+            d_result.download(h_result);
             for (int y = 0; y < height; ++y) {
                 for (int x = 0; x < width; ++x) {
-                    image[y][x] = result.at<uint16_t>(y, x) / 65535.0;
+                    finalImage[y][x] = h_result.at<uint16_t>(y, x) / 65535.0;
                 }
             }
         }
 
+        auto endTime = std::chrono::high_resolution_clock::now();
+        metrics.processingTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+        metrics.totalTime = metrics.processingTime;
+
     } catch (const cv::Exception& e) {
-        qDebug() << "Error in threshold CLAHE processing:" << e.what();
+        logMessage("Error in GPU Threshold CLAHE: " + std::string(e.what()), -1);
         throw;
     }
 }
@@ -520,53 +518,5 @@ void CLAHEProcessor::applyThresholdCLAHE_CPU(double** finalImage, int height, in
     } catch (const cv::Exception& e) {
         logMessage("Error in CPU Threshold CLAHE: " + std::string(e.what()), -1);
         throw;
-    }
-}
-
-DarkPixelInfo** CLAHEProcessor::createDarkPixelBuffer(int maxSize) {
-    DarkPixelInfo** buffer = new DarkPixelInfo*[maxSize];
-    for (int i = 0; i < maxSize; ++i) {
-        buffer[i] = new DarkPixelInfo();
-        buffer[i]->isUsed = false;
-    }
-    return buffer;
-}
-
-void CLAHEProcessor::releaseDarkPixelBuffer(DarkPixelInfo** buffer, int size) {
-    if (buffer) {
-        for (int i = 0; i < size; ++i) {
-            delete buffer[i];
-        }
-        delete[] buffer;
-    }
-}
-
-int CLAHEProcessor::collectDarkPixels(double** image, int height, int width,
-                                      uint16_t threshold, DarkPixelInfo** darkPixels) {
-    int count = 0;
-    double thresholdNorm = threshold / 65535.0;  // 归一化阈值
-
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            if (image[y][x] < thresholdNorm) {
-                darkPixels[count]->value = image[y][x];
-                darkPixels[count]->x = x;
-                darkPixels[count]->y = y;
-                darkPixels[count]->isUsed = true;
-                count++;
-            }
-        }
-    }
-    return count;
-}
-
-void CLAHEProcessor::applyDarkPixelsBack(double** image, DarkPixelInfo** darkPixels,
-                                         int darkPixelCount) {
-    for (int i = 0; i < darkPixelCount; ++i) {
-        if (darkPixels[i]->isUsed) {
-            int x = darkPixels[i]->x;
-            int y = darkPixels[i]->y;
-            image[y][x] = darkPixels[i]->value;
-        }
     }
 }

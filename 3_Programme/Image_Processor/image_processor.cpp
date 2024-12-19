@@ -102,7 +102,9 @@ double** ImageProcessor::matToDoublePtr(const cv::Mat& mat, int& height, int& wi
 }
 
 void ImageProcessor::loadImage(const std::string& filePath) {
+    qDebug() << "\n=== Starting Image Loading Process ===";
     try {
+        // Load image using OpenCV
         cv::Mat img = cv::imread(filePath, cv::IMREAD_ANYDEPTH);
         if (img.empty()) {
             throw std::runtime_error("Failed to load image: " + filePath);
@@ -111,8 +113,9 @@ void ImageProcessor::loadImage(const std::string& filePath) {
         // Convert to 16-bit if necessary
         cv::Mat img16;
         if (img.depth() != CV_16U) {
-            double scale = (img.depth() == CV_8U) ? 257.0 : 1.0;
+            double scale = (img.depth() == CV_8U) ? 257.0 : 1.0;  // 8-bit to 16-bit scale
             img.convertTo(img16, CV_16U, scale);
+            qDebug() << "Converted image to 16-bit depth";
         } else {
             img16 = img;
         }
@@ -121,32 +124,93 @@ void ImageProcessor::loadImage(const std::string& filePath) {
         cv::Mat grayscale;
         if (img16.channels() > 1) {
             cv::cvtColor(img16, grayscale, cv::COLOR_BGR2GRAY);
+            qDebug() << "Converted multi-channel image to grayscale";
         } else {
             grayscale = img16;
         }
 
         // Free existing images
-        freeImage(m_finalImage, m_height);
-        freeImage(m_originalImg, m_height);
+        qDebug() << "Cleaning up existing images...";
+        if (m_finalImage) {
+            for (int i = 0; i < m_height; i++) {
+                free(m_finalImage[i]);
+            }
+            free(m_finalImage);
+            m_finalImage = nullptr;
+        }
 
-        // Store the truly original image first
-        int origHeight, origWidth;
-        m_originalImg = matToDoublePtr(grayscale, origHeight, origWidth);
+        if (m_originalImg) {
+            for (int i = 0; i < m_height; i++) {
+                free(m_originalImg[i]);
+            }
+            free(m_originalImg);
+            m_originalImg = nullptr;
+        }
+
+        // Store dimensions
+        int origHeight = grayscale.rows;
+        int origWidth = grayscale.cols;
+        qDebug() << "Image dimensions:" << origWidth << "x" << origHeight;
+
+        // Convert OpenCV Mat to double** format using malloc2D
+        qDebug() << "Converting to internal format...";
+        malloc2D(m_originalImg, origHeight, origWidth);
+        if (!m_originalImg) {
+            throw std::runtime_error("Failed to allocate memory for original image");
+        }
+
+        for (int i = 0; i < origHeight; i++) {
+            for (int j = 0; j < origWidth; j++) {
+                m_originalImg[i][j] = static_cast<double>(grayscale.at<uint16_t>(i, j));
+            }
+        }
+
+        // Update dimensions
         m_height = origHeight;
         m_width = origWidth;
 
-        // Create working copy
-        m_finalImage = cloneImage(m_originalImg, m_height, m_width);
+        // Create working copy using malloc2D
+        qDebug() << "Creating working copy...";
+        malloc2D(m_finalImage, m_height, m_width);
+        if (!m_finalImage) {
+            throw std::runtime_error("Failed to allocate memory for final image");
+        }
 
-        qDebug() << "Loaded image dimensions:" << m_width << "x" << m_height;
+        // Copy data to working copy
+        for (int i = 0; i < m_height; i++) {
+            memcpy(m_finalImage[i], m_originalImg[i], m_width * sizeof(double));
+        }
 
         // Clear history
-        while (!imageHistory.empty()) imageHistory.pop();
-        while (!actionHistory.empty()) actionHistory.pop();
+        qDebug() << "Clearing history...";
+        while (!imageHistory.empty()) {
+            auto& state = imageHistory.top();
+            if (state.image) {
+                for (int i = 0; i < state.height; i++) {
+                    free(state.image[i]);
+                }
+                free(state.image);
+            }
+            if (state.darkLines) {
+                DarkLinePointerProcessor::destroyDarkLineArray(state.darkLines);
+            }
+            imageHistory.pop();
+        }
+        while (!actionHistory.empty()) {
+            actionHistory.pop();
+        }
 
+        qDebug() << "Image loading completed successfully";
+
+    } catch (const cv::Exception& e) {
+        qDebug() << "OpenCV error:" << e.what();
+        throw std::runtime_error(std::string("OpenCV error: ") + e.what());
     } catch (const std::exception& e) {
         qDebug() << "Error loading image:" << e.what();
         throw;
+    } catch (...) {
+        qDebug() << "Unknown error during image loading";
+        throw std::runtime_error("Unknown error during image loading");
     }
 }
 
@@ -973,5 +1037,67 @@ bool ImageProcessor::saveImage(const QString& filePath) {
     } else {
         qDebug() << "Failed to save image:" << filePath;
         return false;
+    }
+}
+
+ImageData ImageProcessor::convertToImageData(double** image, int height, int width) {
+    ImageData convertedData;
+
+    try {
+        // Validate input
+        if (!image || height <= 0 || width <= 0) {
+            throw std::invalid_argument("Invalid input parameters for conversion");
+        }
+
+        // Allocate memory for the new format
+        convertedData.rows = height;
+        convertedData.cols = width;
+        convertedData.data = new double*[height];
+        for (int i = 0; i < height; i++) {
+            convertedData.data[i] = new double[width];
+            for (int j = 0; j < width; j++) {
+                // Copy and ensure values are in valid range
+                convertedData.data[i][j] = std::clamp(image[i][j], 0.0, 65535.0);
+            }
+        }
+
+    } catch (const std::exception& e) {
+        // Clean up on error
+        if (convertedData.data) {
+            for (int i = 0; i < convertedData.rows; i++) {
+                delete[] convertedData.data[i];
+            }
+            delete[] convertedData.data;
+            convertedData.data = nullptr;
+        }
+        convertedData.rows = 0;
+        convertedData.cols = 0;
+        throw std::runtime_error(std::string("Error converting to ImageData: ") + e.what());
+    }
+
+    return convertedData;
+}
+
+double** ImageProcessor::convertFromImageData(const ImageData& imageData) {
+    try {
+        // Validate input
+        if (!imageData.data || imageData.rows <= 0 || imageData.cols <= 0) {
+            throw std::invalid_argument("Invalid ImageData for conversion");
+        }
+
+        // Allocate memory for the output format
+        double** outputImage = new double*[imageData.rows];
+        for (int i = 0; i < imageData.rows; i++) {
+            outputImage[i] = new double[imageData.cols];
+            for (int j = 0; j < imageData.cols; j++) {
+                // Copy and ensure values are in valid range
+                outputImage[i][j] = std::clamp(imageData.data[i][j], 0.0, 65535.0);
+            }
+        }
+
+        return outputImage;
+
+    } catch (const std::exception& e) {
+        throw std::runtime_error(std::string("Error converting from ImageData: ") + e.what());
     }
 }

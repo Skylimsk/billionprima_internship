@@ -21,13 +21,14 @@
 #include <opencv2/imgproc.hpp>
 #include "image_processor.h"
 #include "image_label.h"
-#include "histogram.h"
+#include "graph_processor.h"
 #include "zoom.h"
 #include "darkline_pointer.h"
 #include "display_window.h"
 #include "DataCalibration.h"
 #include "CGParams.h"
 #include "CGProcessImage.h"
+#include "graph_3d_processor.h"
 
 class ControlPanel : public QWidget {
     Q_OBJECT
@@ -156,15 +157,18 @@ private:
     QLabel* m_gpuTimingLabel;
     QLabel* m_cpuTimingLabel;
     QLabel* m_darkLineInfoLabel;
+    QLabel* m_fileTypeLabel;
 
     double m_lastGpuTime;
     double m_lastCpuTime;
     bool m_hasCpuClaheTime;
     bool m_hasGpuClaheTime;
 
-    Histogram* m_histogram;
+    GraphProcessor* m_histogram;
     std::vector<QPushButton*> m_allButtons;
     QGroupBox* m_zoomControlsGroup;
+
+    std::unique_ptr<Graph3DProcessor> m_graph3DProcessor;
 
     // Button Members
     QPushButton* m_fixZoomButton;

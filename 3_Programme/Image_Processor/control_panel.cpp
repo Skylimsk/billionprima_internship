@@ -2,6 +2,7 @@
 #include "pointer_operations.h"
 #include "adjustments.h"
 #include "darkline_pointer.h"
+#include "graph_3d_processor.h"
 #include "interlace.h"
 #include <QPushButton>
 #include <QGroupBox>
@@ -38,6 +39,8 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
 {
     m_mainLayout = new QVBoxLayout(this);
     this->setMinimumWidth(280);
+
+    m_graph3DProcessor = Graph3DProcessor::create(this);
 
     // Connect the fileLoaded signal to enableButtons slot
     connect(this, &ControlPanel::fileLoaded, this, &ControlPanel::enableButtons);
@@ -279,6 +282,10 @@ void ControlPanel::setupPixelInfoLabel() {
     m_imageSizeLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     infoLayout->addWidget(m_imageSizeLabel);
 
+    m_fileTypeLabel = new QLabel("File Type: None");
+    m_fileTypeLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    infoLayout->addWidget(m_fileTypeLabel);
+
     m_pixelInfoLabel = new QLabel("Pixel Info: ");
     m_pixelInfoLabel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     infoLayout->addWidget(m_pixelInfoLabel);
@@ -354,7 +361,7 @@ void ControlPanel::updateLastAction(const QString& action, const QString& parame
             prefix = "File Name: ";
         } else if (action == "Detect Black Lines" || action == "Remove Black Lines") {
             prefix = "Line Info: ";
-        } else if (action == "Split & Merge") {
+        } else if (action == "Undo") {
             prefix = "";
         } else if (action == "Zoom In" || action == "Zoom Out" || action == "Reset Zoom") {
             prefix = "Zoom Factor: ";
@@ -421,7 +428,7 @@ void ControlPanel::updatePixelInfo(const QPoint& pos)
                            .arg(static_cast<int>(pixelValue));
         m_pixelInfoLabel->setText(info);
     } else {
-        m_pixelInfoLabel->setText("No image loaded");
+        m_pixelInfoLabel->setText("Pixel Info: No image loaded");
     }
 }
 
@@ -772,8 +779,10 @@ void ControlPanel::setupFileOperations() {
                                                if (formatDialog.exec() == QDialog::Accepted) {
                                                    QString filter;
                                                    if (loadImageBtn->isChecked()) {
+                                                       m_fileTypeLabel->setText("File Type: Image");
                                                        filter = "Image Files (*.png *.jpg *.jpeg *.tiff *.tif *.bmp)";
                                                    } else {
+                                                       m_fileTypeLabel->setText("File Type: Text");
                                                        filter = "Text Files (*.txt)";
                                                    }
 
@@ -797,6 +806,9 @@ void ControlPanel::setupFileOperations() {
                                                            auto startLoad = std::chrono::high_resolution_clock::now();
                                                            if (loadImageBtn->isChecked()) {
                                                                m_imageProcessor.loadImage(fileName.toStdString());
+                                                               m_imageSizeLabel->setText(QString("Image Size: %1 x %2")
+                                                                                             .arg(m_imageProcessor.getFinalImageWidth())
+                                                                                             .arg(m_imageProcessor.getFinalImageHeight()));
                                                            } else {
                                                                if (load2DTextBtn->isChecked()) {
                                                                    double** matrix = nullptr;
@@ -818,6 +830,10 @@ void ControlPanel::setupFileOperations() {
 
                                                                        // Update the working image
                                                                        m_imageProcessor.updateAndSaveFinalImage(finalMatrix, rows, cols);
+
+                                                                       m_imageSizeLabel->setText(QString("Image Size: %1 x %2")
+                                                                                                     .arg(m_imageProcessor.getFinalImageWidth())
+                                                                                                     .arg(m_imageProcessor.getFinalImageHeight()));
 
                                                                        // Clean up both matrices
                                                                        for (int i = 0; i < rows; ++i) {
@@ -848,6 +864,10 @@ void ControlPanel::setupFileOperations() {
 
                                                                        // Update the working image
                                                                        m_imageProcessor.updateAndSaveFinalImage(finalMatrix, rows, cols);
+
+                                                                       m_imageSizeLabel->setText(QString("Image Size: %1 x %2")
+                                                                                                     .arg(m_imageProcessor.getFinalImageWidth())
+                                                                                                     .arg(m_imageProcessor.getFinalImageHeight()));
 
                                                                        // Clean up
                                                                        delete[] matrix;
@@ -3172,6 +3192,12 @@ void ControlPanel::setupCombinedAdjustments() {
 }
 
 void ControlPanel::setupGraph() {
+
+    // Create histogram first
+    m_histogram = new GraphProcessor(this);
+    m_histogram->setMinimumWidth(250);
+    m_histogram->setVisible(false);
+
     createGroupBox("Graph Operations", {
                                            {"Histogram", [this]() {
                                                 bool isCurrentlyVisible = m_histogram->isVisible();
@@ -3182,20 +3208,24 @@ void ControlPanel::setupGraph() {
                                                     int height = m_imageProcessor.getFinalImageHeight();
                                                     int width = m_imageProcessor.getFinalImageWidth();
 
-                                                    if (finalImage) {  // Check if image exists
+                                                    if (finalImage) {
                                                         m_histogram->updateHistogram(finalImage, height, width);
                                                     }
                                                 }
 
                                                 m_mainLayout->invalidate();
                                                 updateGeometry();
+                                            }},
+                                           {"3D Graph", [this]() {
+                                                const auto& finalImage = m_imageProcessor.getFinalImage();
+                                                int height = m_imageProcessor.getFinalImageHeight();
+                                                int width = m_imageProcessor.getFinalImageWidth();
+
+                                                if (finalImage) {
+                                                    m_graph3DProcessor->show3DGraph(finalImage, height, width);
+                                                }
                                             }}
                                        });
-
-    // Add histogram widget to the group box
-    m_histogram = new Histogram(this);
-    m_histogram->setMinimumWidth(250);
-    m_histogram->setVisible(false);
 
     // Find the Graph Operations group box and add histogram to it
     for (int i = 0; i < m_scrollLayout->count(); ++i) {
@@ -3206,10 +3236,12 @@ void ControlPanel::setupGraph() {
         }
     }
 
-    // Connect fileLoaded signal to enable histogram buttons
+    // Connect fileLoaded signal to enable buttons
     connect(this, &ControlPanel::fileLoaded, this, [this](bool loaded) {
         for (QPushButton* button : m_allButtons) {
-            if (button && (button->text() == "Histogram" || button->text() == "Toggle CLAHE View")) {
+            if (button && (button->text() == "Histogram" ||
+                           button->text() == "3D Graph" ||
+                           button->text() == "Toggle CLAHE View")) {
                 button->setEnabled(loaded);
             }
         }

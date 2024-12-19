@@ -1,5 +1,5 @@
-#ifndef HISTOGRAM_H
-#define HISTOGRAM_H
+#ifndef GRAPH_PROCESSOR_H
+#define GRAPH_PROCESSOR_H
 
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QDialog>
@@ -12,12 +12,12 @@
 #include "third_party/qcustomplot/qcustomplot.h"
 #include <opencv2/opencv.hpp>
 
-class Histogram : public QWidget {
+class GraphProcessor : public QWidget {
     Q_OBJECT
 
 public:
-    explicit Histogram(QWidget* parent = nullptr);
-    ~Histogram();
+    explicit GraphProcessor(QWidget* parent = nullptr);
+    ~GraphProcessor();
 
     // Main public interface with overloaded updateHistogram
     void updateHistogram(double** image, int height, int width);
@@ -30,6 +30,7 @@ public:
     void toggleClaheVisibility();
     void clearHistogram();
 
+
 protected:
     bool eventFilter(QObject* obj, QEvent* event) override;
 
@@ -41,29 +42,29 @@ private slots:
     void resetZoom();
 
 private:
-    // 初始化函数
+    // Initialization functions
     void setupHistogramPlot();
     void setupLargeHistogramDialog();
     void initializeBuffers();
 
-    // 直方图计算相关
+    // Histogram calculation related
     void calculateFullHistogram();
     bool needsUpdate(const std::vector<std::vector<uint16_t>>& image);
     uint64_t calculateChecksum(const std::vector<std::vector<uint16_t>>& image);
     void updateHistogramDisplay(const std::vector<std::atomic<int>>& histogram);
 
-    // UI组件
+    // UI components
     QCustomPlot* m_histogramPlot;
     QDialog* m_histogramDialog;
     QCustomPlot* m_largeHistogramPlot;
     QLabel* m_tooltip;
 
-    // 状态标志
+    // State flags
     bool m_isCollapsed;
     int m_expandedHeight;
     bool m_updatePending;
 
-    // 数据缓存
+    // Data cache
     struct HistogramCache {
         std::vector<int> data;
         size_t imageWidth;
@@ -85,38 +86,38 @@ private:
         QLabel* mode;
     } m_statsLabels;
 
-    // 添加缺失的成员函数声明
+    // Helper function declarations
     int findNearestDataPoint(double x);
     void exportHistogramData();
 
-    // 图表数据
+    // Chart data
     QVector<double> m_currentBinCenters;
     QVector<double> m_currentHistogram;
     QCPRange m_currentXRange;
     QCPRange m_currentYRange;
 
-    // 缓冲区
+    // Buffers
     std::vector<double> m_histogramBuffer;
     QVector<double> m_xData;
     QVector<double> m_yData;
 
-    // 性能优化相关
+    // Performance optimization related
     const std::vector<std::vector<uint16_t>>* m_imagePtr;
     QTimer* m_updateTimer;
     QElapsedTimer m_lastUpdate;
     static constexpr int UPDATE_INTERVAL_MS = 100;
     static constexpr int MIN_UPDATE_INTERVAL = 100;
 
-    // 辅助函数
+    // Helper functions
     void scheduleUpdate();
     void executeUpdate();
 
-    // 内部配置常量
+    // Internal configuration constants
     static constexpr int DEFAULT_BIN_COUNT = 256;
     static constexpr int HISTOGRAM_BUFFER_SIZE = 65536;  // for 16-bit images
     static constexpr int MAX_TOOLTIP_DECIMALS = 2;
 
-    // 绘图相关设置
+    // Plot related settings
     struct PlotSettings {
         static constexpr int FONT_SIZE_SMALL = 8;
         static constexpr int FONT_SIZE_MEDIUM = 9;
@@ -137,11 +138,9 @@ private:
     void updateHistogramCache(const std::vector<std::atomic<int>>& histogram);
     void updateHistogramCommon(const std::vector<std::atomic<int>>& histogram);
 
-
-private:
-    // 禁用拷贝构造和赋值操作符
-    Histogram(const Histogram&) = delete;
-    Histogram& operator=(const Histogram&) = delete;
+    // Disable copy constructor and assignment operator
+    GraphProcessor(const GraphProcessor&) = delete;
+    GraphProcessor& operator=(const GraphProcessor&) = delete;
 };
 
-#endif // HISTOGRAM_H
+#endif // GRAPH_PROCESSOR_H

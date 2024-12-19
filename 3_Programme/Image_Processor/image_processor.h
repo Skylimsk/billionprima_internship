@@ -216,6 +216,9 @@ private:
     int m_originalImageHeight;
     int m_originalImageWidth;
 
+    ImageData convertToImageData(double** image, int height, int width);
+    double** convertFromImageData(const ImageData& imageData);
+
 };
 
 #endif // IMAGE_PROCESSOR_H

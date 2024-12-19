@@ -87,19 +87,18 @@ win32 {
     }
 }
 
-# QCustomPlot configuration
-SOURCES += third_party/qcustomplot/qcustomplot.cpp
-HEADERS += third_party/qcustomplot/qcustomplot.h
 
 # Source files
 SOURCES += \
+    third_party/qcustomplot/qcustomplot.cpp \
+    graph_3d_processor.cpp \
     CLAHE.cpp \
     ThreadLogger.cpp \
     adjustments.cpp \
     control_panel.cpp \
     darkline_pointer.cpp \
     display_window.cpp \
-    histogram.cpp \
+    graph_processor.cpp \
     image_label.cpp \
     image_processor.cpp \
     interlace.cpp \
@@ -110,13 +109,15 @@ SOURCES += \
     CGParams.cpp
 
 HEADERS += \
+    third_party/qcustomplot/qcustomplot.h \
+    graph_3d_processor.h \
     CLAHE.h \
     ThreadLogger.h \
     adjustments.h \
     control_panel.h \
     darkline_pointer.h \
     display_window.h \
-    histogram.h \
+    graph_processor.h \
     image_label.h \
     image_processing_params.h \
     image_processor.h \

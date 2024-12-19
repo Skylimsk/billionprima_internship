@@ -1,4 +1,4 @@
-#include "histogram.h"
+#include "graph_processor.h"
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QDialogButtonBox>
@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <execution>
 
-Histogram::Histogram(QWidget* parent)
+GraphProcessor::GraphProcessor(QWidget* parent)
     : QWidget(parent)
     , m_histogramPlot(nullptr)
     , m_histogramDialog(nullptr)
@@ -24,17 +24,17 @@ Histogram::Histogram(QWidget* parent)
     setupHistogramPlot();
     setCollapsed(false);  // Start expanded by default
 
-    // 初始化更新定时器
+    // Initialize update timer
     m_updateTimer = new QTimer(this);
     m_updateTimer->setSingleShot(true);
     m_updateTimer->setInterval(UPDATE_INTERVAL_MS);
-    connect(m_updateTimer, &QTimer::timeout, this, &Histogram::performDelayedUpdate);
+    connect(m_updateTimer, &QTimer::timeout, this, &GraphProcessor::performDelayedUpdate);
 
-    // 初始化时间追踪器
+    // Initialize time tracker
     m_lastUpdate.start();
 }
 
-Histogram::~Histogram()
+GraphProcessor::~GraphProcessor()
 {
     if (m_histogramDialog) {
         m_histogramDialog->hide();
@@ -45,7 +45,7 @@ Histogram::~Histogram()
     }
 }
 
-void Histogram::initializeBuffers()
+void GraphProcessor::initializeBuffers()
 {
     // 预分配所有缓冲区
     m_histogramBuffer.resize(HISTOGRAM_BUFFER_SIZE, 0.0);
@@ -61,7 +61,7 @@ void Histogram::initializeBuffers()
     m_cache.clear();
 }
 
-void Histogram::setupHistogramPlot() {
+void GraphProcessor::setupHistogramPlot() {
     QVBoxLayout* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
 
@@ -115,11 +115,11 @@ void Histogram::setupHistogramPlot() {
 
     // Add tooltip support
     m_histogramPlot->setMouseTracking(true);
-    connect(m_histogramPlot, &QCustomPlot::mouseMove, this, &Histogram::showTooltip);
+    connect(m_histogramPlot, &QCustomPlot::mouseMove, this, &GraphProcessor::showTooltip);
 }
 
 
-void Histogram::setCollapsed(bool collapsed)
+void GraphProcessor::setCollapsed(bool collapsed)
 {
     if (m_isCollapsed == collapsed) return;
 
@@ -140,22 +140,22 @@ void Histogram::setCollapsed(bool collapsed)
     }
 }
 
-void Histogram::scheduleUpdate()
+void GraphProcessor::scheduleUpdate()
 {
     if (!m_updatePending && m_lastUpdate.elapsed() > MIN_UPDATE_INTERVAL) {
         m_updatePending = true;
-        QTimer::singleShot(0, this, &Histogram::executeUpdate);
+        QTimer::singleShot(0, this, &GraphProcessor::executeUpdate);
     }
 }
 
-void Histogram::executeUpdate()
+void GraphProcessor::executeUpdate()
 {
     m_updatePending = false;
     m_lastUpdate.restart();
     performDelayedUpdate();
 }
 
-bool Histogram::eventFilter(QObject* obj, QEvent* event)
+bool GraphProcessor::eventFilter(QObject* obj, QEvent* event)
 {
     if (obj == m_largeHistogramPlot && event->type() == QEvent::Leave) {
         if (m_tooltip) {
@@ -166,7 +166,7 @@ bool Histogram::eventFilter(QObject* obj, QEvent* event)
     return QWidget::eventFilter(obj, event);
 }
 
-void Histogram::updateHistogram(const std::vector<std::vector<uint16_t>>& image, int height, int width) {
+void GraphProcessor::updateHistogram(const std::vector<std::vector<uint16_t>>& image, int height, int width) {
     if (m_isCollapsed || image.empty() || height <= 0 || width <= 0) return;
 
     // Initialize histogram bins
@@ -236,7 +236,7 @@ void Histogram::updateHistogram(const std::vector<std::vector<uint16_t>>& image,
     updateHistogramCache(histogram);
 }
 
-void Histogram::updateHistogram(double** image, int height, int width) {
+void GraphProcessor::updateHistogram(double** image, int height, int width) {
     if (m_isCollapsed || !image || height <= 0 || width <= 0) return;
 
     // Initialize histogram bins
@@ -306,14 +306,14 @@ void Histogram::updateHistogram(double** image, int height, int width) {
     updateHistogramCache(histogram);
 }
 
-void Histogram::performDelayedUpdate()
+void GraphProcessor::performDelayedUpdate()
 {
     if (!m_imagePtr || m_imagePtr->empty()) return;
 
     calculateFullHistogram();
 }
 
-void Histogram::calculateFullHistogram()
+void GraphProcessor::calculateFullHistogram()
 {
     if (!m_imagePtr || m_imagePtr->empty()) return;
 
@@ -384,7 +384,7 @@ void Histogram::calculateFullHistogram()
     updateHistogramDisplay(histogram);
 }
 
-void Histogram::updateHistogramDisplay(const std::vector<std::atomic<int>>& histogram) {
+void GraphProcessor::updateHistogramDisplay(const std::vector<std::atomic<int>>& histogram) {
     if (!m_histogramPlot) return;
 
     // Update the main curve
@@ -414,7 +414,7 @@ void Histogram::updateHistogramDisplay(const std::vector<std::atomic<int>>& hist
     }
 }
 
-bool Histogram::needsUpdate(const std::vector<std::vector<uint16_t>>& image)
+bool GraphProcessor::needsUpdate(const std::vector<std::vector<uint16_t>>& image)
 {
     if (m_cache.imageWidth != image[0].size() ||
         m_cache.imageHeight != image.size()) {
@@ -424,7 +424,7 @@ bool Histogram::needsUpdate(const std::vector<std::vector<uint16_t>>& image)
     return calculateChecksum(image) != m_cache.checksum;
 }
 
-uint64_t Histogram::calculateChecksum(const std::vector<std::vector<uint16_t>>& image)
+uint64_t GraphProcessor::calculateChecksum(const std::vector<std::vector<uint16_t>>& image)
 {
     uint64_t checksum = 0;
     for (const auto& row : image) {
@@ -436,7 +436,7 @@ uint64_t Histogram::calculateChecksum(const std::vector<std::vector<uint16_t>>& 
     return checksum;
 }
 
-void Histogram::showLargeHistogram()
+void GraphProcessor::showLargeHistogram()
 {
     if (!m_histogramPlot || !m_histogramPlot->graph(0)) return;
 
@@ -460,7 +460,7 @@ void Histogram::showLargeHistogram()
         );
 }
 
-void Histogram::setupLargeHistogramDialog()
+void GraphProcessor::setupLargeHistogramDialog()
 {
     QVBoxLayout* dialogLayout = new QVBoxLayout(m_histogramDialog);
     dialogLayout->setSpacing(8);
@@ -522,12 +522,12 @@ void Histogram::setupLargeHistogramDialog()
     // 缩放控制按钮
     QPushButton* resetZoomButton = new QPushButton("Reset Zoom", m_histogramDialog);
     resetZoomButton->setFixedWidth(100);
-    connect(resetZoomButton, &QPushButton::clicked, this, &Histogram::resetZoom);
+    connect(resetZoomButton, &QPushButton::clicked, this, &GraphProcessor::resetZoom);
 
     // 导出按钮
     QPushButton* exportButton = new QPushButton("Export Data", m_histogramDialog);
     exportButton->setFixedWidth(100);
-    connect(exportButton, &QPushButton::clicked, this, &Histogram::exportHistogramData);
+    connect(exportButton, &QPushButton::clicked, this, &GraphProcessor::exportHistogramData);
 
     // 关闭按钮
     QPushButton* closeButton = new QPushButton("Close", m_histogramDialog);
@@ -546,10 +546,10 @@ void Histogram::setupLargeHistogramDialog()
     dialogLayout->addLayout(buttonLayout);
 
     // 连接鼠标移动信号
-    connect(m_largeHistogramPlot, &QCustomPlot::mouseMove, this, &Histogram::showTooltip);
+    connect(m_largeHistogramPlot, &QCustomPlot::mouseMove, this, &GraphProcessor::showTooltip);
 }
 
-void Histogram::showTooltip(QMouseEvent* event)
+void GraphProcessor::showTooltip(QMouseEvent* event)
 {
     if (!m_largeHistogramPlot || !m_tooltip) return;
 
@@ -591,7 +591,7 @@ void Histogram::showTooltip(QMouseEvent* event)
 }
 
 
-void Histogram::resetZoom()
+void GraphProcessor::resetZoom()
 {
     if (m_largeHistogramPlot) {
         m_largeHistogramPlot->xAxis->setRange(m_currentXRange);
@@ -600,14 +600,14 @@ void Histogram::resetZoom()
     }
 }
 
-int Histogram::findNearestDataPoint(double x)
+int GraphProcessor::findNearestDataPoint(double x)
 {
     if (m_xData.isEmpty()) return -1;
 
     return std::lower_bound(m_xData.begin(), m_xData.end(), x) - m_xData.begin();
 }
 
-void Histogram::exportHistogramData()
+void GraphProcessor::exportHistogramData()
 {
     QString fileName = QFileDialog::getSaveFileName(
         m_histogramDialog,
@@ -640,7 +640,7 @@ void Histogram::exportHistogramData()
     file.close();
 }
 
-void Histogram::updateLargeHistogram()
+void GraphProcessor::updateLargeHistogram()
 {
     if (!m_largeHistogramPlot || !m_histogramPlot->graph(0)) return;
 
@@ -655,7 +655,7 @@ void Histogram::updateLargeHistogram()
     m_largeHistogramPlot->replot(QCustomPlot::rpQueuedReplot);
 }
 
-void Histogram::setupClaheGraph() {
+void GraphProcessor::setupClaheGraph() {
     if (!m_histogramPlot) return;
 
     // Add a second graph for CLAHE histogram
@@ -676,7 +676,7 @@ void Histogram::setupClaheGraph() {
     m_histogramPlot->graph(2)->setVisible(false);
 }
 
-void Histogram::updateClaheHistogram(double** image, int height, int width, double clipLimit) {
+void GraphProcessor::updateClaheHistogram(double** image, int height, int width, double clipLimit) {
     if (!image || height <= 0 || width <= 0 || m_isCollapsed) return;
 
     m_clipLimit = clipLimit;
@@ -763,7 +763,7 @@ void Histogram::updateClaheHistogram(double** image, int height, int width, doub
     m_histogramPlot->replot(QCustomPlot::rpQueuedReplot);
 }
 
-void Histogram::updateClaheDisplay() {
+void GraphProcessor::updateClaheDisplay() {
     if (!m_histogramPlot || !m_hasClaheData) return;
 
     // Update CLAHE histogram
@@ -813,7 +813,7 @@ void Histogram::updateClaheDisplay() {
     }
 }
 
-void Histogram::toggleClaheVisibility() {
+void GraphProcessor::toggleClaheVisibility() {
     if (!m_histogramPlot || !m_hasClaheData) return;
 
     bool currentVisible = m_histogramPlot->graph(1)->visible();
@@ -826,7 +826,7 @@ void Histogram::toggleClaheVisibility() {
     }
 }
 
-void Histogram::clearClaheData() {
+void GraphProcessor::clearClaheData() {
     m_hasClaheData = false;
     m_clipLimit = -1;
     if (m_histogramPlot) {
@@ -839,7 +839,7 @@ void Histogram::clearClaheData() {
     }
 }
 
-void Histogram::updateHistogramCache(const std::vector<std::atomic<int>>& histogram)
+void GraphProcessor::updateHistogramCache(const std::vector<std::atomic<int>>& histogram)
 {
     m_cache.data.clear();
     m_cache.data.reserve(HISTOGRAM_BUFFER_SIZE);
@@ -857,7 +857,7 @@ void Histogram::updateHistogramCache(const std::vector<std::atomic<int>>& histog
     }
 }
 
-void Histogram::updateHistogramCommon(const std::vector<std::atomic<int>>& histogram) {
+void GraphProcessor::updateHistogramCommon(const std::vector<std::atomic<int>>& histogram) {
     // Find maximum count
     double maxCount = 0;
     for (const auto& bin : histogram) {
@@ -905,7 +905,7 @@ void Histogram::updateHistogramCommon(const std::vector<std::atomic<int>>& histo
     updateHistogramDisplay(histogram);
 }
 
-void Histogram::clearHistogram() {
+void GraphProcessor::clearHistogram() {
     // Clear existing histogram data
     m_currentBinCenters.clear();
     m_currentHistogram.clear();
