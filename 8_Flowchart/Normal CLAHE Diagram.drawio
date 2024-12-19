@@ -1,0 +1,133 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/25.0.1 Chrome/128.0.6613.186 Electron/32.2.6 Safari/537.36" version="25.0.1">
+  <diagram name="Page-1" id="5l4hZ5oOpbO9ErYPqgGF">
+    <mxGraphModel dx="1434" dy="836" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-46" value="" style="group;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;container=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="40" y="80" width="1220" height="690" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-45" value="" style="group;container=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="40" y="80" width="1220" height="690" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-1" target="ZTvGmNNQErXU3Kbs_Lov-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-1" value="&lt;font&gt;Start&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="162.5" y="110" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-2" target="ZTvGmNNQErXU3Kbs_Lov-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-2" value="Input: Threshold Value, clipLimit, Tiles" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="90" y="190" width="265" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-6" target="ZTvGmNNQErXU3Kbs_Lov-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-6" value="Convert image from Double 2D Pointer into Mat format" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="390" y="190" width="247.5" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-8" target="ZTvGmNNQErXU3Kbs_Lov-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-8" value="Convert into 16-bits data for processing" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="680" y="190" width="257.5" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-10" target="ZTvGmNNQErXU3Kbs_Lov-12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-10" value="Convert into 16-bits data for processing" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="980" y="190" width="247.5" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-48" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-12" target="ZTvGmNNQErXU3Kbs_Lov-16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-12" value="Create threshold mask" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="980" y="290" width="247.5" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-19" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-16" target="ZTvGmNNQErXU3Kbs_Lov-18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-16" value="Get original image range" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="520" y="290" width="247.5" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-23" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-18" target="ZTvGmNNQErXU3Kbs_Lov-22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-18" value="Extract threshold and non-threshold regions" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="98.75" y="290" width="247.5" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-26" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-20" target="ZTvGmNNQErXU3Kbs_Lov-25">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-20" value="Apply CLAHE to the threshold region" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="390" y="400" width="247.5" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-24" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-22" target="ZTvGmNNQErXU3Kbs_Lov-20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-22" value="Convert to 8-bits data for CLAHE process" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="98.75" y="400" width="247.5" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-28" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-25" target="ZTvGmNNQErXU3Kbs_Lov-27">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-25" value="Convert back into 16-bits" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="690" y="400" width="247.5" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-30" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-27" target="ZTvGmNNQErXU3Kbs_Lov-29">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-27" value="Calculate new range" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="980" y="400" width="247.5" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-32" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-29" target="ZTvGmNNQErXU3Kbs_Lov-31">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-29" value="Map to new range" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="980" y="500" width="247.5" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-34" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-31" target="ZTvGmNNQErXU3Kbs_Lov-33">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-31" value="Set blackThreshold &amp;amp; whiteThreshold for determining the threshold for determing black (dark) and white region" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="490" y="500" width="370" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-36" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-33" target="ZTvGmNNQErXU3Kbs_Lov-35">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-33" value="Collect dark pixels from threshold region" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="98.75" y="500" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-38" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-35" target="ZTvGmNNQErXU3Kbs_Lov-37">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-35" value="Distributes the dark values to non-white regions" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="98.75" y="610" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-40" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-37" target="ZTvGmNNQErXU3Kbs_Lov-39">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-37" value="Convert back to double 2D pointer" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="401.88" y="610" width="223.75" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-42" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-39" target="ZTvGmNNQErXU3Kbs_Lov-41">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-39" value="Copy back to original array" style="whiteSpace=wrap;html=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="690" y="610" width="223.75" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-44" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=14;" edge="1" parent="1" source="ZTvGmNNQErXU3Kbs_Lov-41" target="ZTvGmNNQErXU3Kbs_Lov-43">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-41" value="Threshold CLAHE Result" style="shape=parallelogram;perimeter=parallelogramPerimeter;whiteSpace=wrap;html=1;fixedSize=1;rounded=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1003.75" y="610" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ZTvGmNNQErXU3Kbs_Lov-43" value="End" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1051.8700000000001" y="720" width="103.75" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
