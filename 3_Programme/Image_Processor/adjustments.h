@@ -16,6 +16,12 @@ public:
     static void applySharpenToRegion(double**& img, int height, int width, float sharpenStrength, const QRect& region);
     static void applyContrastToRegion(double**& img, int height, int width, float contrastFactor, const QRect& region);
 
+    // Threshold-based adjustments
+    static void adjustGammaWithThreshold(double**& img, int height, int width, float gamma, float threshold);
+    static void sharpenWithThreshold(double**& img, int height, int width, float sharpenStrength, float threshold);
+    static void adjustContrastWithThreshold(double**& img, int height, int width, float contrastFactor, float threshold);
+
+
 private:
     // Helper functions for threaded processing
     static void adjustGammaForRegion(double**& img, float gamma,

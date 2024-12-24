@@ -235,27 +235,41 @@ CGData ImageProcessor::cropRegion(double** inputImage, int inputHeight, int inpu
                                   int left, int top, int right, int bottom) {
     // Validate input parameters
     if (!inputImage || inputHeight <= 0 || inputWidth <= 0) {
+        qDebug() << "Crop Error: Invalid input parameters";
         throw std::invalid_argument("Invalid input image");
     }
 
-    // Normalize coordinates to ensure left <= right and top <= bottom
-    int normalizedLeft = std::min(left, right);
-    int normalizedRight = std::max(left, right);
-    int normalizedTop = std::min(top, bottom);
-    int normalizedBottom = std::max(top, bottom);
+    // Debug output for original coordinates
+    qDebug() << "\n=== Starting Crop Operation ===";
+    qDebug() << "Original selection coordinates:";
+    qDebug() << "Left:" << left << "Top:" << top << "Right:" << right << "Bottom:" << bottom;
 
-    // Clamp values to image boundaries
-    normalizedLeft = std::max(0, normalizedLeft);
-    normalizedTop = std::max(0, normalizedTop);
-    normalizedRight = std::min(inputWidth, normalizedRight);
-    normalizedBottom = std::min(inputHeight, normalizedBottom);
+    // Create QRect for easy normalization
+    QRect selectedRect(left, top, right - left, bottom - top);
+    QRect normalizedRect = selectedRect.normalized();
+
+    // Get normalized coordinates
+    int normalizedLeft = std::clamp(normalizedRect.left(), 0, inputWidth - 1);
+    int normalizedRight = std::clamp(normalizedRect.right(), 0, inputWidth - 1);
+    int normalizedTop = std::clamp(normalizedRect.top(), 0, inputHeight - 1);
+    int normalizedBottom = std::clamp(normalizedRect.bottom(), 0, inputHeight - 1);
+
+    // Debug output for normalized coordinates
+    qDebug() << "\nNormalized coordinates:";
+    qDebug() << "Left:" << normalizedLeft << "Top:" << normalizedTop
+             << "Right:" << normalizedRight << "Bottom:" << normalizedBottom;
 
     // Calculate output dimensions
-    int outputWidth = normalizedRight - normalizedLeft;
-    int outputHeight = normalizedBottom - normalizedTop;
+    int outputWidth = normalizedRight - normalizedLeft + 1;
+    int outputHeight = normalizedBottom - normalizedTop + 1;
+
+    // Debug output for dimensions
+    qDebug() << "\nOutput dimensions:";
+    qDebug() << "Width:" << outputWidth << "Height:" << outputHeight;
 
     // Validate crop region
     if (outputWidth <= 0 || outputHeight <= 0) {
+        qDebug() << "Crop Error: Invalid crop region dimensions";
         throw std::runtime_error("Invalid crop region dimensions");
     }
 
@@ -264,18 +278,20 @@ CGData ImageProcessor::cropRegion(double** inputImage, int inputHeight, int inpu
     result.Column = outputWidth;
 
     try {
-        // Use the existing malloc2D template function
+        // Allocate memory for result
         malloc2D(result.Data, outputHeight, outputWidth);
 
         // Copy the cropped region
         for (int y = 0; y < outputHeight; y++) {
             for (int x = 0; x < outputWidth; x++) {
-                result.Data[y][x] = inputImage[normalizedTop + y][normalizedLeft + x];
+                result.Data[y][x] = std::clamp(
+                    inputImage[normalizedTop + y][normalizedLeft + x],
+                    0.0, 65535.0);
             }
         }
 
         // Calculate min and max values
-        result.Min = UINT_MAX;
+        result.Min = std::numeric_limits<unsigned int>::max();
         result.Max = 0;
         for (int y = 0; y < outputHeight; y++) {
             for (int x = 0; x < outputWidth; x++) {
@@ -285,17 +301,23 @@ CGData ImageProcessor::cropRegion(double** inputImage, int inputHeight, int inpu
             }
         }
 
+        qDebug() << "\nCrop operation completed successfully";
+        qDebug() << "Min value:" << result.Min;
+        qDebug() << "Max value:" << result.Max;
+        qDebug() << "=== Crop Operation Finished ===\n";
+
         return result;
 
     } catch (const std::exception& e) {
         // Clean up on error
+        qDebug() << "Crop Error:" << e.what();
         if (result.Data) {
             for (int i = 0; i < result.Row; i++) {
                 free(result.Data[i]);
             }
             free(result.Data);
         }
-        throw std::runtime_error(std::string("Crop operation failed: ") + e.what());
+        throw;
     }
 }
 
@@ -1099,5 +1121,56 @@ double** ImageProcessor::convertFromImageData(const ImageData& imageData) {
 
     } catch (const std::exception& e) {
         throw std::runtime_error(std::string("Error converting from ImageData: ") + e.what());
+    }
+}
+
+void ImageProcessor::mergeHalves(double**& image, int height, int width) {
+    if (!image || height <= 0 || width <= 0) {
+        throw std::invalid_argument("Invalid input parameters for merging");
+    }
+
+    // Calculate split point
+    int halfWidth = width / 2;
+
+    // Fixed weights for merging
+    const double weight1 = 0.5;
+    const double weight2 = 0.5;
+
+    // Allocate memory for merged result
+    double** mergedImage = nullptr;
+    malloc2D(mergedImage, height, halfWidth);
+
+    try {
+        // Perform weighted average merge of left and right halves
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < halfWidth; ++x) {
+                // Get pixels from left and right halves
+                double leftPixel = image[y][x];
+                double rightPixel = image[y][x + halfWidth];
+
+                // Calculate weighted average
+                double mergedPixel = (leftPixel * weight1) + (rightPixel * weight2);
+                mergedImage[y][x] = std::clamp(mergedPixel, 0.0, 65535.0);
+            }
+        }
+
+        // Free original image
+        for (int i = 0; i < height; ++i) {
+            free(image[i]);
+        }
+        free(image);
+
+        // Point to new merged image
+        image = mergedImage;
+
+    } catch (const std::exception& e) {
+        // Clean up on error
+        if (mergedImage) {
+            for (int i = 0; i < height; ++i) {
+                free(mergedImage[i]);
+            }
+            free(mergedImage);
+        }
+        throw;
     }
 }

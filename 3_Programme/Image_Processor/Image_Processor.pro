@@ -1,4 +1,4 @@
-QT       += core gui printsupport
+QT       += core gui printsupport opengl
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++17
@@ -9,6 +9,7 @@ OPENCV_DIR = D:/opencv_build/install
 OPENCV_BIN_PATH = $$OPENCV_DIR/x64/vc17/bin
 TBB_DIR = "C:/Program Files (x86)/Intel/oneAPI/tbb/latest"
 CUDA_DIR = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.6"
+VTK_DIR = D:/vcpkg/packages/vtk_x64-windows
 
 # Include paths
 INCLUDEPATH += $$OPENCV_DIR/include
@@ -16,13 +17,18 @@ INCLUDEPATH += $$TBB_DIR/include
 INCLUDEPATH += $$CUDA_DIR/include
 INCLUDEPATH += $$PWD/third_party/qcustomplot
 INCLUDEPATH += $$PWD/include
+INCLUDEPATH += $$VTK_DIR/include/vtk-9.3
+
+# Dependency paths
+DEPENDPATH += $$PWD/include
+DEPENDPATH += $$VTK_DIR/include/vtk-9.3
 
 # Environment setup
 QMAKE_EXTRA_TARGETS += first
 first.target = first
 first.commands = set PATH=$$OPENCV_BIN_PATH;$$TBB_DIR/redist/intel64/vc14;$(PATH)
 
-# OpenCV configuration for debug and release
+# OpenCV and VTK configuration for debug and release
 win32 {
     CONFIG(debug, debug|release) {
         # OpenCV libs for debug
@@ -43,7 +49,7 @@ win32 {
                 -lopencv_cudastereo4100d \
                 -lopencv_cudawarping4100d
 
-        # DLL Copy Commands
+        # DLL Copy Commands for OpenCV
         OPENCV_DLL_PATH = $$OPENCV_DIR/x64/vc17/bin
         QMAKE_POST_LINK += \
             $$quote(cmd /c copy /y \"$$OPENCV_DLL_PATH\\opencv_core4100d.dll\" \"$(DESTDIR)\" $$escape_expand(\n\t)) \
@@ -61,6 +67,7 @@ win32 {
             $$quote(cmd /c copy /y \"$$OPENCV_DLL_PATH\\opencv_cudaoptflow4100d.dll\" \"$(DESTDIR)\" $$escape_expand(\n\t)) \
             $$quote(cmd /c copy /y \"$$OPENCV_DLL_PATH\\opencv_cudastereo4100d.dll\" \"$(DESTDIR)\" $$escape_expand(\n\t)) \
             $$quote(cmd /c copy /y \"$$OPENCV_DLL_PATH\\opencv_cudawarping4100d.dll\" \"$(DESTDIR)\" $$escape_expand(\n\t))
+
     }
 
     CONFIG(release, debug|release) {
@@ -82,11 +89,12 @@ win32 {
                 -lopencv_cudastereo4100 \
                 -lopencv_cudawarping4100
 
+
         # TBB lib for release
         LIBS += -L$$TBB_DIR/lib/intel64/vc14 -ltbb12
+
     }
 }
-
 
 # Source files
 SOURCES += \
@@ -130,6 +138,8 @@ FORMS += mainwindow.ui
 
 # Compiler and linker flags
 DEFINES += _FILE_OFFSET_BITS=64
+DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x050F00
+DEFINES += NOMINMAX
 
 # Optimization flags
 QMAKE_CXXFLAGS_RELEASE -= -O2
@@ -155,8 +165,6 @@ win32 {
         PRE_TARGETDEPS += $$PWD/lib/CGProcessImage.lib
     }
 }
-
-DEPENDPATH += $$PWD/include
 
 # Deployment
 qnx: target.path = /tmp/$${TARGET}/bin

@@ -168,8 +168,6 @@ private:
     std::vector<QPushButton*> m_allButtons;
     QGroupBox* m_zoomControlsGroup;
 
-    std::unique_ptr<Graph3DProcessor> m_graph3DProcessor;
-
     // Button Members
     QPushButton* m_fixZoomButton;
     QPushButton* m_zoomButton;
@@ -195,14 +193,6 @@ private:
 
     // Dark Line Detection Results
     DarkLineArray* m_detectedLinesPointer;
-
-    // Operation Buttons
-    QPushButton* m_pointerDetectBtn = nullptr;
-    QPushButton* m_pointerRemoveBtn = nullptr;
-    QPushButton* m_pointerResetBtn = nullptr;
-    QPushButton* m_vectorDetectBtn = nullptr;
-    QPushButton* m_vectorRemoveBtn = nullptr;
-    QPushButton* m_vectorResetBtn = nullptr;
 
     // Performance Metrics
     double m_fileLoadTime = 0.0;

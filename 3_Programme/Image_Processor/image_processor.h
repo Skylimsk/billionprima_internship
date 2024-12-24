@@ -89,6 +89,8 @@ public:
     void processImage();
     QString revertImage();
 
+    void mergeHalves(double**& image, int height, int width);
+
     // Image Processing Functions
     void processYXAxis(double**& image, int height, int width, int linesToAvgY, int linesToAvgX);
     void applyMedianFilter(double**& image, int height, int width, int filterKernelSize);
@@ -106,23 +108,7 @@ public:
 
     void resetToOriginal();
 
-    // Interlace Processing
-    InterlaceProcessor::InterlacedResult processEnhancedInterlacedSections(
-        InterlaceProcessor::StartPoint lowEnergyStart,
-        InterlaceProcessor::StartPoint highEnergyStart,
-        InterlaceProcessor::MergeMethod mergeMethod);
-
-    InterlaceProcessor::InterlacedResult processEnhancedInterlacedSections(
-        InterlaceProcessor::StartPoint lowEnergyStart,
-        InterlaceProcessor::StartPoint highEnergyStart,
-        const InterlaceProcessor::MergeParams& mergeParams);
-
     // Dark Line Operations
-    void removeDarkLines(const DarkLineArray* lines, bool removeInObject, bool removeIsolated,
-                         DarkLinePointerProcessor::RemovalMethod method = DarkLinePointerProcessor::RemovalMethod::NEIGHBOR_VALUES);
-    void removeDarkLinesSequential(const DarkLineArray* lines, DarkLine** selectedLines, int selectedCount,
-                                   bool removeInObject, bool removeIsolated,
-                                   DarkLinePointerProcessor::RemovalMethod method = DarkLinePointerProcessor::RemovalMethod::NEIGHBOR_VALUES);
     void clearDetectedLines();
 
     // Format Conversion
