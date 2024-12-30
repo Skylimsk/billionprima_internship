@@ -2542,10 +2542,6 @@ void ControlPanel::updateImageDisplay(double** image, int height, int width) {
             }
         }
 
-        if (m_imageLabel) {
-            m_imageLabel->setImageSize(QSize(finalWidth, finalHeight));
-        }
-
         // 4. Create pixmap from image
         std::unique_ptr<QPixmap> pixmap;
         try {
@@ -2923,9 +2919,6 @@ void ControlPanel::setupCombinedAdjustments() {
                                     dialog.adjustSize();
                                 }
                             });
-
-                            // Connect to region selection changes from ImageLabel
-                            connect(m_imageLabel, &ImageLabel::selectionChanged, updateRegionStatus);
 
                             // Create and add button box
                             QDialogButtonBox* buttonBox = new QDialogButtonBox(
@@ -3442,9 +3435,6 @@ void ControlPanel::setupCombinedAdjustments() {
                                     dialog.adjustSize();
                                 }
                             });
-
-                            // Connect to region selection changes
-                            connect(m_imageLabel, &ImageLabel::selectionChanged, updateRegionStatus);
 
                             // Create and add button box
                             QDialogButtonBox* buttonBox = new QDialogButtonBox(

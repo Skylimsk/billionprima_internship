@@ -1,9 +1,5 @@
-#ifdef _MSC_VER
-#pragma warning(disable: 4267) // conversion from 'size_t' to 'int', possible loss of data
-#pragma warning(disable: 4244) // conversion from 'double' to 'float', possible loss of data
-#pragma warning(disable: 4458) // declaration hides class member
-#endif
-
+#pragma once
+#include "pch.h"
 #include "CLAHE.h"
 #include <sstream>
 #include <iomanip>
@@ -52,10 +48,8 @@ void CLAHEProcessor::logMessage(const std::string& message, int threadId) {
 }
 
 double** CLAHEProcessor::allocateImageBuffer(int height, int width) {
-    double** buffer = new double*[height];
-    for (int i = 0; i < height; i++) {
-        buffer[i] = new double[width]();  // () initializes to zero
-    }
+    double** buffer;
+    malloc2D(buffer, height, width);
     return buffer;
 }
 

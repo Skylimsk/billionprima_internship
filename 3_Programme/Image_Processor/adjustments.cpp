@@ -233,6 +233,8 @@ void ImageAdjustments::applySharpenToRegion(double**& img, int height, int width
 void ImageAdjustments::adjustGammaForSelectedRegion(double**& img, int height, int width, float gamma, const QRect& region) {
     if (!img || height <= 0 || width <= 0 || gamma <= 0) return;
 
+    if (region.isNull() || region.isEmpty()) return;
+
     QRect normalizedRegion = region.normalized();
     int left = std::clamp(normalizedRegion.left(), 0, width - 1);
     int top = std::clamp(normalizedRegion.top(), 0, height - 1);
