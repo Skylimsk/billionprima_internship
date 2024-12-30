@@ -106,8 +106,6 @@ public:
 
     bool saveImage(const QString& filePath);
 
-    void resetToOriginal();
-
     // Dark Line Operations
     void clearDetectedLines();
 
@@ -158,11 +156,38 @@ public:
         m_originalImg = cloneImage(image, height, width);
     }
 
+    void resetToOriginal();
     void clearHistory();
+
+    void clearImageData() {
+        if (m_finalImage) {
+            for (int i = 0; i < m_height; i++) {
+                if (m_finalImage[i]) {
+                    free(m_finalImage[i]);
+                }
+            }
+            free(m_finalImage);
+            m_finalImage = nullptr;
+        }
+
+        if (m_originalImg) {
+            for (int i = 0; i < m_height; i++) {
+                if (m_originalImg[i]) {
+                    free(m_originalImg[i]);
+                }
+            }
+            free(m_originalImg);
+            m_originalImg = nullptr;
+        }
+
+        m_height = 0;
+        m_width = 0;
+    }
+
+    double** getOriginalImg() const { return m_originalImg; }
 
 private:
     // Image Data
-    double** m_imgData;
     double** m_originalImg;
     double** m_finalImage;
     int m_height;
@@ -180,28 +205,14 @@ private:
     // UI Elements
     QLabel* imageLabel;
     QRect selectedRegion;
-    bool regionSelected;
-    int rotationState;
-    int kernelSize;
 
     // Processing Components
-    ImageProcessingParams params;
     CLAHEProcessor claheProcessor;
     ZoomManager m_zoomManager;
 
-    // Constants
-    static constexpr int SEGMENT_WIDTH = 100;
-    static constexpr int WIDTH_THRESHOLD = 50;
-
     // Private Helper Functions
     void saveImageState();
-    bool isValidPixel(double pixel);
     ImageData convertToImageData(double** image, int height, int width) const;
-    void updateFromImageData(const ImageData& imgData);
-
-    int m_originalImageHeight;
-    int m_originalImageWidth;
-
     ImageData convertToImageData(double** image, int height, int width);
     double** convertFromImageData(const ImageData& imageData);
 

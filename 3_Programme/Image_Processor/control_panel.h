@@ -116,7 +116,6 @@ private:
     void setupResetOperations();
 
     // Event Handlers
-    QString handleRevert();
     void enableButtons(bool enable);
 
     // Drawing Methods
@@ -129,7 +128,6 @@ private:
     QSize calculateZoomedSize(const QSize& originalSize, float zoomLevel) const;
 
     // Helper Methods
-    void validateImageData(const ImageData& imageData);
     void processCalibration(int linesToProcessY, int linesToProcessX, CalibrationMode mode);
     std::pair<double, bool> showInputDialog(
         const QString& title,
@@ -138,11 +136,7 @@ private:
         double min,
         double max);
     void createGroupBox(const QString& title, const std::vector<std::pair<QString, std::variant<std::function<void()>, QPushButton*>>>& buttons);
-    void updateDarkLineInfoDisplay();
-    void updateCalibrationButtonText();
-    void resetAllParameters();
     void clearAllDetectionResults();
-    void resetDetectedLines();
     void updateLastActionLabelSize();
 
     // Member Variables

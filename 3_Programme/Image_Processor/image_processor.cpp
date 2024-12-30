@@ -34,19 +34,15 @@
 
 ImageProcessor::ImageProcessor(QLabel* imageLabel)
     : imageLabel(imageLabel),
-    m_imgData(nullptr),
     m_originalImg(nullptr),
     m_finalImage(nullptr),
     m_height(0),
     m_width(0),
-    m_currentDarkLines(nullptr),
-    regionSelected(false),
-    rotationState(0),
-    kernelSize(0) {
+    m_currentDarkLines(nullptr)
+{
 }
 
 ImageProcessor::~ImageProcessor() {
-    freeImage(m_imgData, m_height);
     freeImage(m_originalImg, m_height);
     freeImage(m_finalImage, m_height);
     if (m_currentDarkLines) {
