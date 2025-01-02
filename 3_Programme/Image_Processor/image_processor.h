@@ -156,7 +156,6 @@ public:
         m_originalImg = cloneImage(image, height, width);
     }
 
-    void resetToOriginal();
     void clearHistory();
 
     void clearImageData() {
@@ -185,6 +184,9 @@ public:
     }
 
     double** getOriginalImg() const { return m_originalImg; }
+
+    bool hasAppliedCalibration() const { return m_hasAppliedCalibration; }
+    void setCalibrationApplied(bool applied) { m_hasAppliedCalibration = applied; }
 
 private:
     // Image Data
@@ -215,6 +217,8 @@ private:
     ImageData convertToImageData(double** image, int height, int width) const;
     ImageData convertToImageData(double** image, int height, int width);
     double** convertFromImageData(const ImageData& imageData);
+
+    bool m_hasAppliedCalibration = false;
 
 };
 

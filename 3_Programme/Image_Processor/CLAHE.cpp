@@ -15,44 +15,22 @@ struct PixelInfo {
     uint16_t value;
 };
 
+// Constructor: Sets up CLAHE processor with hardware threads and OpenCV CLAHE object
 CLAHEProcessor::CLAHEProcessor()
     : threadConfig(std::thread::hardware_concurrency(), 64) {
     clahe = cv::createCLAHE();
     metrics.reset();
 }
 
-void CLAHEProcessor::logThreadStart(int threadId, const std::string& function,
-                                    int startRow, int endRow) {
-    std::lock_guard<std::mutex> lock(logMutex);
-    qDebug() << QString("Thread ID %1 processed from row %2 to row %3 for processing %4")
-                    .arg(threadId)
-                    .arg(startRow)
-                    .arg(endRow)
-                    .arg(function.c_str())
-                    .toStdString().c_str();
-}
-
-void CLAHEProcessor::logThreadComplete(int threadId, const std::string& function) {
-    std::lock_guard<std::mutex> lock(logMutex);
-    qDebug() << QString("Thread ID %1 completed processing %2")
-                    .arg(threadId)
-                    .arg(function.c_str())
-                    .toStdString().c_str();
-}
-
-void CLAHEProcessor::logMessage(const std::string& message, int threadId) {
-    std::lock_guard<std::mutex> lock(logMutex);
-    std::stringstream ss;
-    ss << "[Thread " << std::setw(2) << threadId << "] " << message;
-    qDebug() << ss.str().c_str();
-}
-
+// Helper function: Memory Management Functions
+// Allocates a 2D double array for image processing
 double** CLAHEProcessor::allocateImageBuffer(int height, int width) {
     double** buffer;
     malloc2D(buffer, height, width);
     return buffer;
 }
 
+// Safely deallocates a 2D image buffer to prevent memory leaks
 void CLAHEProcessor::deallocateImageBuffer(double** buffer, int height) {
     if (buffer) {
         for (int i = 0; i < height; i++) {
@@ -62,6 +40,8 @@ void CLAHEProcessor::deallocateImageBuffer(double** buffer, int height) {
     }
 }
 
+//Helper function:Conversion of Format
+// Converts double array image data to OpenCV Mat format for processing
 cv::Mat CLAHEProcessor::doubleToMat(double** image, int height, int width) {
     cv::Mat mat(height, width, CV_64F);
     for (int y = 0; y < height; ++y) {
@@ -73,6 +53,7 @@ cv::Mat CLAHEProcessor::doubleToMat(double** image, int height, int width) {
     return mat;
 }
 
+// Converts OpenCV Mat back to double array format after processing
 void CLAHEProcessor::matToDouble(const cv::Mat& mat, double** image) {
     int height = mat.rows;
     int width = mat.cols;
@@ -85,6 +66,40 @@ void CLAHEProcessor::matToDouble(const cv::Mat& mat, double** image) {
     }
 }
 
+//Helper Function: Logging and Monitoring
+// Thread-safe logging of processing start with row range information
+void CLAHEProcessor::logThreadStart(int threadId, const std::string& function,
+                                    int startRow, int endRow) {
+    std::lock_guard<std::mutex> lock(logMutex);
+    qDebug() << QString("Thread ID %1 processed from row %2 to row %3 for processing %4")
+                    .arg(threadId)
+                    .arg(startRow)
+                    .arg(endRow)
+                    .arg(function.c_str())
+                    .toStdString().c_str();
+}
+
+// Thread-safe logging of thread completion
+void CLAHEProcessor::logThreadComplete(int threadId, const std::string& function) {
+    std::lock_guard<std::mutex> lock(logMutex);
+    qDebug() << QString("Thread ID %1 completed processing %2")
+                    .arg(threadId)
+                    .arg(function.c_str())
+                    .toStdString().c_str();
+}
+
+// Thread-safe general message logging with thread identification
+void CLAHEProcessor::logMessage(const std::string& message, int threadId) {
+    std::lock_guard<std::mutex> lock(logMutex);
+    std::stringstream ss;
+    ss << "[Thread " << std::setw(2) << threadId << "] " << message;
+    qDebug() << ss.str().c_str();
+}
+
+// Standard CLAHE: Enhances local contrast by applying histogram equalization within
+// small tile regions with a clip limit to prevent noise amplification.
+
+// GPU-accelerated CLAHE implementation with timing metrics
 void CLAHEProcessor::applyCLAHE(double** outputImage, double** inputImage,
                                 int height, int width, double clipLimit,
                                 const cv::Size& tileSize) {
@@ -143,6 +158,7 @@ void CLAHEProcessor::applyCLAHE(double** outputImage, double** inputImage,
     }
 }
 
+//Multi-threaded CPU CLAHE implementation with parallel processing
 void CLAHEProcessor::applyCLAHE_CPU(double** outputImage, double** inputImage,
                                     int height, int width, double clipLimit,
                                     const cv::Size& tileSize) {
@@ -219,6 +235,10 @@ void CLAHEProcessor::applyCLAHE_CPU(double** outputImage, double** inputImage,
     }
 }
 
+//Combined CLAHE: Preserves the brightest information from the original image
+//while enhancing contrast by taking the maximum value (Brighter) between original and CLAHE-processed pixels.
+
+//Combined GPU-accelerated CLAHE with enhanced brightness preservation
 void CLAHEProcessor::applyCombinedCLAHE_CPU(double** outputImage, double** inputImage,
                                             int height, int width, double clipLimit,
                                             const cv::Size& tileSize) {
@@ -293,6 +313,7 @@ void CLAHEProcessor::applyCombinedCLAHE_CPU(double** outputImage, double** input
     }
 }
 
+//CPU version of combined CLAHE with 16-bit precision
 void CLAHEProcessor::applyCombinedCLAHE(double** outputImage, double** inputImage,
                                         int height, int width, double clipLimit,
                                         const cv::Size& tileSize) {
@@ -357,6 +378,9 @@ void CLAHEProcessor::applyCombinedCLAHE(double** outputImage, double** inputImag
     }
 }
 
+//Threshold CLAHE: Selectively applies CLAHE only to dark regions below a threshold value while leaving brighter areas untouched.
+
+//GPU-accelerated CLAHE with threshold-based dark region enhancement
 void CLAHEProcessor::applyThresholdCLAHE(double** finalImage, int height, int width,
                                              uint16_t threshold, double clipLimit,
                                              const cv::Size& tileSize, bool afterNormalCLAHE) {
@@ -442,6 +466,7 @@ void CLAHEProcessor::applyThresholdCLAHE(double** finalImage, int height, int wi
     }
 }
 
+//CPU implementation of threshold-based CLAHE for dark regions
 void CLAHEProcessor::applyThresholdCLAHE_CPU(double** finalImage, int height, int width,
                                              uint16_t threshold, double clipLimit,
                                              const cv::Size& tileSize, bool afterNormalCLAHE) {

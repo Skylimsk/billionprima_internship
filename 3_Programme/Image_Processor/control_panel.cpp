@@ -1190,6 +1190,205 @@ void ControlPanel::setupPreProcessingOperations() {
     QGroupBox* groupBox = new QGroupBox("Pre-Processing Operations");
     QVBoxLayout* layout = new QVBoxLayout(groupBox);
 
+    // Add Process Image button after the interlace button
+    QPushButton* processBtn = new QPushButton("Process Image");
+    processBtn->setFixedHeight(35);
+    processBtn->setToolTip("Process image with automatic dual energy processing");
+    processBtn->setEnabled(false);
+    m_allButtons.push_back(processBtn);
+    layout->addWidget(processBtn);
+
+    connect(processBtn, &QPushButton::clicked, [this]() {
+        if (checkZoomMode()) return;
+
+        m_darkLineInfoLabel->hide();
+        resetDetectedLinesPointer();
+
+        // Create dialog for parameter input
+        QDialog dialog(this);
+        dialog.setWindowTitle("Process Image Settings");
+        dialog.setMinimumWidth(400);
+        QVBoxLayout* dialogLayout = new QVBoxLayout(&dialog);
+
+        // Energy Mode display (non-interactive, fixed to Dual)
+        QGroupBox* energyBox = new QGroupBox("Energy Mode");
+        QVBoxLayout* energyLayout = new QVBoxLayout(energyBox);
+
+        QLabel* energyModeLabel = new QLabel("Fixed Mode: Dual Energy");
+        energyModeLabel->setStyleSheet(
+            "QLabel {"
+            "    color: #dc2626;"  // Red text
+            "    font-weight: bold;"
+            "    padding: 5px;"
+            "}"
+        );
+
+        QLabel* energyNote = new QLabel(
+            "Image will be processed as dual energy with automatic calibration.\n"
+            "This setting cannot be changed."
+        );
+        energyNote->setStyleSheet("color: #666666; font-size: 10px; margin-left: 20px;");
+
+        energyLayout->addWidget(energyModeLabel);
+        energyLayout->addWidget(energyNote);
+        dialogLayout->addWidget(energyBox);
+
+        // Row Mode display (non-interactive, fixed to Unfold)
+        QGroupBox* rowBox = new QGroupBox("Row Mode");
+        QVBoxLayout* rowLayout = new QVBoxLayout(rowBox);
+
+        QLabel* rowModeLabel = new QLabel("Fixed Mode: Unfold");
+        rowModeLabel->setStyleSheet(
+            "QLabel {"
+            "    color: #dc2626;"  // Red text
+            "    font-weight: bold;"
+            "    padding: 5px;"
+            "}"
+        );
+
+        QLabel* rowNote = new QLabel(
+            "Unfold mode is fixed: Rows will be separated into distinct sections.\n"
+            "This setting cannot be changed."
+        );
+        rowNote->setStyleSheet("color: #666666; font-size: 10px; margin-left: 20px;");
+
+        rowLayout->addWidget(rowModeLabel);
+        rowLayout->addWidget(rowNote);
+        dialogLayout->addWidget(rowBox);
+
+        // Add calibration info box
+        QGroupBox* calibrationBox = new QGroupBox("Automatic Calibration");
+        QVBoxLayout* calibrationLayout = new QVBoxLayout(calibrationBox);
+
+        QLabel* calibrationNote = new QLabel(
+            "Data Calibration Parameters (Fixed):\n"
+            "• Air Sample Start: " + QString::number(CGImageCalculationVariables.AirSampleStart) + "\n"
+            "• Air Sample End: " + QString::number(CGImageCalculationVariables.AirSampleEnd) + "\n"
+            "• Pixel Max Value: " + QString::number(CGImageCalculationVariables.PixelMaxValue)
+        );
+        calibrationNote->setStyleSheet(
+            "QLabel {"
+            "    color: #2563eb;"  // Blue text
+            "    background-color: #eff6ff;"  // Light blue background
+            "    border: 1px solid #bfdbfe;"  // Light blue border
+            "    border-radius: 4px;"
+            "    padding: 8px;"
+            "    margin: 4px 0px;"
+            "    font-family: monospace;"  // For better alignment of numbers
+            "}"
+        );
+
+        calibrationLayout->addWidget(calibrationNote);
+        dialogLayout->addWidget(calibrationBox);
+
+        // Energy Layout selection (user can choose)
+        QGroupBox* layoutBox = new QGroupBox("Energy Layout (Optional)");
+        QVBoxLayout* layoutLayout = new QVBoxLayout(layoutBox);
+        QRadioButton* lowHighBtn = new QRadioButton("Low-High");
+        QRadioButton* highLowBtn = new QRadioButton("High-Low");
+        lowHighBtn->setChecked(true);
+
+        QLabel* layoutNote = new QLabel(
+            "Choose the energy layout for your image:\n"
+            "Low-High: Low energy rows followed by high energy rows\n"
+            "High-Low: High energy rows followed by low energy rows"
+        );
+        layoutNote->setStyleSheet("color: #666666; font-size: 10px; margin-left: 20px;");
+
+        layoutLayout->addWidget(lowHighBtn);
+        layoutLayout->addWidget(highLowBtn);
+        layoutLayout->addWidget(layoutNote);
+        dialogLayout->addWidget(layoutBox);
+
+        // Add OK/Cancel buttons
+        QDialogButtonBox* buttonBox = new QDialogButtonBox(
+            QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+        dialogLayout->addWidget(buttonBox);
+
+        connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+        connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+        if (dialog.exec() == QDialog::Accepted) {
+            m_imageProcessor.saveCurrentState();
+
+            try {
+                const auto& finalImage = m_imageProcessor.getFinalImage();
+                if (!finalImage) {
+                    QMessageBox::warning(this, "Error", "No image data available");
+                    return;
+                }
+
+                int height = m_imageProcessor.getFinalImageHeight();
+                int width = m_imageProcessor.getFinalImageWidth();
+
+                // Prepare input matrix
+                double** inputMatrix = nullptr;
+                malloc2D(inputMatrix, height, width);
+                for(int i = 0; i < height; i++) {
+                    for(int j = 0; j < width; j++) {
+                        inputMatrix[i][j] = finalImage[i][j];
+                    }
+                }
+
+                // Process with fixed settings
+                CGProcessImage processor;
+                processor.SetEnergyMode(EnergyMode::Dual);  // Fixed
+                processor.SetDualRowMode(DualRowMode::Unfold);  // Fixed
+                processor.SetHighLowLayout(lowHighBtn->isChecked() ? EnergyLayout::Low_High : EnergyLayout::High_Low);
+
+                // Process image (includes data calibration)
+                processor.Process(inputMatrix, height, width);
+
+                double** mergedData = nullptr;
+                int mergedRows = 0, mergedCols = 0;
+                if (processor.GetMergedData(mergedData, mergedRows, mergedCols)) {
+                    // Step 2: Merge halves
+                    m_imageProcessor.mergeHalves(mergedData, mergedRows, mergedCols);
+
+                    // Update the image
+                    m_imageProcessor.updateAndSaveFinalImage(mergedData, mergedRows, mergedCols/2);
+
+                    m_imageSizeLabel->setText(QString("Image Size: %1 x %2")
+                                                  .arg(mergedRows)
+                                                  .arg(mergedCols/2));
+
+                    // Clean up merged data
+                    for(int i = 0; i < mergedRows; i++) {
+                        free(mergedData[i]);
+                    }
+                    free(mergedData);
+                }
+
+                // Clean up input matrix
+                for(int i = 0; i < height; i++) {
+                    free(inputMatrix[i]);
+                }
+                free(inputMatrix);
+
+                m_imageLabel->clearSelection();
+                updateImageDisplay();
+
+                QString paramStr = QString("Mode: Dual (Fixed)\n"
+                                         "Row Mode: Unfold (Fixed)\n"
+                                         "Layout: %1\n"
+                                         "Air Sample: %2-%3\n"
+                                         "Max Value: %4\n"
+                                         "Final Size: %5x%6")
+                                       .arg(lowHighBtn->isChecked() ? "Low-High" : "High-Low")
+                                       .arg(CGImageCalculationVariables.AirSampleStart)
+                                       .arg(CGImageCalculationVariables.AirSampleEnd)
+                                       .arg(CGImageCalculationVariables.PixelMaxValue)
+                                       .arg(mergedRows)
+                                       .arg(mergedCols/2);
+                updateLastAction("Process Image", paramStr);
+
+            } catch (const std::exception& e) {
+                QMessageBox::critical(this, "Error",
+                                      QString("Failed to process image: %1").arg(e.what()));
+            }
+        }
+    });
+
     // Create unified calibration button
     m_calibrationButton = new QPushButton("Calibration");
     m_calibrationButton->setFixedHeight(35);
@@ -1197,24 +1396,6 @@ void ControlPanel::setupPreProcessingOperations() {
     m_calibrationButton->setEnabled(false);  // Initially disabled
     m_allButtons.push_back(m_calibrationButton);
     layout->addWidget(m_calibrationButton);
-
-    // Create reset calibration button (initially hidden)
-    m_resetCalibrationButton = new QPushButton("Reset Calibration Parameters");
-    m_resetCalibrationButton->setFixedHeight(35);
-    m_resetCalibrationButton->setEnabled(false);
-    m_resetCalibrationButton->setVisible(false);  // Initially hidden
-    m_resetCalibrationButton->setToolTip("Reset stored calibration parameters");
-    m_allButtons.push_back(m_resetCalibrationButton);
-    layout->addWidget(m_resetCalibrationButton);
-
-    // Connect reset button
-    connect(m_resetCalibrationButton, &QPushButton::clicked, this, [this]() {
-        InterlaceProcessor::resetCalibrationParams();
-        m_resetCalibrationButton->setEnabled(false);
-        m_resetCalibrationButton->setVisible(false);
-        QMessageBox::information(this, "Calibration Reset",
-                                 "Calibration parameters have been reset. Next calibration will require new parameters.");
-    });
 
     // Connect unified calibration button
     connect(m_calibrationButton, &QPushButton::clicked, this, [this]() {
@@ -1297,7 +1478,7 @@ void ControlPanel::setupPreProcessingOperations() {
                     }
 
                     m_imageProcessor.updateAndSaveFinalImage(calibratedMatrix, calibratedData.Row, calibratedData.Column);
-
+                    m_imageProcessor.setCalibrationApplied(true);
                     updateImageDisplay();
 
                     // Clean up
@@ -1420,7 +1601,7 @@ void ControlPanel::setupPreProcessingOperations() {
 
     QPushButton* interlaceBtn = new QPushButton("Interlace");
     interlaceBtn->setFixedHeight(35);
-    interlaceBtn->setToolTip("Apply interlacing process with configurable parameters");
+    interlaceBtn->setToolTip("Apply interlacing process with dual energy mode");
     interlaceBtn->setEnabled(false);  // Initially disabled
     m_allButtons.push_back(interlaceBtn);
     layout->addWidget(interlaceBtn);
@@ -1428,78 +1609,146 @@ void ControlPanel::setupPreProcessingOperations() {
     connect(interlaceBtn, &QPushButton::clicked, [this]() {
         if (checkZoomMode()) return;
 
+        m_darkLineInfoLabel->hide();
+        resetDetectedLinesPointer();
+
         // Create dialog for parameter input
         QDialog dialog(this);
-        dialog.setWindowTitle("Interlace Parameters");
+        dialog.setWindowTitle("Interlace Settings");
         dialog.setMinimumWidth(400);
         QVBoxLayout* dialogLayout = new QVBoxLayout(&dialog);
 
-        // Energy Mode selection
+        // Energy Mode display (fixed to Dual)
         QGroupBox* energyBox = new QGroupBox("Energy Mode");
         QVBoxLayout* energyLayout = new QVBoxLayout(energyBox);
-        QRadioButton* singleEnergyBtn = new QRadioButton("Single Energy");
-        QRadioButton* dualEnergyBtn = new QRadioButton("Dual Energy");
-        dualEnergyBtn->setChecked(true);
+
+        QLabel* energyModeLabel = new QLabel("Fixed Mode: Dual Energy");
+        energyModeLabel->setStyleSheet(
+            "QLabel {"
+            "    color: #dc2626;"  // Red text
+            "    font-weight: bold;"
+            "    padding: 5px;"
+            "}"
+        );
 
         QLabel* energyNote = new QLabel(
-            "Single: Process as single energy image\n"
-            "Dual: Process as dual energy image with high/low components"
-            );
-        energyNote->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+            "Image will be processed as dual energy mode.\n"
+            "This setting cannot be changed."
+        );
+        energyNote->setStyleSheet("color: #666666; font-size: 10px; margin-left: 20px;");
 
-        energyLayout->addWidget(singleEnergyBtn);
-        energyLayout->addWidget(dualEnergyBtn);
+        energyLayout->addWidget(energyModeLabel);
         energyLayout->addWidget(energyNote);
         dialogLayout->addWidget(energyBox);
 
-        // Row Mode display (non-interactive)
+        // Row Mode display (fixed to Unfold)
         QGroupBox* rowBox = new QGroupBox("Row Mode");
         QVBoxLayout* rowLayout = new QVBoxLayout(rowBox);
 
-        QLabel* rowModeLabel = new QLabel("Using Unfold Mode");
+        QLabel* rowModeLabel = new QLabel("Fixed Mode: Unfold");
         rowModeLabel->setStyleSheet(
-            "color: #666666; font-weight: bold; padding: 5px;"
-            );
+            "QLabel {"
+            "    color: #dc2626;"  // Red text
+            "    font-weight: bold;"
+            "    padding: 5px;"
+            "}"
+        );
 
         QLabel* rowNote = new QLabel(
-            "Unfold mode is fixed: Rows will be separated into distinct sections\n"
-            "This ensures consistent processing across all images"
-            );
-        rowNote->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+            "Unfold mode is fixed: Rows will be separated into distinct sections.\n"
+            "This setting cannot be changed."
+        );
+        rowNote->setStyleSheet("color: #666666; font-size: 10px; margin-left: 20px;");
 
         rowLayout->addWidget(rowModeLabel);
         rowLayout->addWidget(rowNote);
         dialogLayout->addWidget(rowBox);
 
+        // Calibration Options
+        QGroupBox* calibrationBox = new QGroupBox("Calibration Settings");
+        QVBoxLayout* calibrationLayout = new QVBoxLayout(calibrationBox);
+
+        // Add calibration checkbox and status
+        QCheckBox* applyCalibrationCheck = new QCheckBox("Apply Data Calibration");
+
+        if (m_imageProcessor.hasAppliedCalibration()) {
+            // If calibration was already applied, allow user to choose
+            applyCalibrationCheck->setChecked(false);
+            applyCalibrationCheck->setEnabled(true);
+
+            QLabel* calibrationStatus = new QLabel("Data Calibration has already been applied\nYou can choose to apply it again if needed");
+            calibrationStatus->setStyleSheet(
+                "QLabel {"
+                "    color: #059669;"  // Green text
+                "    font-weight: bold;"
+                "    background-color: #ecfdf5;"  // Light green background
+                "    border: 1px solid #6ee7b7;"
+                "    border-radius: 4px;"
+                "    padding: 8px;"
+                "    margin: 4px 0px;"
+                "}"
+            );
+            calibrationLayout->addWidget(calibrationStatus);
+        } else {
+            // If calibration hasn't been applied, check by default and disable
+            applyCalibrationCheck->setChecked(true);
+            applyCalibrationCheck->setEnabled(false);
+
+            QLabel* calibrationStatus = new QLabel("Data Calibration will be automatically applied");
+            calibrationStatus->setStyleSheet(
+                "QLabel {"
+                "    color: #2563eb;"  // Blue text
+                "    font-weight: bold;"
+                "    background-color: #eff6ff;"  // Light blue background
+                "    border: 1px solid #bfdbfe;"
+                "    border-radius: 4px;"
+                "    padding: 8px;"
+                "    margin: 4px 0px;"
+                "}"
+            );
+            calibrationLayout->addWidget(calibrationStatus);
+        }
+
+        // Show current calibration parameters
+        QLabel* calibrationParamsLabel = new QLabel(
+            "Calibration Parameters:\n"
+            "• Air Sample Start: " + QString::number(CGImageCalculationVariables.AirSampleStart) + "\n"
+            "• Air Sample End: " + QString::number(CGImageCalculationVariables.AirSampleEnd) + "\n"
+            "• Pixel Max Value: " + QString::number(CGImageCalculationVariables.PixelMaxValue)
+        );
+        calibrationParamsLabel->setStyleSheet(
+            "QLabel {"
+            "    color: #2563eb;"
+            "    background-color: #eff6ff;"
+            "    border: 1px solid #bfdbfe;"
+            "    border-radius: 4px;"
+            "    padding: 8px;"
+            "    margin: 4px 0px;"
+            "    font-family: monospace;"
+            "}"
+        );
+        calibrationLayout->addWidget(calibrationParamsLabel);
+        calibrationLayout->addWidget(applyCalibrationCheck);
+        dialogLayout->addWidget(calibrationBox);
+
         // Energy Layout selection
-        QGroupBox* layoutBox = new QGroupBox("Energy Layout");
+        QGroupBox* layoutBox = new QGroupBox("Energy Layout (Optional)");
         QVBoxLayout* layoutLayout = new QVBoxLayout(layoutBox);
         QRadioButton* lowHighBtn = new QRadioButton("Low-High");
         QRadioButton* highLowBtn = new QRadioButton("High-Low");
         lowHighBtn->setChecked(true);
 
         QLabel* layoutNote = new QLabel(
+            "Choose the energy layout for your image:\n"
             "Low-High: Low energy rows followed by high energy rows\n"
             "High-Low: High energy rows followed by low energy rows"
-            );
-        layoutNote->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+        );
+        layoutNote->setStyleSheet("color: #666666; font-size: 10px; margin-left: 20px;");
 
         layoutLayout->addWidget(lowHighBtn);
         layoutLayout->addWidget(highLowBtn);
         layoutLayout->addWidget(layoutNote);
         dialogLayout->addWidget(layoutBox);
-
-        // Add general note about the process
-        QLabel* generalNote = new QLabel(
-            "Note: Default calibration parameters will be used for processing.\n"
-            "Air Sample and Pixel Max Value are set from system defaults."
-            );
-        generalNote->setStyleSheet(
-            "color: #666666; font-size: 11px; padding: 10px;"
-            "background-color: #f8f8f8; border-radius: 4px;"
-            );
-        generalNote->setWordWrap(true);
-        dialogLayout->addWidget(generalNote);
 
         // Add OK/Cancel buttons
         QDialogButtonBox* buttonBox = new QDialogButtonBox(
@@ -1511,8 +1760,6 @@ void ControlPanel::setupPreProcessingOperations() {
 
         if (dialog.exec() == QDialog::Accepted) {
             m_imageProcessor.saveCurrentState();
-            m_darkLineInfoLabel->hide();
-            resetDetectedLinesPointer();
 
             try {
                 const auto& finalImage = m_imageProcessor.getFinalImage();
@@ -1524,13 +1771,7 @@ void ControlPanel::setupPreProcessingOperations() {
                 int height = m_imageProcessor.getFinalImageHeight();
                 int width = m_imageProcessor.getFinalImageWidth();
 
-                CGProcessImage processor;
-
-                // Set parameters (always Unfold mode)
-                processor.SetEnergyMode(dualEnergyBtn->isChecked() ? EnergyMode::Dual : EnergyMode::Single);
-                processor.SetDualRowMode(DualRowMode::Unfold);  // Fixed to Unfold
-                processor.SetHighLowLayout(lowHighBtn->isChecked() ? EnergyLayout::Low_High : EnergyLayout::High_Low);
-
+                // Prepare input matrix
                 double** inputMatrix = nullptr;
                 malloc2D(inputMatrix, height, width);
                 for(int i = 0; i < height; i++) {
@@ -1539,23 +1780,88 @@ void ControlPanel::setupPreProcessingOperations() {
                     }
                 }
 
+                // Apply data calibration if needed
+                if (!m_imageProcessor.hasAppliedCalibration()) {
+                    // Auto-apply calibration if it hasn't been applied yet
+                    QMessageBox::information(this, "Data Calibration",
+                        "Data calibration has not been applied yet. It will be automatically applied before interlacing.");
+
+                    CGData calibratedData = DataCalibration::CalibrateDataMatrix(
+                        inputMatrix,
+                        height,
+                        width,
+                        CGImageCalculationVariables.PixelMaxValue,
+                        CGImageCalculationVariables.AirSampleStart,
+                        CGImageCalculationVariables.AirSampleEnd
+                    );
+
+                    // Copy calibrated data back to input matrix
+                    for(int i = 0; i < height; i++) {
+                        for(int j = 0; j < width; j++) {
+                            inputMatrix[i][j] = std::clamp(calibratedData.Data[i][j], 0.0, 65535.0);
+                        }
+                    }
+
+                    // Clean up calibrated data
+                    for(int i = 0; i < calibratedData.Row; i++) {
+                        free(calibratedData.Data[i]);
+                    }
+                    free(calibratedData.Data);
+
+                    m_imageProcessor.setCalibrationApplied(true);
+                }
+                else if (applyCalibrationCheck->isChecked()) {
+                    // Apply calibration if user chose to reapply it
+                    CGData calibratedData = DataCalibration::CalibrateDataMatrix(
+                        inputMatrix,
+                        height,
+                        width,
+                        CGImageCalculationVariables.PixelMaxValue,
+                        CGImageCalculationVariables.AirSampleStart,
+                        CGImageCalculationVariables.AirSampleEnd
+                    );
+
+                    // Copy calibrated data back to input matrix
+                    for(int i = 0; i < height; i++) {
+                        for(int j = 0; j < width; j++) {
+                            inputMatrix[i][j] = std::clamp(calibratedData.Data[i][j], 0.0, 65535.0);
+                        }
+                    }
+
+                    // Clean up calibrated data
+                    for(int i = 0; i < calibratedData.Row; i++) {
+                        free(calibratedData.Data[i]);
+                    }
+                    free(calibratedData.Data);
+                }
+
+                // Process with fixed settings
+                CGProcessImage processor;
+                processor.SetEnergyMode(EnergyMode::Dual);  // Fixed to Dual
+                processor.SetDualRowMode(DualRowMode::Unfold);  // Fixed to Unfold
+                processor.SetHighLowLayout(lowHighBtn->isChecked() ? EnergyLayout::Low_High : EnergyLayout::High_Low);
+
+                // Process image
                 processor.Process(inputMatrix, height, width);
 
                 double** mergedData = nullptr;
                 int mergedRows = 0, mergedCols = 0;
                 if (processor.GetMergedData(mergedData, mergedRows, mergedCols)) {
+                    // Update the image
                     m_imageProcessor.updateAndSaveFinalImage(mergedData, mergedRows, mergedCols);
 
                     m_imageSizeLabel->setText(QString("Image Size: %1 x %2")
-                                                  .arg(mergedRows)
-                                                  .arg(mergedCols));
+                                              .arg(mergedRows)
+                                              .arg(mergedCols));
 
+                    // Clean up merged data
                     for(int i = 0; i < mergedRows; i++) {
                         free(mergedData[i]);
                     }
                     free(mergedData);
                 }
 
+                // Clean up input matrix
                 for(int i = 0; i < height; i++) {
                     free(inputMatrix[i]);
                 }
@@ -1564,16 +1870,25 @@ void ControlPanel::setupPreProcessingOperations() {
                 m_imageLabel->clearSelection();
                 updateImageDisplay();
 
-                QString paramStr = QString("Mode: %1\nRow Mode: Unfold\nLayout: %2\nSize: %3x%4")
-                                       .arg(dualEnergyBtn->isChecked() ? "Dual" : "Single")
+                // Update the status message to include calibration information
+                QString calibrationStatus = !m_imageProcessor.hasAppliedCalibration() ?
+                                        "Applied" :
+                                        (applyCalibrationCheck->isChecked() ? "Reapplied" : "Previously Applied");
+
+                QString paramStr = QString("Mode: Dual (Fixed)\n"
+                                         "Row Mode: Unfold (Fixed)\n"
+                                         "Layout: %1\n"
+                                         "Calibration: %2\n"
+                                         "Final Size: %3x%4")
                                        .arg(lowHighBtn->isChecked() ? "Low-High" : "High-Low")
+                                       .arg(calibrationStatus)
                                        .arg(mergedRows)
                                        .arg(mergedCols);
                 updateLastAction("Interlace", paramStr);
 
             } catch (const std::exception& e) {
                 QMessageBox::critical(this, "Error",
-                                      QString("Failed to apply interlace: %1").arg(e.what()));
+                                      QString("Failed to process image: %1").arg(e.what()));
             }
         }
     });
@@ -1588,6 +1903,8 @@ void ControlPanel::setupPreProcessingOperations() {
     connect(mergeBtn, &QPushButton::clicked, [this]() {
         if (checkZoomMode()) return;
         m_imageProcessor.saveCurrentState();
+        m_darkLineInfoLabel->hide();
+        resetDetectedLinesPointer();
 
         try {
             const auto& finalImage = m_imageProcessor.getFinalImage();
@@ -1642,6 +1959,9 @@ void ControlPanel::setupFilteringOperations() {
     createGroupBox("Image Enhancement", {
                                             {"CLAHE", [this]() {
                                                  if (checkZoomMode()) return;
+
+                                                 m_darkLineInfoLabel->hide();
+                                                 resetDetectedLinesPointer();
 
                                                  // Use non-const pointer to allow modifications
                                                  QDialog* dialog = new QDialog(this);
@@ -2044,6 +2364,9 @@ void ControlPanel::setupAdvancedOperations() {
     connect(stretchBtn, &QPushButton::clicked, [this]() {
         if (checkZoomMode()) return;
 
+        m_darkLineInfoLabel->hide();
+        resetDetectedLinesPointer();
+
         // Show input dialogs
         QStringList directions = {"Vertical", "Horizontal"};
         bool ok1, ok2;
@@ -2114,6 +2437,9 @@ void ControlPanel::setupAdvancedOperations() {
     connect(applyPaddingBtn, &QPushButton::clicked, [this]() {
         if (checkZoomMode()) return;
 
+        m_darkLineInfoLabel->hide();
+        resetDetectedLinesPointer();
+
         // Show input dialog
         bool ok;
         int paddingSize = QInputDialog::getInt(this, "Padding",
@@ -2170,6 +2496,9 @@ void ControlPanel::setupAdvancedOperations() {
 
     connect(applyDistortionBtn, &QPushButton::clicked, [this]() {
         if (checkZoomMode()) return;
+
+        m_darkLineInfoLabel->hide();
+        resetDetectedLinesPointer();
 
         // Show input dialogs
         QStringList directions = {"Left", "Right", "Top", "Bottom"};
@@ -2461,9 +2790,18 @@ void ControlPanel::resetDetectedLinesPointer() {
 
     m_imageProcessor.clearDetectedLines();
 
+    // Find the reset detection button and hide it
+    for (QPushButton* button : m_allButtons) {
+        if (button && button->text() == "Reset Detection") {
+            button->setVisible(false);
+            button->setEnabled(false);
+            break;
+        }
+    }
+
     QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
         qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
-        );
+    );
 
     m_darkLineInfoLabel->clear();
     m_darkLineInfoLabel->setVisible(false);
@@ -2685,15 +3023,24 @@ void ControlPanel::updateImageDisplay(double** image, int height, int width) {
                               QString("Failed to update display: %1").arg(e.what()));
     }
 }
-void ControlPanel::clearAllDetectionResults() {
 
+void ControlPanel::clearAllDetectionResults() {
     resetDetectedLinesPointer();
     m_darkLineInfoLabel->clear();
     m_darkLineInfoLabel->setVisible(false);
 
+    // Hide and disable the reset detection button
+    for (QPushButton* button : m_allButtons) {
+        if (button && button->text() == "Reset Detection") {
+            button->setVisible(false);
+            button->setEnabled(false);
+            break;
+        }
+    }
+
     QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
         qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
-        );
+    );
     if (darkLineScrollArea) {
         darkLineScrollArea->setVisible(false);
     }
@@ -2702,78 +3049,120 @@ void ControlPanel::clearAllDetectionResults() {
 }
 
 void ControlPanel::setupResetOperations() {
+    // Create reset detection button but don't add it to the group box yet
+        QPushButton* resetDetectionBtn = new QPushButton("Reset Detection");
+        resetDetectionBtn->setFixedHeight(35);
+        resetDetectionBtn->setVisible(false); // Initially hidden
+        resetDetectionBtn->setEnabled(false);
+
+        connect(resetDetectionBtn, &QPushButton::clicked, [this]() {
+            QMessageBox::StandardButton reply = QMessageBox::warning(
+                this,
+                "Reset Detection",
+                "Are you sure you want to clear all detected lines?\nThis action cannot be undone.",
+                QMessageBox::Yes | QMessageBox::No
+            );
+
+            if (reply == QMessageBox::Yes) {
+                clearAllDetectionResults();
+                updateLastAction("Reset Detection");
+                QMessageBox::information(this, "Success", "All detection results have been cleared.");
+            }
+        });
+
+        // Create reset calibration button
+        m_resetCalibrationButton = new QPushButton("Reset Calibration Parameters");
+        m_resetCalibrationButton->setFixedHeight(35);
+        m_resetCalibrationButton->setEnabled(false);
+        m_resetCalibrationButton->setVisible(false);
+        m_resetCalibrationButton->setToolTip("Reset stored calibration parameters");
+
+        // Connect reset calibration button signal - THIS IS THE NEW PART
+        connect(m_resetCalibrationButton, &QPushButton::clicked, this, [this]() {
+            InterlaceProcessor::resetCalibrationParams();
+            m_resetCalibrationButton->setEnabled(false);
+            m_resetCalibrationButton->setVisible(false);
+            QMessageBox::information(this, "Calibration Reset",
+                                   "Calibration parameters have been reset. Next calibration will require new parameters.");
+        });
+
+        // Store buttons for management
+        m_allButtons.push_back(resetDetectionBtn);
+        m_allButtons.push_back(m_resetCalibrationButton);
+
+        // Connect to line detection changes to show/hide reset detection button
+        connect(this, &ControlPanel::fileLoaded, [resetDetectionBtn](bool loaded) {
+            if (!loaded) {
+                resetDetectionBtn->setVisible(false);
+                resetDetectionBtn->setEnabled(false);
+            }
+        });
+
     createGroupBox("Reset Operations", {
-                                           {"Reset Detection", [this]() {
-                                                QMessageBox::StandardButton reply = QMessageBox::warning(
-                                                    this,
-                                                    "Reset Detection",
-                                                    "Are you sure you want to clear all detected lines?\nThis action cannot be undone.",
-                                                    QMessageBox::Yes | QMessageBox::No
-                                                    );
+        {QString(), resetDetectionBtn},
+        {QString(), m_resetCalibrationButton},
+        {"Clear All", [this]() {
+             QMessageBox::StandardButton reply = QMessageBox::warning(
+                 this,
+                 "Clear All",
+                 "Are you sure you want to clear everything?\nThis will remove the image and all settings.",
+                 QMessageBox::Yes | QMessageBox::No
+                 );
 
-                                                if (reply == QMessageBox::Yes) {
-                                                    clearAllDetectionResults();
-                                                    updateLastAction("Reset Detection");
-                                                    QMessageBox::information(this, "Success", "All detection results have been cleared.");
-                                                }
-                                            }},
+             if (reply == QMessageBox::Yes) {
+                 // Clear history and parameters
+                 InterlaceProcessor::resetCalibrationParams();
+                 m_resetCalibrationButton->setEnabled(false);
 
-                                           {"Clear All", [this]() {
-                                                QMessageBox::StandardButton reply = QMessageBox::warning(
-                                                    this,
-                                                    "Clear All",
-                                                    "Are you sure you want to clear everything?\nThis will remove the image and all settings.",
-                                                    QMessageBox::Yes | QMessageBox::No
-                                                    );
+                 // Clear detection results
+                 clearAllDetectionResults();
 
-                                                if (reply == QMessageBox::Yes) {
-                                                    // Clear history and parameters
-                                                    InterlaceProcessor::resetCalibrationParams();
-                                                    m_resetCalibrationButton->setEnabled(false);
+                 // Reset zoom if active
+                 if (m_imageProcessor.getZoomManager().isZoomModeActive()) {
+                     m_imageProcessor.getZoomManager().resetZoom();
+                     m_fixZoomButton->setChecked(false);
+                     m_imageProcessor.getZoomManager().toggleFixedZoom(false);
+                     toggleZoomMode(false);
+                 }
 
-                                                    // Clear detection results
-                                                    clearAllDetectionResults();
+                 // Clear all image data
+                 m_imageProcessor.clearImageData();
+                 m_imageProcessor.clearHistory();
 
-                                                    // Reset zoom if active
-                                                    if (m_imageProcessor.getZoomManager().isZoomModeActive()) {
-                                                        m_imageProcessor.getZoomManager().resetZoom();
-                                                        m_fixZoomButton->setChecked(false);
-                                                        m_imageProcessor.getZoomManager().toggleFixedZoom(false);
-                                                        toggleZoomMode(false);
-                                                    }
+                 // Clear display and labels
+                 m_imageLabel->clear();
+                 m_imageSizeLabel->setText("Image Size: No image loaded");
+                 m_lastActionLabel->setText("Last Action: None");
+                 m_lastActionParamsLabel->clear();
+                 m_lastActionParamsLabel->setVisible(false);
+                 m_pixelInfoLabel->setText("Pixel Info: No image loaded");
+                 m_fileTypeLabel->setText("File Type: None");
 
-                                                    // Clear all image data
-                                                    m_imageProcessor.clearImageData();
-                                                    m_imageProcessor.clearHistory();
+                 // Disable all buttons except Browse
+                 for (QPushButton* button : m_allButtons) {
+                     if (button) {
+                         button->setEnabled(button->text() == "Browse");
+                     }
+                 }
 
-                                                    // Clear display and labels
-                                                    m_imageLabel->clear();
-                                                    m_imageSizeLabel->setText("Image Size: No image loaded");
-                                                    m_lastActionLabel->setText("Last Action: None");
-                                                    m_lastActionParamsLabel->clear();
-                                                    m_lastActionParamsLabel->setVisible(false);
-                                                    m_pixelInfoLabel->setText("Pixel Info: No image loaded");
-                                                    m_fileTypeLabel->setText("File Type: None");
+                m_resetCalibrationButton->setEnabled(false);
+                m_resetCalibrationButton->setVisible(false);
 
-                                                    // Disable all buttons except Browse
-                                                    for (QPushButton* button : m_allButtons) {
-                                                        if (button) {
-                                                            button->setEnabled(button->text() == "Browse");
-                                                        }
-                                                    }
-
-                                                    updateLastAction("Clear All");
-                                                    QMessageBox::information(this, "Success", "All data has been cleared.");
-                                                }
-                                            }}
-                                       });
+                 updateLastAction("Clear All");
+                 QMessageBox::information(this, "Success", "All data has been cleared.");
+             }
+        }}
+    });
 }
+
 
 void ControlPanel::setupCombinedAdjustments() {
     createGroupBox("Image Adjustments", {
                                             {"Gamma Adjustment", [this]() {
                                                  if (checkZoomMode()) return;
                                                  m_imageProcessor.saveCurrentState();
+                                                 m_darkLineInfoLabel->hide();
+                                                 resetDetectedLinesPointer();
 
                                                  QDialog dialog(this);
                                                  dialog.setWindowTitle("Gamma Adjustment");
@@ -3032,6 +3421,8 @@ void ControlPanel::setupCombinedAdjustments() {
                                             {"Contrast Adjustment", [this]() {
                                                  if (checkZoomMode()) return;
                                                  m_imageProcessor.saveCurrentState();
+                                                 m_darkLineInfoLabel->hide();
+                                                 resetDetectedLinesPointer();
 
                                                  QDialog dialog(this);
                                                  dialog.setWindowTitle("Contrast Adjustment");
@@ -3289,6 +3680,8 @@ void ControlPanel::setupCombinedAdjustments() {
                                             {"Sharpen Adjustment", [this]() {
                                                  if (checkZoomMode()) return;
                                                  m_imageProcessor.saveCurrentState();
+                                                 m_darkLineInfoLabel->hide();
+                                                 resetDetectedLinesPointer();
 
                                                  QDialog dialog(this);
                                                  dialog.setWindowTitle("Sharpen Adjustment");
@@ -3778,9 +4171,11 @@ void ControlPanel::processCalibration(int linesToProcessY, int linesToProcessX, 
 
         InterlaceProcessor::setCalibrationParams(newY, newX);
 
-        // Show reset button after successful axis calibration
-        m_resetCalibrationButton->setEnabled(true);
-        m_resetCalibrationButton->setVisible(true);
+        if (newY > 0 || newX > 0) {
+                InterlaceProcessor::setCalibrationParams(newY, newX);
+                m_resetCalibrationButton->setEnabled(true);
+                m_resetCalibrationButton->setVisible(true);
+            }
 
     } catch (const std::exception& e) {
         QMessageBox::critical(this, "Calibration Error",
@@ -3930,11 +4325,21 @@ void ControlPanel::cleanupImageData(ImageData& imageData) {
 
 bool ControlPanel::processDetectedLines(DarkLineArray* outLines, bool success) {
     if (success && outLines && outLines->rows > 0) {
-        // 清理旧的检测结果
+        // Clean up old detection results
         resetDetectedLinesPointer();
 
-        // 设置新的检测结果
+        // Set new detection results
         m_detectedLinesPointer = outLines;
+
+        // Show reset detection button
+        for (QPushButton* button : m_allButtons) {
+            if (button && button->text() == "Reset Detection") {
+                button->setVisible(true);
+                button->setEnabled(true);
+                break;
+            }
+        }
+
         return true;
     } else {
         if (outLines) {

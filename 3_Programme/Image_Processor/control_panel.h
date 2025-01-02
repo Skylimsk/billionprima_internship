@@ -102,6 +102,8 @@ private:
         X_AXIS_ONLY
     };
 
+    void clearLineInformation();
+
     // Setup Methods
     void setupPixelInfoLabel();
     void setupFileOperations();
