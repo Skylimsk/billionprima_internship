@@ -112,17 +112,14 @@ void CLAHEProcessor::applyCLAHE(double** outputImage, double** inputImage,
         // Log start of processing
         logThreadStart(0, "CLAHE_GPU", 0, height);
 
-        // Convert normalized double input to Mat (scale to 8-bit for CLAHE)
-        cv::Mat matInput(height, width, CV_64F);
+        // Convert 16-bit input directly to 8-bit for CLAHE in a single loop
+        cv::Mat input8bit(height, width, CV_8UC1);
         for (int y = 0; y < height; ++y) {
+            uchar* row = input8bit.ptr<uchar>(y);
             for (int x = 0; x < width; ++x) {
-                matInput.at<double>(y, x) = inputImage[y][x];
+                row[x] = static_cast<uchar>((inputImage[y][x] * 255.0) / 65535.0);
             }
         }
-
-        // Convert to 8-bit for CLAHE processing
-        cv::Mat input8bit;
-        matInput.convertTo(input8bit, CV_8UC1, 255.0);
 
         // Apply CLAHE
         cv::cuda::GpuMat gpuInput;
@@ -136,14 +133,11 @@ void CLAHEProcessor::applyCLAHE(double** outputImage, double** inputImage,
         cv::Mat result;
         gpuResult.download(result);
 
-        // Convert back to double range (normalized 0-1)
-        cv::Mat resultDouble;
-        result.convertTo(resultDouble, CV_64F, 1.0/255.0);
-
-        // Copy to output
+        // Convert back to 16-bit range in a single loop
         for (int y = 0; y < height; ++y) {
+            const uchar* resultRow = result.ptr<uchar>(y);
             for (int x = 0; x < width; ++x) {
-                outputImage[y][x] = resultDouble.at<double>(y, x);
+                outputImage[y][x] = (static_cast<double>(resultRow[x]) * 65535.0) / 255.0;
             }
         }
 
@@ -168,17 +162,15 @@ void CLAHEProcessor::applyCLAHE_CPU(double** outputImage, double** inputImage,
     auto startTime = std::chrono::high_resolution_clock::now();
 
     try {
-        // Convert normalized double input to Mat
-        cv::Mat matInput(height, width, CV_64F);
+        // Convert 16-bit input directly to 8-bit for CLAHE
+        cv::Mat input8bit(height, width, CV_8UC1);
         for (int y = 0; y < height; ++y) {
+            uchar* row = input8bit.ptr<uchar>(y);
             for (int x = 0; x < width; ++x) {
-                matInput.at<double>(y, x) = inputImage[y][x];
+                row[x] = static_cast<uchar>((inputImage[y][x] * 255.0) / 65535.0);
             }
         }
 
-        // Convert to 8-bit for CLAHE processing
-        cv::Mat input8bit;
-        matInput.convertTo(input8bit, CV_8UC1, 255.0);
         cv::Mat result = cv::Mat::zeros(input8bit.size(), input8bit.type());
 
         // Create CLAHE instances for each thread
@@ -215,14 +207,11 @@ void CLAHEProcessor::applyCLAHE_CPU(double** outputImage, double** inputImage,
             future.wait();
         }
 
-        // Convert back to double range (normalized 0-1)
-        cv::Mat resultDouble;
-        result.convertTo(resultDouble, CV_64F, 1.0/255.0);
-
-        // Copy to output
+        // Convert back to 16-bit range in a single loop
         for (int y = 0; y < height; ++y) {
+            const uchar* resultRow = result.ptr<uchar>(y);
             for (int x = 0; x < width; ++x) {
-                outputImage[y][x] = resultDouble.at<double>(y, x);
+                outputImage[y][x] = (static_cast<double>(resultRow[x]) * 65535.0) / 255.0;
             }
         }
 
@@ -238,7 +227,7 @@ void CLAHEProcessor::applyCLAHE_CPU(double** outputImage, double** inputImage,
 //Combined CLAHE: Preserves the brightest information from the original image
 //while enhancing contrast by taking the maximum value (Brighter) between original and CLAHE-processed pixels.
 
-//Combined GPU-accelerated CLAHE with enhanced brightness preservation
+//Combined CPU-accelerated CLAHE with enhanced brightness preservation
 void CLAHEProcessor::applyCombinedCLAHE_CPU(double** outputImage, double** inputImage,
                                             int height, int width, double clipLimit,
                                             const cv::Size& tileSize) {
@@ -313,7 +302,7 @@ void CLAHEProcessor::applyCombinedCLAHE_CPU(double** outputImage, double** input
     }
 }
 
-//CPU version of combined CLAHE with 16-bit precision
+//GPU version of combined CLAHE with 16-bit precision
 void CLAHEProcessor::applyCombinedCLAHE(double** outputImage, double** inputImage,
                                         int height, int width, double clipLimit,
                                         const cv::Size& tileSize) {
@@ -323,57 +312,44 @@ void CLAHEProcessor::applyCombinedCLAHE(double** outputImage, double** inputImag
     auto startTime = std::chrono::high_resolution_clock::now();
 
     try {
-        // 1. Convert input array to Mat format
-        cv::Mat matImage(height, width, CV_64F);
+        // Convert to 8-bit directly with single loop
+        cv::Mat input8bit(height, width, CV_8UC1);
         for (int y = 0; y < height; ++y) {
+            uchar* row = input8bit.ptr<uchar>(y);
             for (int x = 0; x < width; ++x) {
-                matImage.at<double>(y, x) = inputImage[y][x];
+                row[x] = static_cast<uchar>((inputImage[y][x] * 255.0) / 65535.0);
             }
         }
 
-        // 2. Convert to 16-bit
-        cv::Mat matImage16U;
-        matImage.convertTo(matImage16U, CV_16UC1, 65535.0);
+        // Upload to GPU and apply CLAHE
+        cv::cuda::GpuMat d_input8bit;
+        d_input8bit.upload(input8bit);
 
-        // 3. Upload to GPU and apply CLAHE
-        cv::cuda::GpuMat d_image16U(matImage16U);
-        cv::cuda::GpuMat d_image8bit;
-        d_image16U.convertTo(d_image8bit, CV_8UC1, 255.0/65535.0);
-
-        // Create GPU CLAHE object
+        // Create GPU CLAHE object and process
         cv::Ptr<cv::cuda::CLAHE> clahe = cv::cuda::createCLAHE(clipLimit, tileSize);
-        cv::cuda::GpuMat d_processed8bit;
-        clahe->apply(d_image8bit, d_processed8bit);
+        cv::cuda::GpuMat d_processed;
+        clahe->apply(d_input8bit, d_processed);
 
-        // 4. Convert CLAHE result back to 16-bit on GPU
-        cv::cuda::GpuMat d_processed16U;
-        d_processed8bit.convertTo(d_processed16U, CV_16UC1, 65535.0/255.0);
+        // Download result
+        cv::Mat processed;
+        d_processed.download(processed);
 
-        // 5. Compare and select brighter pixels on GPU
-        cv::cuda::GpuMat d_result;
-        cv::cuda::max(d_image16U, d_processed16U, d_result);
-
-        // Download result from GPU
-        cv::Mat result;
-        d_result.download(result);
-
-        // 6. Convert back to double format
-        cv::Mat resultDouble;
-        result.convertTo(resultDouble, CV_64F, 1.0/65535.0);
-
-        // 7. Copy back to original array
+        // Compare and take maximum in 16-bit space with single loop
         for (int y = 0; y < height; ++y) {
+            const uchar* processedRow = processed.ptr<uchar>(y);
             for (int x = 0; x < width; ++x) {
-                outputImage[y][x] = resultDouble.at<double>(y, x);
+                double original = inputImage[y][x];
+                double processed = (static_cast<double>(processedRow[x]) * 65535.0) / 255.0;
+                outputImage[y][x] = std::max(original, processed);
             }
         }
 
         auto endTime = std::chrono::high_resolution_clock::now();
         metrics.processingTime = std::chrono::duration<double, std::milli>(endTime - startTime).count();
         metrics.totalTime = metrics.processingTime;
-    }
-    catch (const cv::Exception& e) {
-        qDebug() << "Error in GPU CLAHE processing:" << e.what();
+
+    } catch (const cv::Exception& e) {
+        logMessage("Error in GPU Combined CLAHE: " + std::string(e.what()), -1);
         throw;
     }
 }
@@ -382,76 +358,50 @@ void CLAHEProcessor::applyCombinedCLAHE(double** outputImage, double** inputImag
 
 //GPU-accelerated CLAHE with threshold-based dark region enhancement
 void CLAHEProcessor::applyThresholdCLAHE(double** finalImage, int height, int width,
-                                             uint16_t threshold, double clipLimit,
-                                             const cv::Size& tileSize, bool afterNormalCLAHE) {
+                                         uint16_t threshold, double clipLimit,
+                                         const cv::Size& tileSize, bool afterNormalCLAHE) {
     metrics.reset();
     metrics.isCLAHE = true;
     metrics.threadsUsed = 1; // GPU version uses 1 host thread
     auto startTime = std::chrono::high_resolution_clock::now();
 
     try {
-        // Allocate GPU memory and copy input image
-        cv::cuda::GpuMat d_matImage(height, width, CV_16UC1);
-        cv::Mat h_matImage(height, width, CV_16UC1);
-
-        // Convert input to Mat format on CPU first
+        // Create 8-bit input directly
+        cv::Mat input8bit(height, width, CV_8UC1);
         for (int y = 0; y < height; ++y) {
+            uchar* row = input8bit.ptr<uchar>(y);
             for (int x = 0; x < width; ++x) {
-                h_matImage.at<uint16_t>(y, x) = static_cast<uint16_t>(finalImage[y][x] * 65535.0);
+                row[x] = static_cast<uchar>((finalImage[y][x] * 255.0) / 65535.0);
             }
         }
-        d_matImage.upload(h_matImage);
 
-        // Create dark region mask on GPU
+        // Create dark region mask
         cv::cuda::GpuMat d_darkMask;
-        cv::cuda::threshold(d_matImage, d_darkMask, threshold, 255, cv::THRESH_BINARY_INV);
-        d_darkMask.convertTo(d_darkMask, CV_8UC1);
+        cv::Mat darkMask;
+        cv::threshold(input8bit, darkMask, (threshold * 255.0) / 65535.0, 255, cv::THRESH_BINARY_INV);
+        d_darkMask.upload(darkMask);
 
-        // Check if there are dark regions to process
-        cv::Mat h_darkMask;
-        d_darkMask.download(h_darkMask);
-        if (cv::countNonZero(h_darkMask) > 0) {
-            // Extract dark regions
-            cv::cuda::GpuMat d_darkRegion;
-            d_matImage.copyTo(d_darkRegion, d_darkMask);
+        if (cv::countNonZero(darkMask) > 0) {
+            // Process dark regions with CLAHE
+            cv::cuda::GpuMat d_input8bit;
+            d_input8bit.upload(input8bit);
 
-            // Convert to 8-bit for CLAHE
-            cv::cuda::GpuMat d_darkRegion8bit;
-            d_darkRegion.convertTo(d_darkRegion8bit, CV_8UC1, 255.0/65535.0);
+            cv::Ptr<cv::cuda::CLAHE> clahe = cv::cuda::createCLAHE(clipLimit, tileSize);
+            cv::cuda::GpuMat d_processed;
+            clahe->apply(d_input8bit, d_processed);
 
-            // Adjust CLAHE parameters
-            double adjustedClipLimit = clipLimit * 0.8;
-            cv::Size adjustedTileSize(tileSize.width * 2, tileSize.height * 2);
+            // Download result
+            cv::Mat processed;
+            d_processed.download(processed);
 
-            // Apply CLAHE to dark regions
-            cv::cuda::GpuMat d_processedDark8bit;
-            cv::Ptr<cv::cuda::CLAHE> clahe = cv::cuda::createCLAHE(adjustedClipLimit, adjustedTileSize);
-            clahe->apply(d_darkRegion8bit, d_processedDark8bit);
-
-            // Calculate value range
-            double minVal, maxVal;
-            cv::Mat h_processedDark8bit;
-            d_processedDark8bit.download(h_processedDark8bit);
-            cv::minMaxLoc(h_processedDark8bit, &minVal, &maxVal);
-
-            // Adjust value range stretching on GPU
-            cv::cuda::GpuMat d_processedDark16;
-            double stretchFactor = 0.7;
-            double scale = (65535.0 / (maxVal - minVal)) * stretchFactor;
-            double offset = -minVal * scale;
-            d_processedDark8bit.convertTo(d_processedDark16, CV_16UC1, scale, offset);
-
-            // Merge results on GPU
-            cv::cuda::GpuMat d_result;
-            d_matImage.copyTo(d_result);
-            d_processedDark16.copyTo(d_result, d_darkMask);
-
-            // Download result and convert back to normalized double range
-            cv::Mat h_result;
-            d_result.download(h_result);
+            // Convert back to 16-bit range directly
             for (int y = 0; y < height; ++y) {
+                const uchar* processedRow = processed.ptr<uchar>(y);
+                const uchar* maskRow = darkMask.ptr<uchar>(y);
                 for (int x = 0; x < width; ++x) {
-                    finalImage[y][x] = h_result.at<uint16_t>(y, x) / 65535.0;
+                    if (maskRow[x] > 0) { // Apply only to dark regions
+                        finalImage[y][x] = (static_cast<double>(processedRow[x]) * 65535.0) / 255.0;
+                    }
                 }
             }
         }
@@ -476,56 +426,33 @@ void CLAHEProcessor::applyThresholdCLAHE_CPU(double** finalImage, int height, in
     auto startTime = std::chrono::high_resolution_clock::now();
 
     try {
-        // Convert to Mat format
-        cv::Mat matImage(height, width, CV_16UC1);
+        // Convert to 8-bit with single loop
+        cv::Mat input8bit(height, width, CV_8UC1);
         for (int y = 0; y < height; ++y) {
+            uchar* row = input8bit.ptr<uchar>(y);
             for (int x = 0; x < width; ++x) {
-                matImage.at<uint16_t>(y, x) = static_cast<uint16_t>(finalImage[y][x] * 65535.0);
+                row[x] = static_cast<uchar>((finalImage[y][x] * 255.0) / 65535.0);
             }
         }
 
         // Create dark region mask
         cv::Mat darkMask;
-        cv::threshold(matImage, darkMask, threshold, 255, cv::THRESH_BINARY_INV);
-        darkMask.convertTo(darkMask, CV_8UC1);
+        cv::threshold(input8bit, darkMask, (threshold * 255.0) / 65535.0, 255, cv::THRESH_BINARY_INV);
 
         if (cv::countNonZero(darkMask) > 0) {
-            // Extract dark regions
-            cv::Mat darkRegion;
-            matImage.copyTo(darkRegion, darkMask);
+            // Process dark regions with CLAHE
+            cv::Mat processed;
+            cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(clipLimit, tileSize);
+            clahe->apply(input8bit, processed);
 
-            // Convert to 8-bit for CLAHE
-            cv::Mat darkRegion8bit;
-            darkRegion.convertTo(darkRegion8bit, CV_8UC1, 255.0/65535.0);
-
-            // Adjust CLAHE parameters
-            double adjustedClipLimit = clipLimit * 0.8;
-            cv::Size adjustedTileSize(tileSize.width * 2, tileSize.height * 2);
-
-            // Apply CLAHE to dark regions
-            cv::Mat processedDark8bit;
-            cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(adjustedClipLimit, adjustedTileSize);
-            clahe->apply(darkRegion8bit, processedDark8bit);
-
-            // Calculate value range
-            double minVal, maxVal;
-            cv::minMaxLoc(processedDark8bit, &minVal, &maxVal);
-
-            // Adjust value range stretching
-            cv::Mat processedDark16;
-            double stretchFactor = 0.7;
-            double scale = (65535.0 / (maxVal - minVal)) * stretchFactor;
-            double offset = -minVal * scale;
-            processedDark8bit.convertTo(processedDark16, CV_16UC1, scale, offset);
-
-            // Merge results
-            cv::Mat result = matImage.clone();
-            processedDark16.copyTo(result, darkMask);
-
-            // Convert back to normalized double range
+            // Apply results only to dark regions, convert directly back to 16-bit
             for (int y = 0; y < height; ++y) {
+                const uchar* processedRow = processed.ptr<uchar>(y);
+                const uchar* maskRow = darkMask.ptr<uchar>(y);
                 for (int x = 0; x < width; ++x) {
-                    finalImage[y][x] = result.at<uint16_t>(y, x) / 65535.0;
+                    if (maskRow[x] > 0) { // Only modify dark regions
+                        finalImage[y][x] = (static_cast<double>(processedRow[x]) * 65535.0) / 255.0;
+                    }
                 }
             }
         }

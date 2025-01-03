@@ -44,17 +44,17 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
     m_darkLineInfoLabel = new QLabel("");
     m_darkLineInfoLabel->setMinimumHeight(30);  // Minimum height for single line
     m_darkLineInfoLabel->setStyleSheet(
-        "QLabel {"
-        "    color: black;"
-        "    font-family: monospace;"
-        "    font-size: 11px;"
-        "    background-color: #f8f8f8;"
-        "    border: 1px solid #ddd;"
-        "    border-radius: 4px;"
-        "    padding: 8px;"
-        "    margin: 4px 0px;"
-        "}"
-        );
+                "QLabel {"
+                "    color: black;"
+                "    font-family: monospace;"
+                "    font-size: 11px;"
+                "    background-color: #f8f8f8;"
+                "    border: 1px solid #ddd;"
+                "    border-radius: 4px;"
+                "    padding: 8px;"
+                "    margin: 4px 0px;"
+                "}"
+                );
     m_darkLineInfoLabel->setTextFormat(Qt::PlainText);
     m_darkLineInfoLabel->setWordWrap(true);
     m_darkLineInfoLabel->setAlignment(Qt::AlignLeft | Qt::AlignTop);
@@ -71,22 +71,22 @@ ControlPanel::ControlPanel(ImageProcessor& imageProcessor, ImageLabel* imageLabe
     darkLineScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     darkLineScrollArea->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
     darkLineScrollArea->setStyleSheet(
-        "QScrollArea {"
-        "    border: none;"
-        "    background: transparent;"
-        "}"
-        "QScrollBar:vertical {"
-        "    width: 10px;"
-        "    background: transparent;"
-        "}"
-        "QScrollBar::handle:vertical {"
-        "    background: #CCCCCC;"
-        "    border-radius: 5px;"
-        "}"
-        "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {"
-        "    height: 0px;"
-        "}"
-        );
+                "QScrollArea {"
+                "    border: none;"
+                "    background: transparent;"
+                "}"
+                "QScrollBar:vertical {"
+                "    width: 10px;"
+                "    background: transparent;"
+                "}"
+                "QScrollBar::handle:vertical {"
+                "    background: #CCCCCC;"
+                "    border-radius: 5px;"
+                "}"
+                "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {"
+                "    height: 0px;"
+                "}"
+                );
     darkLineScrollArea->setVisible(false);
 
     // Add the scroll area to the layout
@@ -164,10 +164,10 @@ void ControlPanel::enableButtons(bool enable) {
         if (zoomModeActive && !zoomFixed) {
             // When zoom is active but not fixed, only enable zoom-related buttons
             if (buttonText == "Deactivate Zoom" ||
-                buttonText == "Zoom In" ||
-                buttonText == "Zoom Out" ||
-                buttonText == "Reset Zoom" ||
-                buttonText == "Fix Zoom") {
+                    buttonText == "Zoom In" ||
+                    buttonText == "Zoom Out" ||
+                    buttonText == "Reset Zoom" ||
+                    buttonText == "Fix Zoom") {
                 shouldEnable = enable;
             } else {
                 shouldEnable = false;
@@ -213,34 +213,34 @@ void ControlPanel::enableButtons(bool enable) {
         if (buttonText == "Activate Zoom" || buttonText == "Deactivate Zoom") {
             if (!shouldEnable) {
                 button->setStyleSheet(
-                    "QPushButton {"
-                    "    background-color: #f3f4f6;"
-                    "    color: #999999;"  // Grayed out text
-                    "    border: 1px solid #e5e7eb;"
-                    "    border-radius: 4px;"
-                    "    padding: 5px;"
-                    "}"
-                    );
+                            "QPushButton {"
+                            "    background-color: #f3f4f6;"
+                            "    color: #999999;"  // Grayed out text
+                            "    border: 1px solid #e5e7eb;"
+                            "    border-radius: 4px;"
+                            "    padding: 5px;"
+                            "}"
+                            );
             } else {
                 button->setStyleSheet(
-                    "QPushButton {"
-                    "    background-color: #ffffff;"
-                    "    color: #000000;"
-                    "    border: 1px solid #e5e7eb;"
-                    "    border-radius: 4px;"
-                    "    padding: 5px;"
-                    "}"
-                    "QPushButton[state=\"deactivate-unfix\"] {"
-                    "    background-color: #3b82f6;"
-                    "    color: #ffffff;"
-                    "    border: none;"
-                    "}"
-                    "QPushButton[state=\"deactivate-fix\"] {"
-                    "    background-color: #ef4444;"
-                    "    color: #ffffff;"
-                    "    border: none;"
-                    "}"
-                    );
+                            "QPushButton {"
+                            "    background-color: #ffffff;"
+                            "    color: #000000;"
+                            "    border: 1px solid #e5e7eb;"
+                            "    border-radius: 4px;"
+                            "    padding: 5px;"
+                            "}"
+                            "QPushButton[state=\"deactivate-unfix\"] {"
+                            "    background-color: #3b82f6;"
+                            "    color: #ffffff;"
+                            "    border: none;"
+                            "}"
+                            "QPushButton[state=\"deactivate-fix\"] {"
+                            "    background-color: #ef4444;"
+                            "    color: #ffffff;"
+                            "    border: none;"
+                            "}"
+                            );
             }
         }
     }
@@ -304,32 +304,32 @@ void ControlPanel::setupPixelInfoLabel() {
     m_lastActionParamsLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     m_lastActionParamsLabel->setWordWrap(true);
     m_lastActionParamsLabel->setStyleSheet(
-        "QLabel {"
-        "    color: black;"
-        "    background-color: #f8f8f8;"
-        "    border: 1px solid #ddd;"
-        "    border-radius: 4px;"
-        "    padding: 4px 8px;"
-        "    margin: 2px 0px;"
-        "}"
-        );
+                "QLabel {"
+                "    color: black;"
+                "    background-color: #f8f8f8;"
+                "    border: 1px solid #ddd;"
+                "    border-radius: 4px;"
+                "    padding: 4px 8px;"
+                "    margin: 2px 0px;"
+                "}"
+                );
     infoLayout->addWidget(m_lastActionParamsLabel);
 
     m_darkLineInfoLabel = new QLabel("");
     m_darkLineInfoLabel->setMinimumHeight(15);
     m_darkLineInfoLabel->setMaximumHeight(30);
     m_darkLineInfoLabel->setStyleSheet(
-        "QLabel {"
-        "    color: black;"
-        "    font-family: Arial;"
-        "    font-size: 11px;"
-        "    background-color: #f8f8f8;"
-        "    border: 1px solid #ddd;"
-        "    border-radius: 4px;"
-        "    padding: 8px;"
-        "    margin: 4px 0px;"
-        "}"
-        );
+                "QLabel {"
+                "    color: black;"
+                "    font-family: Arial;"
+                "    font-size: 11px;"
+                "    background-color: #f8f8f8;"
+                "    border: 1px solid #ddd;"
+                "    border-radius: 4px;"
+                "    padding: 8px;"
+                "    margin: 4px 0px;"
+                "}"
+                );
     m_darkLineInfoLabel->setTextFormat(Qt::PlainText);
     m_darkLineInfoLabel->setWordWrap(true);
     m_darkLineInfoLabel->setVisible(false);
@@ -388,10 +388,10 @@ void ControlPanel::updateLastActionLabelSize() {
     QFontMetrics fmAction(m_lastActionLabel->font());
     int actionTextWidth = m_lastActionLabel->width() - 10; // Subtract margin
     QRect actionBounds = fmAction.boundingRect(
-        QRect(0, 0, actionTextWidth, 0),
-        Qt::TextWordWrap,
-        m_lastActionLabel->text()
-        );
+                QRect(0, 0, actionTextWidth, 0),
+                Qt::TextWordWrap,
+                m_lastActionLabel->text()
+                );
 
     // Calculate required height for parameters label if visible
     int paramsHeight = 0;
@@ -399,10 +399,10 @@ void ControlPanel::updateLastActionLabelSize() {
         QFontMetrics fmParams(m_lastActionParamsLabel->font());
         int paramsTextWidth = m_lastActionParamsLabel->width() - 20; // Subtract padding
         QRect paramsBounds = fmParams.boundingRect(
-            QRect(0, 0, paramsTextWidth, 0),
-            Qt::TextWordWrap,
-            m_lastActionParamsLabel->text()
-            );
+                    QRect(0, 0, paramsTextWidth, 0),
+                    Qt::TextWordWrap,
+                    m_lastActionParamsLabel->text()
+                    );
         paramsHeight = paramsBounds.height() + 10; // Add padding
     }
 
@@ -429,8 +429,8 @@ void ControlPanel::updatePixelInfo(const QPoint& pos)
         int y = std::clamp(pos.y(), 0, height - 1);
         double pixelValue = finalImage[y][x];
         QString info = QString("Pixel Info: X: %1, Y: %2, Value: %3")
-                           .arg(x).arg(y)
-                           .arg(static_cast<int>(pixelValue));
+                .arg(x).arg(y)
+                .arg(static_cast<int>(pixelValue));
         m_pixelInfoLabel->setText(info);
     } else {
         m_pixelInfoLabel->setText("Pixel Info: No image loaded");
@@ -441,14 +441,14 @@ void ControlPanel::setupZoomControls() {
     // Create a subgroup for zoom controls that will be added to Basic Operations
     m_zoomControlsGroup = new QGroupBox();
     m_zoomControlsGroup->setStyleSheet(
-        "QGroupBox {"
-        "    border: none;"
-        "    margin-left: 15px;"  // Indent from main button
-        "    margin-top: 5px;"    // Space from zoom button
-        "    margin-bottom: 10px;" // Space before next control
-        "    padding: 0px;"
-        "}"
-        );
+                "QGroupBox {"
+                "    border: none;"
+                "    margin-left: 15px;"  // Indent from main button
+                "    margin-top: 5px;"    // Space from zoom button
+                "    margin-bottom: 10px;" // Space before next control
+                "    padding: 0px;"
+                "}"
+                );
 
     QVBoxLayout* zoomLayout = new QVBoxLayout(m_zoomControlsGroup);
     zoomLayout->setSpacing(5);
@@ -469,28 +469,28 @@ void ControlPanel::setupZoomControls() {
     // Set fixed height and style for buttons
     const int buttonHeight = 35;
     const QString buttonStyle =
-        "QPushButton {"
-        "    background-color: #f3f4f6;"
-        "    border: 1px solid #e5e7eb;"
-        "    border-radius: 4px;"
-        "    padding: 5px;"
-        "}";
+            "QPushButton {"
+            "    background-color: #f3f4f6;"
+            "    border: 1px solid #e5e7eb;"
+            "    border-radius: 4px;"
+            "    padding: 5px;"
+            "}";
 
     // Update m_fixZoomButton style
     m_fixZoomButton->setStyleSheet(
-        "QPushButton {"
-        "    background-color: #ffffff;"
-        "    color: #000000;"
-        "    border: 1px solid #e5e7eb;"
-        "    border-radius: 4px;"
-        "    padding: 5px;"
-        "}"
-        "QPushButton:checked {"
-        "    background-color: #3b82f6;"
-        "    color: #ffffff;"
-        "    border: none;"
-        "}"
-        );
+                "QPushButton {"
+                "    background-color: #ffffff;"
+                "    color: #000000;"
+                "    border: 1px solid #e5e7eb;"
+                "    border-radius: 4px;"
+                "    padding: 5px;"
+                "}"
+                "QPushButton:checked {"
+                "    background-color: #3b82f6;"
+                "    color: #ffffff;"
+                "    border: none;"
+                "}"
+                );
 
     for (QPushButton* btn : {zoomInBtn, zoomOutBtn, m_fixZoomButton, resetZoomBtn}) {
         btn->setFixedHeight(buttonHeight);
@@ -580,8 +580,8 @@ void ControlPanel::setupZoomControls() {
         }
 
         QString status = checked ?
-                             QString("Fixed at %1x").arg(zoomManager.getZoomLevel(), 0, 'f', 2) :
-                             QString("Unfixed at %1x").arg(zoomManager.getZoomLevel(), 0, 'f', 2);
+                    QString("Fixed at %1x").arg(zoomManager.getZoomLevel(), 0, 'f', 2) :
+                    QString("Unfixed at %1x").arg(zoomManager.getZoomLevel(), 0, 'f', 2);
         updateLastAction("Fix Zoom", status);
     });
 
@@ -608,7 +608,7 @@ void ControlPanel::toggleZoomMode(bool active) {
             warningBox->setIcon(QMessageBox::Warning);
             warningBox->setWindowTitle("Zoom Level Warning");
             warningBox->setText(QString("Current zoom level is %1x.\nDo you want to proceed with this zoom level or reset to 1x?")
-                                    .arg(currentZoomLevel, 0, 'f', 2));
+                                .arg(currentZoomLevel, 0, 'f', 2));
             QPushButton* proceedButton = warningBox->addButton("Proceed", QMessageBox::AcceptRole);
             QPushButton* resetButton = warningBox->addButton("Reset", QMessageBox::RejectRole);
 
@@ -707,237 +707,237 @@ void ControlPanel::setupFileOperations() {
     connect(this, &ControlPanel::fileLoaded, this, &ControlPanel::enableButtons);
 
     createGroupBox("File Operations", {
-                                          {"Browse", [this]() {
-                                               // Create file dialog with all supported formats
-                                               QString filter = "All Supported Files (*.png *.jpg *.jpeg *.tiff *.tif *.bmp *.txt);;"
-                                                                "Image Files (*.png *.jpg *.jpeg *.tiff *.tif *.bmp);;"
-                                                                "Text Files (*.txt)";
+                       {"Browse", [this]() {
+                            // Create file dialog with all supported formats
+                            QString filter = "All Supported Files (*.png *.jpg *.jpeg *.tiff *.tif *.bmp *.txt);;"
+                            "Image Files (*.png *.jpg *.jpeg *.tiff *.tif *.bmp);;"
+                            "Text Files (*.txt)";
 
-                                               QString fileName = QFileDialog::getOpenFileName(
-                                                   this,
-                                                   "Open File",
-                                                   "",
-                                                   filter);
+                            QString fileName = QFileDialog::getOpenFileName(
+                            this,
+                            "Open File",
+                            "",
+                            filter);
 
-                                               if (fileName.isEmpty()) {
-                                                   return;
-                                               }
+                            if (fileName.isEmpty()) {
+                                return;
+                            }
 
-                                               try {
-                                                   resetDetectedLinesPointer();
-                                                   m_darkLineInfoLabel->hide();
+                            try {
+                                resetDetectedLinesPointer();
+                                m_darkLineInfoLabel->hide();
 
-                                                   QString extension = QFileInfo(fileName).suffix().toLower();
-                                                   bool isTextFile = (extension == "txt");
+                                QString extension = QFileInfo(fileName).suffix().toLower();
+                                bool isTextFile = (extension == "txt");
 
-                                                   if (isTextFile) {
-                                                       // Show dialog for text file format selection
-                                                       QDialog formatDialog(this);
-                                                       formatDialog.setWindowTitle("Text File Format");
-                                                       formatDialog.setMinimumWidth(300);
+                                if (isTextFile) {
+                                    // Show dialog for text file format selection
+                                    QDialog formatDialog(this);
+                                    formatDialog.setWindowTitle("Text File Format");
+                                    formatDialog.setMinimumWidth(300);
 
-                                                       QVBoxLayout* layout = new QVBoxLayout(&formatDialog);
+                                    QVBoxLayout* layout = new QVBoxLayout(&formatDialog);
 
-                                                       // Format selection
-                                                       QGroupBox* formatGroup = new QGroupBox("Select Format");
-                                                       QVBoxLayout* formatLayout = new QVBoxLayout(formatGroup);
+                                    // Format selection
+                                    QGroupBox* formatGroup = new QGroupBox("Select Format");
+                                    QVBoxLayout* formatLayout = new QVBoxLayout(formatGroup);
 
-                                                       QRadioButton* format2DBtn = new QRadioButton("2D Format (Grid Layout)");
-                                                       QRadioButton* format1DBtn = new QRadioButton("1D Format (Single Column)");
-                                                       format2DBtn->setChecked(true);
+                                    QRadioButton* format2DBtn = new QRadioButton("2D Format (Grid Layout)");
+                                    QRadioButton* format1DBtn = new QRadioButton("1D Format (Single Column)");
+                                    format2DBtn->setChecked(true);
 
-                                                       formatLayout->addWidget(format2DBtn);
-                                                       formatLayout->addWidget(format1DBtn);
+                                    formatLayout->addWidget(format2DBtn);
+                                    formatLayout->addWidget(format1DBtn);
 
-                                                       // Add format descriptions
-                                                       QLabel* formatInfo = new QLabel(
-                                                           "Format descriptions:\n"
-                                                           "• 2D Format: Text file with values arranged in a grid\n"
-                                                           "• 1D Format: Text file with values in a single column"
-                                                           );
-                                                       formatInfo->setStyleSheet("color: #666666; margin-top: 10px;");
-                                                       formatLayout->addWidget(formatInfo);
+                                    // Add format descriptions
+                                    QLabel* formatInfo = new QLabel(
+                                    "Format descriptions:\n"
+                                    "• 2D Format: Text file with values arranged in a grid\n"
+                                    "• 1D Format: Text file with values in a single column"
+                                    );
+                                    formatInfo->setStyleSheet("color: #666666; margin-top: 10px;");
+                                    formatLayout->addWidget(formatInfo);
 
-                                                       formatGroup->setLayout(formatLayout);
-                                                       layout->addWidget(formatGroup);
+                                    formatGroup->setLayout(formatLayout);
+                                    layout->addWidget(formatGroup);
 
-                                                       // Add OK/Cancel buttons
-                                                       QDialogButtonBox* buttonBox = new QDialogButtonBox(
-                                                           QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-                                                       layout->addWidget(buttonBox);
+                                    // Add OK/Cancel buttons
+                                    QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                                    QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                                    layout->addWidget(buttonBox);
 
-                                                       connect(buttonBox, &QDialogButtonBox::accepted, &formatDialog, &QDialog::accept);
-                                                       connect(buttonBox, &QDialogButtonBox::rejected, &formatDialog, &QDialog::reject);
+                                    connect(buttonBox, &QDialogButtonBox::accepted, &formatDialog, &QDialog::accept);
+                                    connect(buttonBox, &QDialogButtonBox::rejected, &formatDialog, &QDialog::reject);
 
-                                                       if (formatDialog.exec() == QDialog::Accepted) {
-                                                           auto startLoad = std::chrono::high_resolution_clock::now();
+                                    if (formatDialog.exec() == QDialog::Accepted) {
+                                        auto startLoad = std::chrono::high_resolution_clock::now();
 
-                                                           if (format2DBtn->isChecked()) {
-                                                               // Handle 2D text format
-                                                               double** matrix = nullptr;
-                                                               int rows = 0, cols = 0;
-                                                               ImageReader::ReadTextToU2D(fileName.toStdString(), matrix, rows, cols);
+                                        if (format2DBtn->isChecked()) {
+                                            // Handle 2D text format
+                                            double** matrix = nullptr;
+                                            int rows = 0, cols = 0;
+                                            ImageReader::ReadTextToU2D(fileName.toStdString(), matrix, rows, cols);
 
-                                                               if (matrix && rows > 0 && cols > 0) {
-                                                                   double** finalMatrix = new double*[rows];
-                                                                   for (int i = 0; i < rows; ++i) {
-                                                                       finalMatrix[i] = new double[cols];
-                                                                       for (int j = 0; j < cols; ++j) {
-                                                                           finalMatrix[i][j] = std::min(65535.0, std::max(0.0, matrix[i][j]));
-                                                                       }
-                                                                   }
+                                            if (matrix && rows > 0 && cols > 0) {
+                                                double** finalMatrix = new double*[rows];
+                                                for (int i = 0; i < rows; ++i) {
+                                                    finalMatrix[i] = new double[cols];
+                                                    for (int j = 0; j < cols; ++j) {
+                                                        finalMatrix[i][j] = std::min(65535.0, std::max(0.0, matrix[i][j]));
+                                                    }
+                                                }
 
-                                                                   m_imageProcessor.setOriginalImage(finalMatrix, rows, cols);
-                                                                   m_imageProcessor.updateAndSaveFinalImage(finalMatrix, rows, cols);
-                                                                   m_fileTypeLabel->setText("File Type: 2D Text");
+                                                m_imageProcessor.setOriginalImage(finalMatrix, rows, cols);
+                                                m_imageProcessor.updateAndSaveFinalImage(finalMatrix, rows, cols);
+                                                m_fileTypeLabel->setText("File Type: 2D Text");
 
-                                                                   // Clean up matrices
-                                                                   for (int i = 0; i < rows; ++i) {
-                                                                       delete[] matrix[i];
-                                                                       delete[] finalMatrix[i];
-                                                                   }
-                                                                   delete[] matrix;
-                                                                   delete[] finalMatrix;
-                                                               }
-                                                           } else {
-                                                               // Handle 1D text format
-                                                               uint32_t* matrix = nullptr;
-                                                               int rows = 0, cols = 0;
-                                                               ImageReader::ReadTextToU1D(fileName.toStdString(), matrix, rows, cols);
+                                                // Clean up matrices
+                                                for (int i = 0; i < rows; ++i) {
+                                                    delete[] matrix[i];
+                                                    delete[] finalMatrix[i];
+                                                }
+                                                delete[] matrix;
+                                                delete[] finalMatrix;
+                                            }
+                                        } else {
+                                            // Handle 1D text format
+                                            uint32_t* matrix = nullptr;
+                                            int rows = 0, cols = 0;
+                                            ImageReader::ReadTextToU1D(fileName.toStdString(), matrix, rows, cols);
 
-                                                               if (matrix && rows > 0 && cols > 0) {
-                                                                   double** finalMatrix = new double*[rows];
-                                                                   for (int i = 0; i < rows; ++i) {
-                                                                       finalMatrix[i] = new double[cols];
-                                                                       for (int j = 0; j < cols; ++j) {
-                                                                           finalMatrix[i][j] = std::min(65535.0, std::max(0.0,
-                                                                                                                          static_cast<double>(matrix[i * cols + j])));
-                                                                       }
-                                                                   }
+                                            if (matrix && rows > 0 && cols > 0) {
+                                                double** finalMatrix = new double*[rows];
+                                                for (int i = 0; i < rows; ++i) {
+                                                    finalMatrix[i] = new double[cols];
+                                                    for (int j = 0; j < cols; ++j) {
+                                                        finalMatrix[i][j] = std::min(65535.0, std::max(0.0,
+                                                        static_cast<double>(matrix[i * cols + j])));
+                                                    }
+                                                }
 
-                                                                   m_imageProcessor.setOriginalImage(finalMatrix, rows, cols);
-                                                                   m_imageProcessor.updateAndSaveFinalImage(finalMatrix, rows, cols);
-                                                                   m_fileTypeLabel->setText("File Type: 1D Text");
+                                                m_imageProcessor.setOriginalImage(finalMatrix, rows, cols);
+                                                m_imageProcessor.updateAndSaveFinalImage(finalMatrix, rows, cols);
+                                                m_fileTypeLabel->setText("File Type: 1D Text");
 
-                                                                   // Clean up
-                                                                   delete[] matrix;
-                                                                   for (int i = 0; i < rows; ++i) {
-                                                                       delete[] finalMatrix[i];
-                                                                   }
-                                                                   delete[] finalMatrix;
-                                                               }
-                                                           }
+                                                // Clean up
+                                                delete[] matrix;
+                                                for (int i = 0; i < rows; ++i) {
+                                                    delete[] finalMatrix[i];
+                                                }
+                                                delete[] finalMatrix;
+                                            }
+                                        }
 
-                                                           auto endLoad = std::chrono::high_resolution_clock::now();
-                                                           m_fileLoadTime = std::chrono::duration<double, std::milli>(endLoad - startLoad).count();
+                                        auto endLoad = std::chrono::high_resolution_clock::now();
+                                        m_fileLoadTime = std::chrono::duration<double, std::milli>(endLoad - startLoad).count();
 
-                                                       }
-                                                   } else {
-                                                       // Handle image file
-                                                       auto startLoad = std::chrono::high_resolution_clock::now();
-                                                       m_imageProcessor.loadImage(fileName.toStdString());
-                                                       m_fileTypeLabel->setText("File Type: Image");
-                                                       auto endLoad = std::chrono::high_resolution_clock::now();
-                                                       m_fileLoadTime = std::chrono::duration<double, std::milli>(endLoad - startLoad).count();
-                                                   }
+                                    }
+                                } else {
+                                    // Handle image file
+                                    auto startLoad = std::chrono::high_resolution_clock::now();
+                                    m_imageProcessor.loadImage(fileName.toStdString());
+                                    m_fileTypeLabel->setText("File Type: Image");
+                                    auto endLoad = std::chrono::high_resolution_clock::now();
+                                    m_fileLoadTime = std::chrono::duration<double, std::milli>(endLoad - startLoad).count();
+                                }
 
-                                                   // Update display and status
-                                                   m_imageSizeLabel->setText(QString("Image Size: %1 x %2")
-                                                                                 .arg(m_imageProcessor.getFinalImageWidth())
-                                                                                 .arg(m_imageProcessor.getFinalImageHeight()));
+                                // Update display and status
+                                m_imageSizeLabel->setText(QString("Image Size: %1 x %2")
+                                .arg(m_imageProcessor.getFinalImageWidth())
+                                .arg(m_imageProcessor.getFinalImageHeight()));
 
-                                                   auto startHist = std::chrono::high_resolution_clock::now();
-                                                   if (m_histogram) {
-                                                       m_histogram->updateHistogram(m_imageProcessor.getFinalImage(),
-                                                                                    m_imageProcessor.getFinalImageHeight(),
-                                                                                    m_imageProcessor.getFinalImageWidth());
-                                                   }
-                                                   auto endHist = std::chrono::high_resolution_clock::now();
-                                                   m_histogramTime = std::chrono::duration<double, std::milli>(endHist - startHist).count();
+                                auto startHist = std::chrono::high_resolution_clock::now();
+                                if (m_histogram) {
+                                    m_histogram->updateHistogram(m_imageProcessor.getFinalImage(),
+                                    m_imageProcessor.getFinalImageHeight(),
+                                    m_imageProcessor.getFinalImageWidth());
+                                }
+                                auto endHist = std::chrono::high_resolution_clock::now();
+                                m_histogramTime = std::chrono::duration<double, std::milli>(endHist - startHist).count();
 
-                                                   m_imageLabel->clearSelection();
-                                                   updateImageDisplay();
+                                m_imageLabel->clearSelection();
+                                updateImageDisplay();
 
-                                                   QFileInfo fileInfo(fileName);
-                                                   QString timingInfo = QString("File: %1\nProcessing Time - Load: %2 ms, Histogram: %3 ms")
-                                                                            .arg(fileInfo.fileName())
-                                                                            .arg(m_fileLoadTime, 0, 'f', 2)
-                                                                            .arg(m_histogramTime, 0, 'f', 2);
+                                QFileInfo fileInfo(fileName);
+                                QString timingInfo = QString("File: %1\nProcessing Time - Load: %2 ms, Histogram: %3 ms")
+                                .arg(fileInfo.fileName())
+                                .arg(m_fileLoadTime, 0, 'f', 2)
+                                .arg(m_histogramTime, 0, 'f', 2);
 
-                                                   updateLastAction("Load File", timingInfo);
-                                                   emit fileLoaded(true);
+                                updateLastAction("Load File", timingInfo);
+                                emit fileLoaded(true);
 
-                                               } catch (const std::exception& e) {
-                                                   QMessageBox::critical(this, "Error",
-                                                                         QString("Failed to load file: %1").arg(e.what()));
-                                                   emit fileLoaded(false);
-                                               }
-                                           }},
-                                          {"Undo", [this]() {
-                                               qDebug() << "\n=== Undo Button Clicked ===";
-                                               qDebug() << "Current history size:" << m_imageProcessor.getHistorySize();
-                                               qDebug() << "Can undo:" << m_imageProcessor.canUndo();
+                            } catch (const std::exception& e) {
+                                QMessageBox::critical(this, "Error",
+                                QString("Failed to load file: %1").arg(e.what()));
+                                emit fileLoaded(false);
+                            }
+                        }},
+                       {"Undo", [this]() {
+                            qDebug() << "\n=== Undo Button Clicked ===";
+                            qDebug() << "Current history size:" << m_imageProcessor.getHistorySize();
+                            qDebug() << "Can undo:" << m_imageProcessor.canUndo();
 
-                                               if (checkZoomMode()) {
-                                                   qDebug() << "Zoom mode active, cannot undo";
-                                                   return;
-                                               }
+                            if (checkZoomMode()) {
+                                qDebug() << "Zoom mode active, cannot undo";
+                                return;
+                            }
 
-                                               m_darkLineInfoLabel->hide();
-                                               resetDetectedLinesPointer();
+                            m_darkLineInfoLabel->hide();
+                            resetDetectedLinesPointer();
 
-                                               bool canUndo = m_imageProcessor.canUndo();
-                                               qDebug() << "Attempting undo operation, canUndo:" << canUndo;
+                            bool canUndo = m_imageProcessor.canUndo();
+                            qDebug() << "Attempting undo operation, canUndo:" << canUndo;
 
-                                               if (canUndo) {
-                                                   qDebug() << "Performing undo operation...";
-                                                   m_imageProcessor.undo();
-                                                   qDebug() << "Undo operation complete, new history size:" << m_imageProcessor.getHistorySize();
+                            if (canUndo) {
+                                qDebug() << "Performing undo operation...";
+                                m_imageProcessor.undo();
+                                qDebug() << "Undo operation complete, new history size:" << m_imageProcessor.getHistorySize();
 
-                                                   m_imageLabel->clearSelection();
-                                                   updateImageDisplay();
+                                m_imageLabel->clearSelection();
+                                updateImageDisplay();
 
-                                                   auto lastAction = m_imageProcessor.getLastActionRecord();
-                                                   updateLastAction("Undo",
-                                                                    lastAction.action.isEmpty() ? QString() :
-                                                                        QString("Reverted: %1").arg(lastAction.toString()));
+                                auto lastAction = m_imageProcessor.getLastActionRecord();
+                                updateLastAction("Undo",
+                                lastAction.action.isEmpty() ? QString() :
+                                QString("Reverted: %1").arg(lastAction.toString()));
 
-                                                   // Enable/disable undo button based on remaining history
-                                                   bool canStillUndo = m_imageProcessor.canUndo();
-                                                   qDebug() << "Can still undo after operation:" << canStillUndo;
-                                                   for (QPushButton* button : m_allButtons) {
-                                                       if (button && button->text() == "Undo") {
-                                                           button->setEnabled(canStillUndo);
-                                                           qDebug() << "Updated undo button enabled state:" << canStillUndo;
-                                                           break;
-                                                       }
-                                                   }
-                                               }
-                                           }},
-                                          {"Save", [this]() {
-                                               QString filePath = QFileDialog::getSaveFileName(
-                                                   this,
-                                                   "Save Image",
-                                                   "",
-                                                   "PNG Files (*.png);;JPEG Files (*.jpg *.jpeg);;TIFF Files (*.tiff *.tif);;BMP Files (*.bmp)"
-                                                   );
+                                // Enable/disable undo button based on remaining history
+                                bool canStillUndo = m_imageProcessor.canUndo();
+                                qDebug() << "Can still undo after operation:" << canStillUndo;
+                                for (QPushButton* button : m_allButtons) {
+                                    if (button && button->text() == "Undo") {
+                                        button->setEnabled(canStillUndo);
+                                        qDebug() << "Updated undo button enabled state:" << canStillUndo;
+                                        break;
+                                    }
+                                }
+                            }
+                        }},
+                       {"Save", [this]() {
+                            QString filePath = QFileDialog::getSaveFileName(
+                            this,
+                            "Save Image",
+                            "",
+                            "PNG Files (*.png);;JPEG Files (*.jpg *.jpeg);;TIFF Files (*.tiff *.tif);;BMP Files (*.bmp)"
+                            );
 
-                                               if (!filePath.isEmpty()) {
-                                                   const auto& finalImage = m_imageProcessor.getFinalImage();
-                                                   if (!finalImage) {
-                                                       QMessageBox::warning(this, "Save Error", "No image data to save.");
-                                                       return;
-                                                   }
+                            if (!filePath.isEmpty()) {
+                                const auto& finalImage = m_imageProcessor.getFinalImage();
+                                if (!finalImage) {
+                                    QMessageBox::warning(this, "Save Error", "No image data to save.");
+                                    return;
+                                }
 
-                                                   if (m_imageProcessor.saveImage(filePath)) {
-                                                       QFileInfo fileInfo(filePath);
-                                                       updateLastAction("Save Image", fileInfo.fileName());
-                                                   } else {
-                                                       QMessageBox::critical(this, "Error", "Failed to save image.");
-                                                   }
-                                               }
-                                           }}
-                                      });
+                                if (m_imageProcessor.saveImage(filePath)) {
+                                    QFileInfo fileInfo(filePath);
+                                    updateLastAction("Save Image", fileInfo.fileName());
+                                } else {
+                                    QMessageBox::critical(this, "Error", "Failed to save image.");
+                                }
+                            }
+                        }}
+                   });
 }
 
 void ControlPanel::setupBasicOperations() {
@@ -955,43 +955,43 @@ void ControlPanel::setupBasicOperations() {
 
         // Updated button styles to match the requirements
         m_zoomButton->setStyleSheet(
-            "QPushButton {"
-            "    background-color: #ffffff;"  // White background by default
-            "    color: #6b7280;"            // Black text by default
-            "    border: 1px solid #e5e7eb;"
-            "    border-radius: 4px;"
-            "    padding: 5px;"
-            "}"
-            // When text is "Deactivate Zoom" without fix
-            "QPushButton[state=\"deactivate-unfix\"] {"
-            "    background-color: #3b82f6;"  // Blue background
-            "    color: #6b7280;"  // Darker gray for disabled state
-            "    color: #ffffff;"             // White text
-            "    border: none;"
-            "}"
-            // When text is "Deactivate Zoom" with fix
-            "QPushButton[state=\"deactivate-fix\"] {"
-            "    background-color: #ef4444;"  // Red background
-            "    color: #ffffff;"             // White text
-            "    border: none;"
-            "}"
-            );
+                    "QPushButton {"
+                    "    background-color: #ffffff;"  // White background by default
+                    "    color: #6b7280;"            // Black text by default
+                    "    border: 1px solid #e5e7eb;"
+                    "    border-radius: 4px;"
+                    "    padding: 5px;"
+                    "}"
+                    // When text is "Deactivate Zoom" without fix
+                    "QPushButton[state=\"deactivate-unfix\"] {"
+                    "    background-color: #3b82f6;"  // Blue background
+                    "    color: #6b7280;"  // Darker gray for disabled state
+                    "    color: #ffffff;"             // White text
+                    "    border: none;"
+                    "}"
+                    // When text is "Deactivate Zoom" with fix
+                    "QPushButton[state=\"deactivate-fix\"] {"
+                    "    background-color: #ef4444;"  // Red background
+                    "    color: #ffffff;"             // White text
+                    "    border: none;"
+                    "}"
+                    );
 
         // Update fix zoom button style
         m_fixZoomButton->setStyleSheet(
-            "QPushButton {"
-            "    background-color: #ffffff;"
-            "    color: #000000;"
-            "    border: 1px solid #e5e7eb;"
-            "    border-radius: 4px;"
-            "    padding: 5px;"
-            "}"
-            "QPushButton:checked {"
-            "    background-color: #3b82f6;"  // Blue when showing "Unfix Zoom"
-            "    color: #ffffff;"
-            "    border: none;"
-            "}"
-            );
+                    "QPushButton {"
+                    "    background-color: #ffffff;"
+                    "    color: #000000;"
+                    "    border: 1px solid #e5e7eb;"
+                    "    border-radius: 4px;"
+                    "    padding: 5px;"
+                    "}"
+                    "QPushButton:checked {"
+                    "    background-color: #3b82f6;"  // Blue when showing "Unfix Zoom"
+                    "    color: #ffffff;"
+                    "    border: none;"
+                    "}"
+                    );
 
         if (m_zoomButton) {  // Add null check
             connect(m_zoomButton, &QPushButton::clicked, this, [this]() {
@@ -1047,13 +1047,13 @@ void ControlPanel::setupBasicOperations() {
         btn->setEnabled(false);
         m_allButtons.push_back(btn);
         btn->setStyleSheet(
-            "QPushButton {"
-            "    background-color: #ffffff;"
-            "    border: 1px solid #e5e7eb;"
-            "    border-radius: 4px;"
-            "    padding: 5px;"
-            "}"
-            );
+                    "QPushButton {"
+                    "    background-color: #ffffff;"
+                    "    border: 1px solid #e5e7eb;"
+                    "    border-radius: 4px;"
+                    "    padding: 5px;"
+                    "}"
+                    );
     }
 
     // Add rotate buttons to horizontal layout
@@ -1113,9 +1113,9 @@ void ControlPanel::setupBasicOperations() {
 
                 // 执行裁剪
                 CGData croppedData = m_imageProcessor.cropRegion(
-                    inputImage, inputHeight, inputWidth,
-                    cropLeft, cropTop, cropRight, cropBottom
-                    );
+                            inputImage, inputHeight, inputWidth,
+                            cropLeft, cropTop, cropRight, cropBottom
+                            );
 
                 // Convert CGData to double** for updateAndSaveFinalImage
                 double** resultPtr = nullptr;
@@ -1147,7 +1147,7 @@ void ControlPanel::setupBasicOperations() {
 
                 // Update status with the normalized crop dimensions
                 QString cropInfo = QString("Region: (%1,%2) to (%3,%4)")
-                                       .arg(cropLeft).arg(cropTop).arg(cropRight).arg(cropBottom);
+                        .arg(cropLeft).arg(cropTop).arg(cropRight).arg(cropBottom);
                 updateLastAction("Crop", cropInfo);
 
             } catch (const std::exception& e) {
@@ -1216,17 +1216,17 @@ void ControlPanel::setupPreProcessingOperations() {
 
         QLabel* energyModeLabel = new QLabel("Fixed Mode: Dual Energy");
         energyModeLabel->setStyleSheet(
-            "QLabel {"
-            "    color: #dc2626;"  // Red text
-            "    font-weight: bold;"
-            "    padding: 5px;"
-            "}"
-        );
+                    "QLabel {"
+                    "    color: #dc2626;"  // Red text
+                    "    font-weight: bold;"
+                    "    padding: 5px;"
+                    "}"
+                    );
 
         QLabel* energyNote = new QLabel(
-            "Image will be processed as dual energy with automatic calibration.\n"
-            "This setting cannot be changed."
-        );
+                    "Image will be processed as dual energy with automatic calibration.\n"
+                    "This setting cannot be changed."
+                    );
         energyNote->setStyleSheet("color: #666666; font-size: 10px; margin-left: 20px;");
 
         energyLayout->addWidget(energyModeLabel);
@@ -1239,17 +1239,17 @@ void ControlPanel::setupPreProcessingOperations() {
 
         QLabel* rowModeLabel = new QLabel("Fixed Mode: Unfold");
         rowModeLabel->setStyleSheet(
-            "QLabel {"
-            "    color: #dc2626;"  // Red text
-            "    font-weight: bold;"
-            "    padding: 5px;"
-            "}"
-        );
+                    "QLabel {"
+                    "    color: #dc2626;"  // Red text
+                    "    font-weight: bold;"
+                    "    padding: 5px;"
+                    "}"
+                    );
 
         QLabel* rowNote = new QLabel(
-            "Unfold mode is fixed: Rows will be separated into distinct sections.\n"
-            "This setting cannot be changed."
-        );
+                    "Unfold mode is fixed: Rows will be separated into distinct sections.\n"
+                    "This setting cannot be changed."
+                    );
         rowNote->setStyleSheet("color: #666666; font-size: 10px; margin-left: 20px;");
 
         rowLayout->addWidget(rowModeLabel);
@@ -1261,22 +1261,22 @@ void ControlPanel::setupPreProcessingOperations() {
         QVBoxLayout* calibrationLayout = new QVBoxLayout(calibrationBox);
 
         QLabel* calibrationNote = new QLabel(
-            "Data Calibration Parameters (Fixed):\n"
-            "• Air Sample Start: " + QString::number(CGImageCalculationVariables.AirSampleStart) + "\n"
-            "• Air Sample End: " + QString::number(CGImageCalculationVariables.AirSampleEnd) + "\n"
-            "• Pixel Max Value: " + QString::number(CGImageCalculationVariables.PixelMaxValue)
-        );
+                    "Data Calibration Parameters (Fixed):\n"
+                    "• Air Sample Start: " + QString::number(CGImageCalculationVariables.AirSampleStart) + "\n"
+                                                                                                           "• Air Sample End: " + QString::number(CGImageCalculationVariables.AirSampleEnd) + "\n"
+                                                                                                                                                                                              "• Pixel Max Value: " + QString::number(CGImageCalculationVariables.PixelMaxValue)
+                    );
         calibrationNote->setStyleSheet(
-            "QLabel {"
-            "    color: #2563eb;"  // Blue text
-            "    background-color: #eff6ff;"  // Light blue background
-            "    border: 1px solid #bfdbfe;"  // Light blue border
-            "    border-radius: 4px;"
-            "    padding: 8px;"
-            "    margin: 4px 0px;"
-            "    font-family: monospace;"  // For better alignment of numbers
-            "}"
-        );
+                    "QLabel {"
+                    "    color: #2563eb;"  // Blue text
+                    "    background-color: #eff6ff;"  // Light blue background
+                    "    border: 1px solid #bfdbfe;"  // Light blue border
+                    "    border-radius: 4px;"
+                    "    padding: 8px;"
+                    "    margin: 4px 0px;"
+                    "    font-family: monospace;"  // For better alignment of numbers
+                    "}"
+                    );
 
         calibrationLayout->addWidget(calibrationNote);
         dialogLayout->addWidget(calibrationBox);
@@ -1289,10 +1289,10 @@ void ControlPanel::setupPreProcessingOperations() {
         lowHighBtn->setChecked(true);
 
         QLabel* layoutNote = new QLabel(
-            "Choose the energy layout for your image:\n"
-            "Low-High: Low energy rows followed by high energy rows\n"
-            "High-Low: High energy rows followed by low energy rows"
-        );
+                    "Choose the energy layout for your image:\n"
+                    "Low-High: Low energy rows followed by high energy rows\n"
+                    "High-Low: High energy rows followed by low energy rows"
+                    );
         layoutNote->setStyleSheet("color: #666666; font-size: 10px; margin-left: 20px;");
 
         layoutLayout->addWidget(lowHighBtn);
@@ -1302,7 +1302,7 @@ void ControlPanel::setupPreProcessingOperations() {
 
         // Add OK/Cancel buttons
         QDialogButtonBox* buttonBox = new QDialogButtonBox(
-            QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                    QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
         dialogLayout->addWidget(buttonBox);
 
         connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
@@ -1349,8 +1349,8 @@ void ControlPanel::setupPreProcessingOperations() {
                     m_imageProcessor.updateAndSaveFinalImage(mergedData, mergedRows, mergedCols/2);
 
                     m_imageSizeLabel->setText(QString("Image Size: %1 x %2")
-                                                  .arg(mergedRows)
-                                                  .arg(mergedCols/2));
+                                              .arg(mergedRows)
+                                              .arg(mergedCols/2));
 
                     // Clean up merged data
                     for(int i = 0; i < mergedRows; i++) {
@@ -1369,17 +1369,17 @@ void ControlPanel::setupPreProcessingOperations() {
                 updateImageDisplay();
 
                 QString paramStr = QString("Mode: Dual (Fixed)\n"
-                                         "Row Mode: Unfold (Fixed)\n"
-                                         "Layout: %1\n"
-                                         "Air Sample: %2-%3\n"
-                                         "Max Value: %4\n"
-                                         "Final Size: %5x%6")
-                                       .arg(lowHighBtn->isChecked() ? "Low-High" : "High-Low")
-                                       .arg(CGImageCalculationVariables.AirSampleStart)
-                                       .arg(CGImageCalculationVariables.AirSampleEnd)
-                                       .arg(CGImageCalculationVariables.PixelMaxValue)
-                                       .arg(mergedRows)
-                                       .arg(mergedCols/2);
+                                           "Row Mode: Unfold (Fixed)\n"
+                                           "Layout: %1\n"
+                                           "Air Sample: %2-%3\n"
+                                           "Max Value: %4\n"
+                                           "Final Size: %5x%6")
+                        .arg(lowHighBtn->isChecked() ? "Low-High" : "High-Low")
+                        .arg(CGImageCalculationVariables.AirSampleStart)
+                        .arg(CGImageCalculationVariables.AirSampleEnd)
+                        .arg(CGImageCalculationVariables.PixelMaxValue)
+                        .arg(mergedRows)
+                        .arg(mergedCols/2);
                 updateLastAction("Process Image", paramStr);
 
             } catch (const std::exception& e) {
@@ -1432,7 +1432,7 @@ void ControlPanel::setupPreProcessingOperations() {
         methodLayout->addWidget(methodBox);
 
         QDialogButtonBox* buttonBox = new QDialogButtonBox(
-            QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                    QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
         methodLayout->addWidget(buttonBox);
 
         connect(buttonBox, &QDialogButtonBox::accepted, &methodDialog, &QDialog::accept);
@@ -1460,13 +1460,13 @@ void ControlPanel::setupPreProcessingOperations() {
                     }
 
                     CGData calibratedData = DataCalibration::CalibrateDataMatrix(
-                        matrix,
-                        rows,
-                        cols,
-                        CGImageCalculationVariables.PixelMaxValue,
-                        CGImageCalculationVariables.AirSampleStart,
-                        CGImageCalculationVariables.AirSampleEnd
-                        );
+                                matrix,
+                                rows,
+                                cols,
+                                CGImageCalculationVariables.PixelMaxValue,
+                                CGImageCalculationVariables.AirSampleStart,
+                                CGImageCalculationVariables.AirSampleEnd
+                                );
 
                     double** calibratedMatrix = nullptr;
                     malloc2D(calibratedMatrix, calibratedData.Row, calibratedData.Column);
@@ -1495,9 +1495,9 @@ void ControlPanel::setupPreProcessingOperations() {
                     free(calibratedMatrix);
 
                     QString params = QString("Air Sample: %1-%2, Max Value: %3")
-                                         .arg(CGImageCalculationVariables.AirSampleStart)
-                                         .arg(CGImageCalculationVariables.AirSampleEnd)
-                                         .arg(CGImageCalculationVariables.PixelMaxValue);
+                            .arg(CGImageCalculationVariables.AirSampleStart)
+                            .arg(CGImageCalculationVariables.AirSampleEnd)
+                            .arg(CGImageCalculationVariables.PixelMaxValue);
                     updateLastAction("Data Calibration", params);
 
                 } catch (const std::exception& e) {
@@ -1514,19 +1514,19 @@ void ControlPanel::setupPreProcessingOperations() {
                 // Add current parameters display if they exist
                 if (InterlaceProcessor::hasCalibrationParams()) {
                     QLabel* currentParamsLabel = new QLabel(QString("Current Parameters: Y=%1, X=%2")
-                                                                .arg(InterlaceProcessor::getStoredYParam())
-                                                                .arg(InterlaceProcessor::getStoredXParam()));
+                                                            .arg(InterlaceProcessor::getStoredYParam())
+                                                            .arg(InterlaceProcessor::getStoredXParam()));
                     currentParamsLabel->setStyleSheet(
-                        "QLabel {"
-                        "    color: #2563eb;"  // Blue color
-                        "    font-weight: bold;"
-                        "    background-color: #eff6ff;"  // Light blue background
-                        "    border: 1px solid #bfdbfe;"
-                        "    border-radius: 4px;"
-                        "    padding: 8px;"
-                        "    margin: 4px 0px;"
-                        "}"
-                        );
+                                "QLabel {"
+                                "    color: #2563eb;"  // Blue color
+                                "    font-weight: bold;"
+                                "    background-color: #eff6ff;"  // Light blue background
+                                "    border: 1px solid #bfdbfe;"
+                                "    border-radius: 4px;"
+                                "    padding: 8px;"
+                                "    margin: 4px 0px;"
+                                "}"
+                                );
                     dialogLayout->addWidget(currentParamsLabel);
                 }
 
@@ -1561,22 +1561,22 @@ void ControlPanel::setupPreProcessingOperations() {
                 dialogLayout->addWidget(modeBox);
 
                 QDialogButtonBox* axisButtonBox = new QDialogButtonBox(
-                    QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                            QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
                 dialogLayout->addWidget(axisButtonBox);
 
                 // Add a note about parameters
                 QLabel* noteLabel = new QLabel(
-                    "Note: Parameters will be requested after selecting the calibration mode.\n"
-                    "Previously stored parameters will be used if available for the selected axes.");
+                            "Note: Parameters will be requested after selecting the calibration mode.\n"
+                            "Previously stored parameters will be used if available for the selected axes.");
                 noteLabel->setStyleSheet(
-                    "QLabel {"
-                    "    color: #666666;"
-                    "    font-style: italic;"
-                    "    font-size: 10px;"
-                    "    padding: 4px;"
-                    "    margin-top: 8px;"
-                    "}"
-                    );
+                            "QLabel {"
+                            "    color: #666666;"
+                            "    font-style: italic;"
+                            "    font-size: 10px;"
+                            "    padding: 4px;"
+                            "    margin-top: 8px;"
+                            "}"
+                            );
                 dialogLayout->addWidget(noteLabel);
                 connect(axisButtonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
                 connect(axisButtonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
@@ -1624,17 +1624,17 @@ void ControlPanel::setupPreProcessingOperations() {
 
         QLabel* energyModeLabel = new QLabel("Fixed Mode: Dual Energy");
         energyModeLabel->setStyleSheet(
-            "QLabel {"
-            "    color: #dc2626;"  // Red text
-            "    font-weight: bold;"
-            "    padding: 5px;"
-            "}"
-        );
+                    "QLabel {"
+                    "    color: #dc2626;"  // Red text
+                    "    font-weight: bold;"
+                    "    padding: 5px;"
+                    "}"
+                    );
 
         QLabel* energyNote = new QLabel(
-            "Image will be processed as dual energy mode.\n"
-            "This setting cannot be changed."
-        );
+                    "Image will be processed as dual energy mode.\n"
+                    "This setting cannot be changed."
+                    );
         energyNote->setStyleSheet("color: #666666; font-size: 10px; margin-left: 20px;");
 
         energyLayout->addWidget(energyModeLabel);
@@ -1647,17 +1647,17 @@ void ControlPanel::setupPreProcessingOperations() {
 
         QLabel* rowModeLabel = new QLabel("Fixed Mode: Unfold");
         rowModeLabel->setStyleSheet(
-            "QLabel {"
-            "    color: #dc2626;"  // Red text
-            "    font-weight: bold;"
-            "    padding: 5px;"
-            "}"
-        );
+                    "QLabel {"
+                    "    color: #dc2626;"  // Red text
+                    "    font-weight: bold;"
+                    "    padding: 5px;"
+                    "}"
+                    );
 
         QLabel* rowNote = new QLabel(
-            "Unfold mode is fixed: Rows will be separated into distinct sections.\n"
-            "This setting cannot be changed."
-        );
+                    "Unfold mode is fixed: Rows will be separated into distinct sections.\n"
+                    "This setting cannot be changed."
+                    );
         rowNote->setStyleSheet("color: #666666; font-size: 10px; margin-left: 20px;");
 
         rowLayout->addWidget(rowModeLabel);
@@ -1678,16 +1678,16 @@ void ControlPanel::setupPreProcessingOperations() {
 
             QLabel* calibrationStatus = new QLabel("Data Calibration has already been applied\nYou can choose to apply it again if needed");
             calibrationStatus->setStyleSheet(
-                "QLabel {"
-                "    color: #059669;"  // Green text
-                "    font-weight: bold;"
-                "    background-color: #ecfdf5;"  // Light green background
-                "    border: 1px solid #6ee7b7;"
-                "    border-radius: 4px;"
-                "    padding: 8px;"
-                "    margin: 4px 0px;"
-                "}"
-            );
+                        "QLabel {"
+                        "    color: #059669;"  // Green text
+                        "    font-weight: bold;"
+                        "    background-color: #ecfdf5;"  // Light green background
+                        "    border: 1px solid #6ee7b7;"
+                        "    border-radius: 4px;"
+                        "    padding: 8px;"
+                        "    margin: 4px 0px;"
+                        "}"
+                        );
             calibrationLayout->addWidget(calibrationStatus);
         } else {
             // If calibration hasn't been applied, check by default and disable
@@ -1696,37 +1696,37 @@ void ControlPanel::setupPreProcessingOperations() {
 
             QLabel* calibrationStatus = new QLabel("Data Calibration will be automatically applied");
             calibrationStatus->setStyleSheet(
-                "QLabel {"
-                "    color: #2563eb;"  // Blue text
-                "    font-weight: bold;"
-                "    background-color: #eff6ff;"  // Light blue background
-                "    border: 1px solid #bfdbfe;"
-                "    border-radius: 4px;"
-                "    padding: 8px;"
-                "    margin: 4px 0px;"
-                "}"
-            );
+                        "QLabel {"
+                        "    color: #2563eb;"  // Blue text
+                        "    font-weight: bold;"
+                        "    background-color: #eff6ff;"  // Light blue background
+                        "    border: 1px solid #bfdbfe;"
+                        "    border-radius: 4px;"
+                        "    padding: 8px;"
+                        "    margin: 4px 0px;"
+                        "}"
+                        );
             calibrationLayout->addWidget(calibrationStatus);
         }
 
         // Show current calibration parameters
         QLabel* calibrationParamsLabel = new QLabel(
-            "Calibration Parameters:\n"
-            "• Air Sample Start: " + QString::number(CGImageCalculationVariables.AirSampleStart) + "\n"
-            "• Air Sample End: " + QString::number(CGImageCalculationVariables.AirSampleEnd) + "\n"
-            "• Pixel Max Value: " + QString::number(CGImageCalculationVariables.PixelMaxValue)
-        );
+                    "Calibration Parameters:\n"
+                    "• Air Sample Start: " + QString::number(CGImageCalculationVariables.AirSampleStart) + "\n"
+                                                                                                           "• Air Sample End: " + QString::number(CGImageCalculationVariables.AirSampleEnd) + "\n"
+                                                                                                                                                                                              "• Pixel Max Value: " + QString::number(CGImageCalculationVariables.PixelMaxValue)
+                    );
         calibrationParamsLabel->setStyleSheet(
-            "QLabel {"
-            "    color: #2563eb;"
-            "    background-color: #eff6ff;"
-            "    border: 1px solid #bfdbfe;"
-            "    border-radius: 4px;"
-            "    padding: 8px;"
-            "    margin: 4px 0px;"
-            "    font-family: monospace;"
-            "}"
-        );
+                    "QLabel {"
+                    "    color: #2563eb;"
+                    "    background-color: #eff6ff;"
+                    "    border: 1px solid #bfdbfe;"
+                    "    border-radius: 4px;"
+                    "    padding: 8px;"
+                    "    margin: 4px 0px;"
+                    "    font-family: monospace;"
+                    "}"
+                    );
         calibrationLayout->addWidget(calibrationParamsLabel);
         calibrationLayout->addWidget(applyCalibrationCheck);
         dialogLayout->addWidget(calibrationBox);
@@ -1739,10 +1739,10 @@ void ControlPanel::setupPreProcessingOperations() {
         lowHighBtn->setChecked(true);
 
         QLabel* layoutNote = new QLabel(
-            "Choose the energy layout for your image:\n"
-            "Low-High: Low energy rows followed by high energy rows\n"
-            "High-Low: High energy rows followed by low energy rows"
-        );
+                    "Choose the energy layout for your image:\n"
+                    "Low-High: Low energy rows followed by high energy rows\n"
+                    "High-Low: High energy rows followed by low energy rows"
+                    );
         layoutNote->setStyleSheet("color: #666666; font-size: 10px; margin-left: 20px;");
 
         layoutLayout->addWidget(lowHighBtn);
@@ -1752,7 +1752,7 @@ void ControlPanel::setupPreProcessingOperations() {
 
         // Add OK/Cancel buttons
         QDialogButtonBox* buttonBox = new QDialogButtonBox(
-            QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                    QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
         dialogLayout->addWidget(buttonBox);
 
         connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
@@ -1784,16 +1784,16 @@ void ControlPanel::setupPreProcessingOperations() {
                 if (!m_imageProcessor.hasAppliedCalibration()) {
                     // Auto-apply calibration if it hasn't been applied yet
                     QMessageBox::information(this, "Data Calibration",
-                        "Data calibration has not been applied yet. It will be automatically applied before interlacing.");
+                                             "Data calibration has not been applied yet. It will be automatically applied before interlacing.");
 
                     CGData calibratedData = DataCalibration::CalibrateDataMatrix(
-                        inputMatrix,
-                        height,
-                        width,
-                        CGImageCalculationVariables.PixelMaxValue,
-                        CGImageCalculationVariables.AirSampleStart,
-                        CGImageCalculationVariables.AirSampleEnd
-                    );
+                                inputMatrix,
+                                height,
+                                width,
+                                CGImageCalculationVariables.PixelMaxValue,
+                                CGImageCalculationVariables.AirSampleStart,
+                                CGImageCalculationVariables.AirSampleEnd
+                                );
 
                     // Copy calibrated data back to input matrix
                     for(int i = 0; i < height; i++) {
@@ -1813,13 +1813,13 @@ void ControlPanel::setupPreProcessingOperations() {
                 else if (applyCalibrationCheck->isChecked()) {
                     // Apply calibration if user chose to reapply it
                     CGData calibratedData = DataCalibration::CalibrateDataMatrix(
-                        inputMatrix,
-                        height,
-                        width,
-                        CGImageCalculationVariables.PixelMaxValue,
-                        CGImageCalculationVariables.AirSampleStart,
-                        CGImageCalculationVariables.AirSampleEnd
-                    );
+                                inputMatrix,
+                                height,
+                                width,
+                                CGImageCalculationVariables.PixelMaxValue,
+                                CGImageCalculationVariables.AirSampleStart,
+                                CGImageCalculationVariables.AirSampleEnd
+                                );
 
                     // Copy calibrated data back to input matrix
                     for(int i = 0; i < height; i++) {
@@ -1872,18 +1872,18 @@ void ControlPanel::setupPreProcessingOperations() {
 
                 // Update the status message to include calibration information
                 QString calibrationStatus = !m_imageProcessor.hasAppliedCalibration() ?
-                                        "Applied" :
-                                        (applyCalibrationCheck->isChecked() ? "Reapplied" : "Previously Applied");
+                            "Applied" :
+                            (applyCalibrationCheck->isChecked() ? "Reapplied" : "Previously Applied");
 
                 QString paramStr = QString("Mode: Dual (Fixed)\n"
-                                         "Row Mode: Unfold (Fixed)\n"
-                                         "Layout: %1\n"
-                                         "Calibration: %2\n"
-                                         "Final Size: %3x%4")
-                                       .arg(lowHighBtn->isChecked() ? "Low-High" : "High-Low")
-                                       .arg(calibrationStatus)
-                                       .arg(mergedRows)
-                                       .arg(mergedCols);
+                                           "Row Mode: Unfold (Fixed)\n"
+                                           "Layout: %1\n"
+                                           "Calibration: %2\n"
+                                           "Final Size: %3x%4")
+                        .arg(lowHighBtn->isChecked() ? "Low-High" : "High-Low")
+                        .arg(calibrationStatus)
+                        .arg(mergedRows)
+                        .arg(mergedCols);
                 updateLastAction("Interlace", paramStr);
 
             } catch (const std::exception& e) {
@@ -1934,8 +1934,8 @@ void ControlPanel::setupPreProcessingOperations() {
             m_imageProcessor.updateAndSaveFinalImage(imgCopy, height, width/2);
 
             m_imageSizeLabel->setText(QString("Image Size: %1 x %2")
-                                          .arg(height)
-                                          .arg(width/2));
+                                      .arg(height)
+                                      .arg(width/2));
 
             m_imageLabel->clearSelection();
             updateImageDisplay();
@@ -1957,398 +1957,381 @@ void ControlPanel::setupPreProcessingOperations() {
 void ControlPanel::setupFilteringOperations() {
 
     createGroupBox("Image Enhancement", {
-                                            {"CLAHE", [this]() {
-                                                 if (checkZoomMode()) return;
+                       {"CLAHE", [this]() {
+                            if (checkZoomMode()) return;
 
-                                                 m_darkLineInfoLabel->hide();
-                                                 resetDetectedLinesPointer();
+                            m_darkLineInfoLabel->hide();
+                            resetDetectedLinesPointer();
 
-                                                 // Use non-const pointer to allow modifications
-                                                 QDialog* dialog = new QDialog(this);
-                                                 dialog->setWindowTitle("CLAHE Settings");
-                                                 dialog->setMinimumWidth(350);
-                                                 QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
+                            // Use non-const pointer to allow modifications
+                            QDialog* dialog = new QDialog(this);
+                            dialog->setWindowTitle("CLAHE Settings");
+                            dialog->setMinimumWidth(350);
+                            QVBoxLayout* mainLayout = new QVBoxLayout(dialog);
 
-                                                 // CLAHE Type Selection
-                                                 QGroupBox* typeBox = new QGroupBox("CLAHE Type");
-                                                 QVBoxLayout* typeLayout = new QVBoxLayout(typeBox);
-                                                 QRadioButton* standardRadio = new QRadioButton("Standard CLAHE");
-                                                 QRadioButton* thresholdRadio = new QRadioButton("Threshold CLAHE");
-                                                 QRadioButton* combinedRadio = new QRadioButton("Combined CLAHE");
-                                                 standardRadio->setChecked(true);
+                            // CLAHE Type Selection
+                            QGroupBox* typeBox = new QGroupBox("CLAHE Type");
+                            QVBoxLayout* typeLayout = new QVBoxLayout(typeBox);
+                            QRadioButton* standardRadio = new QRadioButton("Standard CLAHE");
+                            QRadioButton* thresholdRadio = new QRadioButton("Threshold CLAHE");
+                            QRadioButton* combinedRadio = new QRadioButton("Combined CLAHE");
+                            standardRadio->setChecked(true);
 
-                                                 typeLayout->addWidget(standardRadio);
-                                                 typeLayout->addWidget(thresholdRadio);
-                                                 typeLayout->addWidget(combinedRadio);
+                            typeLayout->addWidget(standardRadio);
+                            typeLayout->addWidget(thresholdRadio);
+                            typeLayout->addWidget(combinedRadio);
 
-                                                 // Add explanation labels for each type
-                                                 QLabel* standardLabel = new QLabel("Applies standard CLAHE processing to the entire image");
-                                                 QLabel* thresholdLabel = new QLabel("Applies CLAHE only to pixels below a threshold value");
-                                                 QLabel* combinedLabel = new QLabel("Applies standard CLAHE first, then adjusts based on pixel brightness");
+                            // Add explanation labels for each type
+                            QLabel* standardLabel = new QLabel("Applies standard CLAHE processing to the entire image");
+                            QLabel* thresholdLabel = new QLabel("Applies CLAHE only to pixels below a threshold value");
+                            QLabel* combinedLabel = new QLabel("Applies standard CLAHE first, then adjusts based on pixel brightness");
 
-                                                 standardLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
-                                                 thresholdLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
-                                                 combinedLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+                            standardLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+                            thresholdLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+                            combinedLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
 
-                                                 typeLayout->addWidget(standardLabel);
-                                                 typeLayout->addWidget(thresholdLabel);
-                                                 typeLayout->addWidget(combinedLabel);
-                                                 mainLayout->addWidget(typeBox);
+                            typeLayout->addWidget(standardLabel);
+                            typeLayout->addWidget(thresholdLabel);
+                            typeLayout->addWidget(combinedLabel);
+                            mainLayout->addWidget(typeBox);
 
-                                                 // Processing Mode Selection
-                                                 QGroupBox* processingBox = new QGroupBox("Processing Hardware");
-                                                 QVBoxLayout* processingLayout = new QVBoxLayout(processingBox);
-                                                 QRadioButton* gpuRadio = new QRadioButton("GPU Processing");
-                                                 QRadioButton* cpuRadio = new QRadioButton("CPU Processing");
-                                                 gpuRadio->setChecked(true);
-                                                 processingLayout->addWidget(gpuRadio);
-                                                 processingLayout->addWidget(cpuRadio);
-                                                 mainLayout->addWidget(processingBox);
+                            // Processing Mode Selection
+                            QGroupBox* processingBox = new QGroupBox("Processing Hardware");
+                            QVBoxLayout* processingLayout = new QVBoxLayout(processingBox);
+                            QRadioButton* gpuRadio = new QRadioButton("GPU Processing");
+                            QRadioButton* cpuRadio = new QRadioButton("CPU Processing");
+                            gpuRadio->setChecked(true);
+                            processingLayout->addWidget(gpuRadio);
+                            processingLayout->addWidget(cpuRadio);
+                            mainLayout->addWidget(processingBox);
 
-                                                 // Parameters Section
-                                                 QGroupBox* paramsBox = new QGroupBox("Parameters");
-                                                 QVBoxLayout* paramsLayout = new QVBoxLayout(paramsBox);
+                            // Parameters Section
+                            QGroupBox* paramsBox = new QGroupBox("Parameters");
+                            QVBoxLayout* paramsLayout = new QVBoxLayout(paramsBox);
 
-                                                 // Standard CLAHE parameters (always visible)
-                                                 QLabel* clipLabel = new QLabel("Clip Limit:");
-                                                 QDoubleSpinBox* clipSpinBox = new QDoubleSpinBox();
-                                                 clipSpinBox->setRange(0.1, 1000.0);
-                                                 clipSpinBox->setValue(2.0);
-                                                 clipSpinBox->setSingleStep(0.1);
+                            // Standard CLAHE parameters (always visible)
+                            QLabel* clipLabel = new QLabel("Clip Limit:");
+                            QDoubleSpinBox* clipSpinBox = new QDoubleSpinBox();
+                            clipSpinBox->setRange(0.1, 1000.0);
+                            clipSpinBox->setValue(2.0);
+                            clipSpinBox->setSingleStep(0.1);
 
-                                                 QLabel* tileLabel = new QLabel("Tile Size:");
-                                                 QSpinBox* tileSpinBox = new QSpinBox();
-                                                 tileSpinBox->setRange(2, 1000);
-                                                 tileSpinBox->setValue(8);
+                            QLabel* tileLabel = new QLabel("Tile Size:");
+                            QSpinBox* tileSpinBox = new QSpinBox();
+                            tileSpinBox->setRange(2, 1000);
+                            tileSpinBox->setValue(8);
 
-                                                 paramsLayout->addWidget(clipLabel);
-                                                 paramsLayout->addWidget(clipSpinBox);
-                                                 paramsLayout->addWidget(tileLabel);
-                                                 paramsLayout->addWidget(tileSpinBox);
+                            paramsLayout->addWidget(clipLabel);
+                            paramsLayout->addWidget(clipSpinBox);
+                            paramsLayout->addWidget(tileLabel);
+                            paramsLayout->addWidget(tileSpinBox);
 
-                                                 // Threshold value (only for threshold CLAHE)
-                                                 QLabel* thresholdValueLabel = new QLabel("Threshold Value:");
-                                                 QSpinBox* thresholdValueSpinBox = new QSpinBox();
-                                                 thresholdValueSpinBox->setRange(0, 65535);
-                                                 thresholdValueSpinBox->setValue(5000);
-                                                 thresholdValueSpinBox->setVisible(false);
-                                                 thresholdValueLabel->setVisible(false);
+                            // Threshold value (only for threshold CLAHE)
+                            QLabel* thresholdValueLabel = new QLabel("Threshold Value:");
+                            QSpinBox* thresholdValueSpinBox = new QSpinBox();
+                            thresholdValueSpinBox->setRange(0, 65535);
+                            thresholdValueSpinBox->setValue(5000);
+                            thresholdValueSpinBox->setVisible(false);
+                            thresholdValueLabel->setVisible(false);
 
-                                                 paramsLayout->addWidget(thresholdValueLabel);
-                                                 paramsLayout->addWidget(thresholdValueSpinBox);
+                            paramsLayout->addWidget(thresholdValueLabel);
+                            paramsLayout->addWidget(thresholdValueSpinBox);
 
-                                                 mainLayout->addWidget(paramsBox);
+                            mainLayout->addWidget(paramsBox);
 
-                                                 // Connect radio button changes to show/hide threshold value
-                                                 // Use resize() instead of adjustSize() to avoid const issues
-                                                 connect(standardRadio, &QRadioButton::toggled, dialog, [=](bool checked) {
-                                                     thresholdValueLabel->setVisible(!checked);
-                                                     thresholdValueSpinBox->setVisible(!checked);
-                                                     dialog->resize(dialog->sizeHint());
-                                                 });
+                            // Connect radio button changes to show/hide threshold value
+                            // Use resize() instead of adjustSize() to avoid const issues
+                            connect(standardRadio, &QRadioButton::toggled, dialog, [=](bool checked) {
+                                thresholdValueLabel->setVisible(!checked);
+                                thresholdValueSpinBox->setVisible(!checked);
+                                dialog->resize(dialog->sizeHint());
+                            });
 
-                                                 connect(thresholdRadio, &QRadioButton::toggled, dialog, [=](bool checked) {
-                                                     thresholdValueLabel->setVisible(checked);
-                                                     thresholdValueSpinBox->setVisible(checked);
-                                                     dialog->resize(dialog->sizeHint());
-                                                 });
+                            connect(thresholdRadio, &QRadioButton::toggled, dialog, [=](bool checked) {
+                                thresholdValueLabel->setVisible(checked);
+                                thresholdValueSpinBox->setVisible(checked);
+                                dialog->resize(dialog->sizeHint());
+                            });
 
-                                                 connect(combinedRadio, &QRadioButton::toggled, dialog, [=](bool checked) {
-                                                     thresholdValueLabel->setVisible(false);
-                                                     thresholdValueSpinBox->setVisible(false);
-                                                     dialog->resize(dialog->sizeHint());
-                                                 });
+                            connect(combinedRadio, &QRadioButton::toggled, dialog, [=](bool checked) {
+                                thresholdValueLabel->setVisible(false);
+                                thresholdValueSpinBox->setVisible(false);
+                                dialog->resize(dialog->sizeHint());
+                            });
 
-                                                 QDialogButtonBox* buttonBox = new QDialogButtonBox(
-                                                     QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-                                                 mainLayout->addWidget(buttonBox);
+                            QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                            QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                            mainLayout->addWidget(buttonBox);
 
-                                                 connect(buttonBox, &QDialogButtonBox::accepted, dialog, &QDialog::accept);
-                                                 connect(buttonBox, &QDialogButtonBox::rejected, dialog, &QDialog::reject);
+                            connect(buttonBox, &QDialogButtonBox::accepted, dialog, &QDialog::accept);
+                            connect(buttonBox, &QDialogButtonBox::rejected, dialog, &QDialog::reject);
 
-                                                 if (dialog->exec() == QDialog::Accepted) {
-                                                     try {
-                                                         // Get current image data
-                                                         const auto& finalImage = m_imageProcessor.getFinalImage();
-                                                         if (!finalImage) {
-                                                             QMessageBox::warning(this, "Error", "No image data available");
-                                                             return;
-                                                         }
+                            if (dialog->exec() == QDialog::Accepted) {
+                                try {
+                                    const auto& finalImage = m_imageProcessor.getFinalImage();
+                                    if (!finalImage) {
+                                        QMessageBox::warning(this, "Error", "No image data available");
+                                        return;
+                                    }
 
-                                                         int height = m_imageProcessor.getFinalImageHeight();
-                                                         int width = m_imageProcessor.getFinalImageWidth();
+                                    int height = m_imageProcessor.getFinalImageHeight();
+                                    int width = m_imageProcessor.getFinalImageWidth();
 
-                                                         // Allocate buffers
-                                                         double** inputBuffer = CLAHEProcessor::allocateImageBuffer(height, width);
-                                                         double** outputBuffer = CLAHEProcessor::allocateImageBuffer(height, width);
+                                    // Allocate buffers directly for 16-bit values
+                                    double** inputBuffer = CLAHEProcessor::allocateImageBuffer(height, width);
+                                    double** outputBuffer = CLAHEProcessor::allocateImageBuffer(height, width);
 
-                                                         // Copy input data and normalize to 0-1 range
-                                                         for (int y = 0; y < height; ++y) {
-                                                             for (int x = 0; x < width; ++x) {
-                                                                 inputBuffer[y][x] = finalImage[y][x] / 65535.0;
-                                                             }
-                                                         }
+                                    // Copy input data (already in 16-bit range)
+                                    for (int y = 0; y < height; ++y) {
+                                        for (int x = 0; x < width; ++x) {
+                                            inputBuffer[y][x] = finalImage[y][x];
+                                        }
+                                    }
 
-                                                         CLAHEProcessor claheProcessor;
-                                                         bool useGPU = gpuRadio->isChecked();
-                                                         QString statusMsg;
+                                    CLAHEProcessor claheProcessor;
+                                    bool useGPU = gpuRadio->isChecked();
+                                    QString statusMsg;
 
-                                                         // Start timing
-                                                         auto startTime = std::chrono::high_resolution_clock::now();
+                                    auto startTime = std::chrono::high_resolution_clock::now();
 
-                                                         if (standardRadio->isChecked()) {
-                                                             // Standard CLAHE
-                                                             if (useGPU) {
-                                                                 claheProcessor.applyCLAHE(outputBuffer, inputBuffer, height, width,
-                                                                                           clipSpinBox->value(),
-                                                                                           cv::Size(tileSpinBox->value(), tileSpinBox->value()));
-                                                             } else {
-                                                                 claheProcessor.applyCLAHE_CPU(outputBuffer, inputBuffer, height, width,
-                                                                                               clipSpinBox->value(),
-                                                                                               cv::Size(tileSpinBox->value(), tileSpinBox->value()));
-                                                             }
-                                                             statusMsg = QString("Standard (%1)\nClip: %2, Tile: %3")
-                                                                             .arg(useGPU ? "GPU" : "CPU")
-                                                                             .arg(clipSpinBox->value(), 0, 'f', 2)
-                                                                             .arg(tileSpinBox->value());
-                                                         } else if (thresholdRadio->isChecked()) {
-                                                             // Threshold CLAHE
-                                                             if (useGPU) {
-                                                                 claheProcessor.applyThresholdCLAHE(inputBuffer, height, width,
-                                                                                                    thresholdValueSpinBox->value(),
-                                                                                                    clipSpinBox->value(),
-                                                                                                    cv::Size(tileSpinBox->value(), tileSpinBox->value()));
-                                                             } else {
-                                                                 claheProcessor.applyThresholdCLAHE_CPU(inputBuffer, height, width,
-                                                                                                        thresholdValueSpinBox->value(),
-                                                                                                        clipSpinBox->value(),
-                                                                                                        cv::Size(tileSpinBox->value(), tileSpinBox->value()));
-                                                             }
-                                                             // Copy results
-                                                             for (int y = 0; y < height; ++y) {
-                                                                 for (int x = 0; x < width; ++x) {
-                                                                     outputBuffer[y][x] = inputBuffer[y][x];
-                                                                 }
-                                                             }
-                                                             statusMsg = QString("Threshold (%1)\nThreshold: %2, Clip: %3, Tile: %4")
-                                                                             .arg(useGPU ? "GPU" : "CPU")
-                                                                             .arg(thresholdValueSpinBox->value())
-                                                                             .arg(clipSpinBox->value(), 0, 'f', 2)
-                                                                             .arg(tileSpinBox->value());
-                                                         } else {
-                                                             // Combined CLAHE
-                                                             if (useGPU) {
-                                                                 claheProcessor.applyCombinedCLAHE(outputBuffer, inputBuffer, height, width,
-                                                                                                   clipSpinBox->value(),
-                                                                                                   cv::Size(tileSpinBox->value(), tileSpinBox->value()));
-                                                             } else {
-                                                                 claheProcessor.applyCombinedCLAHE_CPU(outputBuffer, inputBuffer, height, width,
-                                                                                                       clipSpinBox->value(),
-                                                                                                       cv::Size(tileSpinBox->value(), tileSpinBox->value()));
-                                                             }
-                                                             statusMsg = QString("Combined (%1)\nClip: %2, Tile: %3")
-                                                                             .arg(useGPU ? "GPU" : "CPU")
-                                                                             .arg(clipSpinBox->value(), 0, 'f', 2)
-                                                                             .arg(tileSpinBox->value());
-                                                         }
+                                    if (standardRadio->isChecked()) {
+                                        // Standard CLAHE
+                                        if (useGPU) {
+                                            claheProcessor.applyCLAHE(outputBuffer, inputBuffer, height, width,
+                                            clipSpinBox->value(),
+                                            cv::Size(tileSpinBox->value(), tileSpinBox->value()));
+                                        } else {
+                                            claheProcessor.applyCLAHE_CPU(outputBuffer, inputBuffer, height, width,
+                                            clipSpinBox->value(),
+                                            cv::Size(tileSpinBox->value(), tileSpinBox->value()));
+                                        }
+                                        statusMsg = QString("Standard (%1)")
+                                        .arg(useGPU ? "GPU" : "CPU");
+                                    }
+                                    else if (thresholdRadio->isChecked()) {
+                                        // Threshold CLAHE
+                                        if (useGPU) {
+                                            claheProcessor.applyThresholdCLAHE(inputBuffer, height, width,
+                                            thresholdValueSpinBox->value(),
+                                            clipSpinBox->value(),
+                                            cv::Size(tileSpinBox->value(), tileSpinBox->value()));
+                                        } else {
+                                            claheProcessor.applyThresholdCLAHE_CPU(inputBuffer, height, width,
+                                            thresholdValueSpinBox->value(),
+                                            clipSpinBox->value(),
+                                            cv::Size(tileSpinBox->value(), tileSpinBox->value()));
+                                        }
+                                        // Copy results
+                                        for (int y = 0; y < height; ++y) {
+                                            for (int x = 0; x < width; ++x) {
+                                                outputBuffer[y][x] = inputBuffer[y][x];
+                                            }
+                                        }
+                                        statusMsg = QString("Threshold (%1)")
+                                        .arg(useGPU ? "GPU" : "CPU");
+                                    }
+                                    else {
+                                        // Combined CLAHE
+                                        if (useGPU) {
+                                            claheProcessor.applyCombinedCLAHE(outputBuffer, inputBuffer, height, width,
+                                            clipSpinBox->value(),
+                                            cv::Size(tileSpinBox->value(), tileSpinBox->value()));
+                                        } else {
+                                            claheProcessor.applyCombinedCLAHE_CPU(outputBuffer, inputBuffer, height, width,
+                                            clipSpinBox->value(),
+                                            cv::Size(tileSpinBox->value(), tileSpinBox->value()));
+                                        }
+                                        statusMsg = QString("Combined (%1)")
+                                        .arg(useGPU ? "GPU" : "CPU");
+                                    }
 
-                                                         // End timing
-                                                         auto endTime = std::chrono::high_resolution_clock::now();
-                                                         double processingTime = std::chrono::duration<double, std::milli>(endTime - startTime).count();
+                                    // End timing
+                                    auto endTime = std::chrono::high_resolution_clock::now();
+                                    double processingTime = std::chrono::duration<double, std::milli>(endTime - startTime).count();
 
-                                                         // Add processing time to status message
-                                                         statusMsg += QString("\nProcessing Time: %1 ms").arg(processingTime, 0, 'f', 2);
+                                    // Add processing time to status message
+                                    statusMsg += QString("\nProcessing Time: %1 ms").arg(processingTime, 0, 'f', 2);
 
-                                                         // Scale back to 16-bit range
-                                                         double** finalOutput = CLAHEProcessor::allocateImageBuffer(height, width);
-                                                         for (int y = 0; y < height; ++y) {
-                                                             for (int x = 0; x < width; ++x) {
-                                                                 finalOutput[y][x] = std::clamp(outputBuffer[y][x] * 65535.0, 0.0, 65535.0);
-                                                             }
-                                                         }
+                                    // Update image (values already in 16-bit range)
+                                    m_imageProcessor.updateAndSaveFinalImage(outputBuffer, height, width);
 
-                                                         // Update image
-                                                         m_imageProcessor.updateAndSaveFinalImage(finalOutput, height, width);
+                                    // Cleanup
+                                    CLAHEProcessor::deallocateImageBuffer(inputBuffer, height);
+                                    CLAHEProcessor::deallocateImageBuffer(outputBuffer, height);
 
-                                                         // Cleanup
-                                                         CLAHEProcessor::deallocateImageBuffer(inputBuffer, height);
-                                                         CLAHEProcessor::deallocateImageBuffer(outputBuffer, height);
-                                                         CLAHEProcessor::deallocateImageBuffer(finalOutput, height);
+                                    // Update display
+                                    updateImageDisplay();
+                                    updateLastAction("CLAHE", statusMsg);
 
-                                                         // Update display
-                                                         m_imageLabel->clearSelection();
-                                                         updateImageDisplay();
-                                                         updateLastAction("CLAHE", statusMsg);
+                                    // Update timing labels
+                                    if (useGPU) {
+                                        m_gpuTimingLabel->setText(QString("GPU Time: %1 ms").arg(processingTime, 0, 'f', 2));
+                                        m_gpuTimingLabel->setVisible(true);
+                                        m_lastGpuTime = processingTime;
+                                    } else {
+                                        m_cpuTimingLabel->setText(QString("CPU Time: %1 ms").arg(processingTime, 0, 'f', 2));
+                                        m_cpuTimingLabel->setVisible(true);
+                                        m_lastCpuTime = processingTime;
+                                    }
 
-                                                         // Update timing labels
-                                                         if (useGPU) {
-                                                             m_gpuTimingLabel->setText(QString("GPU Time: %1 ms").arg(processingTime, 0, 'f', 2));
-                                                             m_gpuTimingLabel->setVisible(true);
-                                                             m_lastGpuTime = processingTime;
-                                                         } else {
-                                                             m_cpuTimingLabel->setText(QString("CPU Time: %1 ms").arg(processingTime, 0, 'f', 2));
-                                                             m_cpuTimingLabel->setVisible(true);
-                                                             m_lastCpuTime = processingTime;
-                                                         }
+                                } catch (const cv::Exception& e) {
+                                    QMessageBox::critical(this, "Error",
+                                    QString("CLAHE processing failed: %1").arg(e.what()));
+                                }
+                            }
+                        }},
+                       {"Median Filter", [this]() {
+                            if (checkZoomMode()) return;
+                            m_imageProcessor.saveCurrentState();
+                            m_darkLineInfoLabel->hide();
+                            resetDetectedLinesPointer();
+                            auto [filterKernelSize, ok] = showInputDialog("Median Filter", "Enter kernel size:", 3, 1, 21);
 
-                                                     } catch (const cv::Exception& e) {
-                                                         QMessageBox::critical(this, "Error",
-                                                                               QString("CLAHE processing failed: %1").arg(e.what()));
-                                                     }
-                                                 }
-                                             }},
-                                            {"Median Filter", [this]() {
-                                                 if (checkZoomMode()) return;
-                                                 m_imageProcessor.saveCurrentState();
-                                                 m_darkLineInfoLabel->hide();
-                                                 resetDetectedLinesPointer();
-                                                 auto [filterKernelSize, ok] = showInputDialog("Median Filter", "Enter kernel size:", 3, 1, 21);
+                            if (ok) {
+                                try {
+                                    const auto& currentImage = m_imageProcessor.getFinalImage();
+                                    if (!currentImage) {
+                                        QMessageBox::warning(this, "Error", "No image data available");
+                                        return;
+                                    }
 
-                                                 if (ok) {
-                                                     try {
-                                                         const auto& currentImage = m_imageProcessor.getFinalImage();
-                                                         if (!currentImage) {
-                                                             QMessageBox::warning(this, "Error", "No image data available");
-                                                             return;
-                                                         }
+                                    int height = m_imageProcessor.getFinalImageHeight();
+                                    int width = m_imageProcessor.getFinalImageWidth();
 
-                                                         int height = m_imageProcessor.getFinalImageHeight();
-                                                         int width = m_imageProcessor.getFinalImageWidth();
+                                    // Allocate input image
+                                    double** inputImage = CLAHEProcessor::allocateImageBuffer(height, width);
 
-                                                         // Allocate input image
-                                                         double** inputImage = CLAHEProcessor::allocateImageBuffer(height, width);
+                                    // Copy data
+                                    for (int y = 0; y < height; y++) {
+                                        for (int x = 0; x < width; x++) {
+                                            inputImage[y][x] = currentImage[y][x];
+                                        }
+                                    }
 
-                                                         // Copy data
-                                                         for (int y = 0; y < height; y++) {
-                                                             for (int x = 0; x < width; x++) {
-                                                                 inputImage[y][x] = currentImage[y][x];
-                                                             }
-                                                         }
+                                    // Apply filter
+                                    m_imageProcessor.applyMedianFilter(inputImage, height, width, filterKernelSize);
 
-                                                         // Apply filter
-                                                         m_imageProcessor.applyMedianFilter(inputImage, height, width, filterKernelSize);
+                                    // Update the image directly
+                                    m_imageProcessor.updateAndSaveFinalImage(inputImage, height, width);
 
-                                                         // Update the image directly
-                                                         m_imageProcessor.updateAndSaveFinalImage(inputImage, height, width);
+                                    // Cleanup
+                                    CLAHEProcessor::deallocateImageBuffer(inputImage, height);
 
-                                                         // Cleanup
-                                                         CLAHEProcessor::deallocateImageBuffer(inputImage, height);
+                                    m_imageLabel->clearSelection();
+                                    updateImageDisplay();
+                                    updateLastAction("Median Filter", QString("Size: %1").arg(filterKernelSize));
 
-                                                         m_imageLabel->clearSelection();
-                                                         updateImageDisplay();
-                                                         updateLastAction("Median Filter", QString("Size: %1").arg(filterKernelSize));
+                                } catch (const std::exception& e) {
+                                    QMessageBox::critical(this, "Error",
+                                    QString("Failed to apply median filter: %1").arg(e.what()));
+                                }
+                            }
+                        }},
+                       {"High-Pass Filter", [this]() {
+                            if (checkZoomMode()) return;
+                            m_imageProcessor.saveCurrentState();
+                            m_darkLineInfoLabel->hide();
+                            resetDetectedLinesPointer();
 
-                                                     } catch (const std::exception& e) {
-                                                         QMessageBox::critical(this, "Error",
-                                                                               QString("Failed to apply median filter: %1").arg(e.what()));
-                                                     }
-                                                 }
-                                             }},
-                                            {"High-Pass Filter", [this]() {
-                                                 if (checkZoomMode()) return;
-                                                 m_imageProcessor.saveCurrentState();
-                                                 m_darkLineInfoLabel->hide();
-                                                 resetDetectedLinesPointer();
+                            try {
+                                const auto& currentImage = m_imageProcessor.getFinalImage();
+                                if (!currentImage) {  // Check for null pointer instead of empty()
+                                                      QMessageBox::warning(this, "Error", "No image data available");
+                                                      return;
+                                }
 
-                                                 try {
-                                                     const auto& currentImage = m_imageProcessor.getFinalImage();
-                                                     if (!currentImage) {  // Check for null pointer instead of empty()
-                                                         QMessageBox::warning(this, "Error", "No image data available");
-                                                         return;
-                                                     }
+                                int height = m_imageProcessor.getFinalImageHeight();
+                                int width = m_imageProcessor.getFinalImageWidth();
 
-                                                     int height = m_imageProcessor.getFinalImageHeight();
-                                                     int width = m_imageProcessor.getFinalImageWidth();
+                                // Allocate input image
+                                double** inputImage = nullptr;
+                                malloc2D(inputImage, height, width);
 
-                                                     // Allocate input image
-                                                     double** inputImage = nullptr;
-                                                     malloc2D(inputImage, height, width);
+                                // Copy data
+                                for (int y = 0; y < height; y++) {
+                                    for (int x = 0; x < width; x++) {
+                                        inputImage[y][x] = currentImage[y][x];
+                                    }
+                                }
 
-                                                     // Copy data
-                                                     for (int y = 0; y < height; y++) {
-                                                         for (int x = 0; x < width; x++) {
-                                                             inputImage[y][x] = currentImage[y][x];
-                                                         }
-                                                     }
+                                // Apply filter
+                                m_imageProcessor.applyHighPassFilter(inputImage, height, width);
 
-                                                     // Apply filter
-                                                     m_imageProcessor.applyHighPassFilter(inputImage, height, width);
+                                // Update display directly with double** format
+                                m_imageProcessor.updateAndSaveFinalImage(inputImage, height, width);
 
-                                                     // Update display directly with double** format
-                                                     m_imageProcessor.updateAndSaveFinalImage(inputImage, height, width);
+                                // Clean up
+                                for (int i = 0; i < height; i++) {
+                                    free(inputImage[i]);
+                                }
+                                free(inputImage);
 
-                                                     // Clean up
-                                                     for (int i = 0; i < height; i++) {
-                                                         free(inputImage[i]);
-                                                     }
-                                                     free(inputImage);
+                                m_imageLabel->clearSelection();
+                                updateImageDisplay();
+                                updateLastAction("High-Pass Filter");
 
-                                                     m_imageLabel->clearSelection();
-                                                     updateImageDisplay();
-                                                     updateLastAction("High-Pass Filter");
+                            } catch (const std::exception& e) {
+                                QMessageBox::critical(this, "Error",
+                                QString("Failed to apply high-pass filter: %1").arg(e.what()));
+                            }
+                        }},
+                       {"Edge Enhancement", [this]() {
+                            if (checkZoomMode()) return;
+                            m_imageProcessor.saveCurrentState();
+                            m_darkLineInfoLabel->hide();
+                            resetDetectedLinesPointer();
 
-                                                 } catch (const std::exception& e) {
-                                                     QMessageBox::critical(this, "Error",
-                                                                           QString("Failed to apply high-pass filter: %1").arg(e.what()));
-                                                 }
-                                             }},
-                                            {"Edge Enhancement", [this]() {
-                                                 if (checkZoomMode()) return;
-                                                 m_imageProcessor.saveCurrentState();
-                                                 m_darkLineInfoLabel->hide();
-                                                 resetDetectedLinesPointer();
+                            auto [strength, ok] = showInputDialog(
+                            "Edge Enhancement",
+                            "Enter enhancement strength (0.1-2.0):",
+                            0.5, 0.1, 2.0);
 
-                                                 auto [strength, ok] = showInputDialog(
-                                                     "Edge Enhancement",
-                                                     "Enter enhancement strength (0.1-2.0):",
-                                                     0.5, 0.1, 2.0);
+                            if (ok) {
+                                try {
+                                    const auto& currentImage = m_imageProcessor.getFinalImage();
+                                    if (!currentImage) {  // Check for null pointer instead of empty()
+                                                          QMessageBox::warning(this, "Error", "No image data available");
+                                                          return;
+                                    }
 
-                                                 if (ok) {
-                                                     try {
-                                                         const auto& currentImage = m_imageProcessor.getFinalImage();
-                                                         if (!currentImage) {  // Check for null pointer instead of empty()
-                                                             QMessageBox::warning(this, "Error", "No image data available");
-                                                             return;
-                                                         }
+                                    int height = m_imageProcessor.getFinalImageHeight();
+                                    int width = m_imageProcessor.getFinalImageWidth();
 
-                                                         int height = m_imageProcessor.getFinalImageHeight();
-                                                         int width = m_imageProcessor.getFinalImageWidth();
+                                    // Allocate input image
+                                    double** inputImage = nullptr;
+                                    malloc2D(inputImage, height, width);
 
-                                                         // Allocate input image
-                                                         double** inputImage = nullptr;
-                                                         malloc2D(inputImage, height, width);
+                                    // Copy data
+                                    for (int y = 0; y < height; y++) {
+                                        for (int x = 0; x < width; x++) {
+                                            inputImage[y][x] = currentImage[y][x];
+                                        }
+                                    }
 
-                                                         // Copy data
-                                                         for (int y = 0; y < height; y++) {
-                                                             for (int x = 0; x < width; x++) {
-                                                                 inputImage[y][x] = currentImage[y][x];
-                                                             }
-                                                         }
+                                    // Apply enhancement
+                                    m_imageProcessor.applyEdgeEnhancement(inputImage, height, width, strength);
 
-                                                         // Apply enhancement
-                                                         m_imageProcessor.applyEdgeEnhancement(inputImage, height, width, strength);
+                                    // Update display directly with double** format
+                                    m_imageProcessor.updateAndSaveFinalImage(inputImage, height, width);
 
-                                                         // Update display directly with double** format
-                                                         m_imageProcessor.updateAndSaveFinalImage(inputImage, height, width);
+                                    // Clean up
+                                    for (int i = 0; i < height; i++) {
+                                        free(inputImage[i]);
+                                    }
+                                    free(inputImage);
 
-                                                         // Clean up
-                                                         for (int i = 0; i < height; i++) {
-                                                             free(inputImage[i]);
-                                                         }
-                                                         free(inputImage);
+                                    m_imageLabel->clearSelection();
+                                    updateImageDisplay();
+                                    updateLastAction("Edge Enhancement",
+                                    QString("Strength: %1").arg(strength, 0, 'f', 2));
 
-                                                         m_imageLabel->clearSelection();
-                                                         updateImageDisplay();
-                                                         updateLastAction("Edge Enhancement",
-                                                                          QString("Strength: %1").arg(strength, 0, 'f', 2));
-
-                                                     } catch (const std::exception& e) {
-                                                         QMessageBox::critical(this, "Error",
-                                                                               QString("Failed to apply edge enhancement: %1").arg(e.what()));
-                                                     }
-                                                 }
-                                             }}
-                                        });
+                                } catch (const std::exception& e) {
+                                    QMessageBox::critical(this, "Error",
+                                    QString("Failed to apply edge enhancement: %1").arg(e.what()));
+                                }
+                            }
+                        }}
+                   });
 }
 
 void ControlPanel::setupAdvancedOperations() {
@@ -2570,11 +2553,11 @@ void ControlPanel::setupAdvancedOperations() {
 }
 
 std::pair<double, bool> ControlPanel::showInputDialog(
-    const QString& title,
-    const QString& label,
-    double defaultValue,
-    double min,
-    double max)
+        const QString& title,
+        const QString& label,
+        double defaultValue,
+        double min,
+        double max)
 {
     bool ok;
     double value = QInputDialog::getDouble(this, title, label, defaultValue, min, max, 2, &ok);
@@ -2670,9 +2653,9 @@ void ControlPanel::setupBlackLineDetection() {
         QCheckBox* horizontalCheck = new QCheckBox("Detect Horizontal Lines");
 
         QLabel* lineTypeExplanation = new QLabel(
-            "Select at least one line type to detect.\n"
-            "Detection will only process selected types."
-            );
+                    "Select at least one line type to detect.\n"
+                    "Detection will only process selected types."
+                    );
         lineTypeExplanation->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
 
         lineTypeLayout->addWidget(verticalCheck);
@@ -2683,7 +2666,7 @@ void ControlPanel::setupBlackLineDetection() {
 
         // Add OK/Cancel buttons
         QDialogButtonBox* buttonBox = new QDialogButtonBox(
-            QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                    QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
         dialogLayout->addWidget(buttonBox);
 
         connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
@@ -2800,8 +2783,8 @@ void ControlPanel::resetDetectedLinesPointer() {
     }
 
     QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
-        qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
-    );
+                qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
+                );
 
     m_darkLineInfoLabel->clear();
     m_darkLineInfoLabel->setVisible(false);
@@ -2819,8 +2802,8 @@ void ControlPanel::updateDarkLineInfoDisplayPointer() {
         preferredHeight = qMax(preferredHeight, 30);
 
         QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
-            qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
-            );
+                    qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
+                    );
 
         if (darkLineScrollArea) {
             darkLineScrollArea->setFixedHeight(preferredHeight);
@@ -2857,8 +2840,8 @@ void ControlPanel::updateImageDisplay(double** image, int height, int width) {
     }
 
     m_imageSizeLabel->setText(QString("Image Size: %1 x %2")
-                                  .arg(finalWidth)
-                                  .arg(finalHeight));
+                              .arg(finalWidth)
+                              .arg(finalHeight));
 
     qDebug() << "Image dimensions:" << finalWidth << "x" << finalHeight;
 
@@ -2916,9 +2899,9 @@ void ControlPanel::updateImageDisplay(double** image, int height, int width) {
 
         // 6. Draw detected lines if any
         bool hasLines = m_detectedLinesPointer &&
-                        m_detectedLinesPointer->rows > 0 &&
-                        m_detectedLinesPointer->cols > 0 &&
-                        m_detectedLinesPointer->lines;
+                m_detectedLinesPointer->rows > 0 &&
+                m_detectedLinesPointer->cols > 0 &&
+                m_detectedLinesPointer->lines;
 
         if (hasLines) {
             qDebug() << "Processing detected lines...";
@@ -2934,7 +2917,7 @@ void ControlPanel::updateImageDisplay(double** image, int height, int width) {
                 painter.setRenderHint(QPainter::Antialiasing);
 
                 float penWidth = zoomManager.isZoomModeActive() ?
-                                     std::max(1.0f, 2.0f * zoomLevel) : 2.0f;
+                            std::max(1.0f, 2.0f * zoomLevel) : 2.0f;
 
                 QFont labelFont = painter.font();
                 float scaledSize = std::min(11.0f * zoomLevel, 24.0f);
@@ -2983,7 +2966,7 @@ void ControlPanel::updateImageDisplay(double** image, int height, int width) {
 
                         // Draw line
                         QColor lineColor = line.inObject ?
-                                               QColor(0, 0, 255, 128) : QColor(255, 0, 0, 128);
+                                    QColor(0, 0, 255, 128) : QColor(255, 0, 0, 128);
                         painter.setPen(QPen(lineColor, penWidth, Qt::SolidLine));
                         painter.setBrush(QBrush(lineColor, Qt::Dense4Pattern));
                         painter.drawRect(lineRect);
@@ -3039,8 +3022,8 @@ void ControlPanel::clearAllDetectionResults() {
     }
 
     QScrollArea* darkLineScrollArea = qobject_cast<QScrollArea*>(
-        qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
-    );
+                qobject_cast<QVBoxLayout*>(m_mainLayout->itemAt(0)->layout())->itemAt(3)->widget()
+                );
     if (darkLineScrollArea) {
         darkLineScrollArea->setVisible(false);
     }
@@ -3050,895 +3033,895 @@ void ControlPanel::clearAllDetectionResults() {
 
 void ControlPanel::setupResetOperations() {
     // Create reset detection button but don't add it to the group box yet
-        QPushButton* resetDetectionBtn = new QPushButton("Reset Detection");
-        resetDetectionBtn->setFixedHeight(35);
-        resetDetectionBtn->setVisible(false); // Initially hidden
-        resetDetectionBtn->setEnabled(false);
+    QPushButton* resetDetectionBtn = new QPushButton("Reset Detection");
+    resetDetectionBtn->setFixedHeight(35);
+    resetDetectionBtn->setVisible(false); // Initially hidden
+    resetDetectionBtn->setEnabled(false);
 
-        connect(resetDetectionBtn, &QPushButton::clicked, [this]() {
-            QMessageBox::StandardButton reply = QMessageBox::warning(
-                this,
-                "Reset Detection",
-                "Are you sure you want to clear all detected lines?\nThis action cannot be undone.",
-                QMessageBox::Yes | QMessageBox::No
-            );
+    connect(resetDetectionBtn, &QPushButton::clicked, [this]() {
+        QMessageBox::StandardButton reply = QMessageBox::warning(
+                    this,
+                    "Reset Detection",
+                    "Are you sure you want to clear all detected lines?\nThis action cannot be undone.",
+                    QMessageBox::Yes | QMessageBox::No
+                    );
 
-            if (reply == QMessageBox::Yes) {
-                clearAllDetectionResults();
-                updateLastAction("Reset Detection");
-                QMessageBox::information(this, "Success", "All detection results have been cleared.");
-            }
-        });
+        if (reply == QMessageBox::Yes) {
+            clearAllDetectionResults();
+            updateLastAction("Reset Detection");
+            QMessageBox::information(this, "Success", "All detection results have been cleared.");
+        }
+    });
 
-        // Create reset calibration button
-        m_resetCalibrationButton = new QPushButton("Reset Calibration Parameters");
-        m_resetCalibrationButton->setFixedHeight(35);
+    // Create reset calibration button
+    m_resetCalibrationButton = new QPushButton("Reset Calibration Parameters");
+    m_resetCalibrationButton->setFixedHeight(35);
+    m_resetCalibrationButton->setEnabled(false);
+    m_resetCalibrationButton->setVisible(false);
+    m_resetCalibrationButton->setToolTip("Reset stored calibration parameters");
+
+    // Connect reset calibration button signal - THIS IS THE NEW PART
+    connect(m_resetCalibrationButton, &QPushButton::clicked, this, [this]() {
+        InterlaceProcessor::resetCalibrationParams();
         m_resetCalibrationButton->setEnabled(false);
         m_resetCalibrationButton->setVisible(false);
-        m_resetCalibrationButton->setToolTip("Reset stored calibration parameters");
+        QMessageBox::information(this, "Calibration Reset",
+                                 "Calibration parameters have been reset. Next calibration will require new parameters.");
+    });
 
-        // Connect reset calibration button signal - THIS IS THE NEW PART
-        connect(m_resetCalibrationButton, &QPushButton::clicked, this, [this]() {
-            InterlaceProcessor::resetCalibrationParams();
-            m_resetCalibrationButton->setEnabled(false);
-            m_resetCalibrationButton->setVisible(false);
-            QMessageBox::information(this, "Calibration Reset",
-                                   "Calibration parameters have been reset. Next calibration will require new parameters.");
-        });
+    // Store buttons for management
+    m_allButtons.push_back(resetDetectionBtn);
+    m_allButtons.push_back(m_resetCalibrationButton);
 
-        // Store buttons for management
-        m_allButtons.push_back(resetDetectionBtn);
-        m_allButtons.push_back(m_resetCalibrationButton);
-
-        // Connect to line detection changes to show/hide reset detection button
-        connect(this, &ControlPanel::fileLoaded, [resetDetectionBtn](bool loaded) {
-            if (!loaded) {
-                resetDetectionBtn->setVisible(false);
-                resetDetectionBtn->setEnabled(false);
-            }
-        });
+    // Connect to line detection changes to show/hide reset detection button
+    connect(this, &ControlPanel::fileLoaded, [resetDetectionBtn](bool loaded) {
+        if (!loaded) {
+            resetDetectionBtn->setVisible(false);
+            resetDetectionBtn->setEnabled(false);
+        }
+    });
 
     createGroupBox("Reset Operations", {
-        {QString(), resetDetectionBtn},
-        {QString(), m_resetCalibrationButton},
-        {"Clear All", [this]() {
-             QMessageBox::StandardButton reply = QMessageBox::warning(
-                 this,
-                 "Clear All",
-                 "Are you sure you want to clear everything?\nThis will remove the image and all settings.",
-                 QMessageBox::Yes | QMessageBox::No
-                 );
+                       {QString(), resetDetectionBtn},
+                       {QString(), m_resetCalibrationButton},
+                       {"Clear All", [this]() {
+                            QMessageBox::StandardButton reply = QMessageBox::warning(
+                            this,
+                            "Clear All",
+                            "Are you sure you want to clear everything?\nThis will remove the image and all settings.",
+                            QMessageBox::Yes | QMessageBox::No
+                            );
 
-             if (reply == QMessageBox::Yes) {
-                 // Clear history and parameters
-                 InterlaceProcessor::resetCalibrationParams();
-                 m_resetCalibrationButton->setEnabled(false);
+                            if (reply == QMessageBox::Yes) {
+                                // Clear history and parameters
+                                InterlaceProcessor::resetCalibrationParams();
+                                m_resetCalibrationButton->setEnabled(false);
 
-                 // Clear detection results
-                 clearAllDetectionResults();
+                                // Clear detection results
+                                clearAllDetectionResults();
 
-                 // Reset zoom if active
-                 if (m_imageProcessor.getZoomManager().isZoomModeActive()) {
-                     m_imageProcessor.getZoomManager().resetZoom();
-                     m_fixZoomButton->setChecked(false);
-                     m_imageProcessor.getZoomManager().toggleFixedZoom(false);
-                     toggleZoomMode(false);
-                 }
+                                // Reset zoom if active
+                                if (m_imageProcessor.getZoomManager().isZoomModeActive()) {
+                                    m_imageProcessor.getZoomManager().resetZoom();
+                                    m_fixZoomButton->setChecked(false);
+                                    m_imageProcessor.getZoomManager().toggleFixedZoom(false);
+                                    toggleZoomMode(false);
+                                }
 
-                 // Clear all image data
-                 m_imageProcessor.clearImageData();
-                 m_imageProcessor.clearHistory();
+                                // Clear all image data
+                                m_imageProcessor.clearImageData();
+                                m_imageProcessor.clearHistory();
 
-                 // Clear display and labels
-                 m_imageLabel->clear();
-                 m_imageSizeLabel->setText("Image Size: No image loaded");
-                 m_lastActionLabel->setText("Last Action: None");
-                 m_lastActionParamsLabel->clear();
-                 m_lastActionParamsLabel->setVisible(false);
-                 m_pixelInfoLabel->setText("Pixel Info: No image loaded");
-                 m_fileTypeLabel->setText("File Type: None");
+                                // Clear display and labels
+                                m_imageLabel->clear();
+                                m_imageSizeLabel->setText("Image Size: No image loaded");
+                                m_lastActionLabel->setText("Last Action: None");
+                                m_lastActionParamsLabel->clear();
+                                m_lastActionParamsLabel->setVisible(false);
+                                m_pixelInfoLabel->setText("Pixel Info: No image loaded");
+                                m_fileTypeLabel->setText("File Type: None");
 
-                 // Disable all buttons except Browse
-                 for (QPushButton* button : m_allButtons) {
-                     if (button) {
-                         button->setEnabled(button->text() == "Browse");
-                     }
-                 }
+                                // Disable all buttons except Browse
+                                for (QPushButton* button : m_allButtons) {
+                                    if (button) {
+                                        button->setEnabled(button->text() == "Browse");
+                                    }
+                                }
 
-                m_resetCalibrationButton->setEnabled(false);
-                m_resetCalibrationButton->setVisible(false);
+                                m_resetCalibrationButton->setEnabled(false);
+                                m_resetCalibrationButton->setVisible(false);
 
-                 updateLastAction("Clear All");
-                 QMessageBox::information(this, "Success", "All data has been cleared.");
-             }
-        }}
-    });
+                                updateLastAction("Clear All");
+                                QMessageBox::information(this, "Success", "All data has been cleared.");
+                            }
+                        }}
+                   });
 }
 
 
 void ControlPanel::setupCombinedAdjustments() {
     createGroupBox("Image Adjustments", {
-                                            {"Gamma Adjustment", [this]() {
-                                                 if (checkZoomMode()) return;
-                                                 m_imageProcessor.saveCurrentState();
-                                                 m_darkLineInfoLabel->hide();
-                                                 resetDetectedLinesPointer();
-
-                                                 QDialog dialog(this);
-                                                 dialog.setWindowTitle("Gamma Adjustment");
-                                                 dialog.setMinimumWidth(350);
-
-                                                 QVBoxLayout* layout = new QVBoxLayout(&dialog);
-
-                                                 // Mode selection
-                                                 QGroupBox* modeBox = new QGroupBox("Adjustment Mode");
-                                                 QVBoxLayout* modeLayout = new QVBoxLayout(modeBox);
-
-                                                 QRadioButton* overallRadio = new QRadioButton("Overall Adjustment");
-                                                 QRadioButton* regionalRadio = new QRadioButton("Regional Adjustment");
-                                                 QRadioButton* thresholdRadio = new QRadioButton("Threshold-based Adjustment");
-
-                                                 overallRadio->setChecked(true);
-
-                                                 // Add explanatory labels
-                                                 QLabel* overallLabel = new QLabel("Apply gamma correction to the entire image");
-                                                 QLabel* regionalLabel = new QLabel("Apply gamma correction to a selected region only");
-                                                 QLabel* thresholdLabel = new QLabel("Apply gamma correction to pixels below threshold only");
-
-                                                 overallLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
-                                                 regionalLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
-                                                 thresholdLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
-
-                                                 modeLayout->addWidget(overallRadio);
-                                                 modeLayout->addWidget(overallLabel);
-                                                 modeLayout->addWidget(regionalRadio);
-                                                 modeLayout->addWidget(regionalLabel);
-                                                 modeLayout->addWidget(thresholdRadio);
-                                                 modeLayout->addWidget(thresholdLabel);
-
-                                                 layout->addWidget(modeBox);
-
-                                                 // Parameter inputs group
-                                                 QGroupBox* paramBox = new QGroupBox("Parameters");
-                                                 QVBoxLayout* paramLayout = new QVBoxLayout(paramBox);
-
-                                                 // Style for spinboxes
-                                                 QString spinBoxStyle =
-                                                     "QSpinBox, QDoubleSpinBox {"
-                                                     "    background-color: white;"
-                                                     "    border: 1px solid #c0c0c0;"
-                                                     "    border-radius: 3px;"
-                                                     "    padding: 1px;"
-                                                     "}"
-                                                     "QSpinBox:focus, QDoubleSpinBox:focus {"
-                                                     "    border: 1px solid #0078d7;"
-                                                     "}"
-                                                     "QSpinBox::up-button, QSpinBox::down-button,"
-                                                     "QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {"
-                                                     "    width: 0px;"
-                                                     "    border: none;"
-                                                     "}";
-
-                                                 // Gamma value input
-                                                 QLabel* gammaLabel = new QLabel("Gamma Value:");
-                                                 QDoubleSpinBox* gammaSpinBox = new QDoubleSpinBox();
-                                                 gammaSpinBox->setRange(0.01, 10.0);
-                                                 gammaSpinBox->setValue(1.0);
-                                                 gammaSpinBox->setDecimals(2);
-                                                 gammaSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
-                                                 gammaSpinBox->setStyleSheet(spinBoxStyle);
-                                                 gammaSpinBox->setMinimumWidth(150);  // Increased width
-                                                 gammaSpinBox->setToolTip("Enter gamma value (0.01-10.00)");
-
-                                                 paramLayout->addWidget(gammaLabel);
-                                                 paramLayout->addWidget(gammaSpinBox);
-
-                                                 // Threshold value input
-                                                 QWidget* thresholdWidget = new QWidget();
-                                                 QVBoxLayout* thresholdLayout = new QVBoxLayout(thresholdWidget);
-
-                                                 QLabel* thresholdValueLabel = new QLabel("Threshold Value:");
-                                                 QSpinBox* thresholdSpinBox = new QSpinBox();
-                                                 thresholdSpinBox->setRange(0, 65535);
-                                                 thresholdSpinBox->setValue(32767);
-                                                 thresholdSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
-                                                 thresholdSpinBox->setStyleSheet(spinBoxStyle);
-                                                 thresholdSpinBox->setToolTip("Enter threshold value (0-65535)");
-
-                                                 thresholdLayout->addWidget(thresholdValueLabel);
-                                                 thresholdLayout->addWidget(thresholdSpinBox);
-                                                 thresholdWidget->setVisible(false);
-
-                                                 paramLayout->addWidget(thresholdWidget);
-                                                 // Region selection status and info
-                                                 QLabel* regionStatusLabel = new QLabel();
-                                                 QLabel* regionInfoLabel = new QLabel(
-                                                     "Please select a region in the image before applying the adjustment.\n"
-                                                     "Click and drag to define the region of interest.");
-
-                                                 regionStatusLabel->setStyleSheet("font-weight: bold;");
-                                                 regionInfoLabel->setStyleSheet("color: #666666; font-size: 10px; padding: 5px;");
-                                                 regionInfoLabel->setWordWrap(true);
-
-                                                 regionStatusLabel->setVisible(false);
-                                                 regionInfoLabel->setVisible(false);
-
-                                                 paramLayout->addWidget(regionStatusLabel);
-                                                 paramLayout->addWidget(regionInfoLabel);
-
-                                                 layout->addWidget(paramBox);
-
-                                                 // Update region status when selection changes
-                                                 auto updateRegionStatus = [=]() {
-                                                     if (regionalRadio->isChecked()) {
-                                                         if (m_imageLabel->isRegionSelected()) {
-                                                             QRect region = m_imageLabel->getSelectedRegion();
-                                                             regionStatusLabel->setText(
-                                                                 QString("Selected Region: (%1,%2) - %3x%4")
-                                                                     .arg(region.x())
-                                                                     .arg(region.y())
-                                                                     .arg(region.width())
-                                                                     .arg(region.height()));
-                                                             regionStatusLabel->setStyleSheet("color: green; font-weight: bold;");
-                                                             regionInfoLabel->setVisible(false);
-                                                         } else {
-                                                             regionStatusLabel->setText("No region selected");
-                                                             regionStatusLabel->setStyleSheet("color: red; font-weight: bold;");
-                                                             regionInfoLabel->setVisible(true);
-                                                         }
-                                                         regionStatusLabel->setVisible(true);
-                                                     } else {
-                                                         regionStatusLabel->setVisible(false);
-                                                         regionInfoLabel->setVisible(false);
-                                                     }
-                                                 };
-
-                                                 // Connect radio buttons to update control visibility
-                                                 connect(overallRadio, &QRadioButton::toggled, [&dialog, regionStatusLabel, regionInfoLabel, thresholdWidget](bool checked) {
-                                                     if (checked) {
-                                                         thresholdWidget->setVisible(false);
-                                                         regionStatusLabel->setVisible(false);
-                                                         regionInfoLabel->setVisible(false);
-                                                         dialog.adjustSize();
-                                                     }
-                                                 });
-
-                                                 connect(regionalRadio, &QRadioButton::toggled, [&dialog, thresholdWidget, updateRegionStatus](bool checked) {
-                                                     if (checked) {
-                                                         thresholdWidget->setVisible(false);
-                                                         updateRegionStatus();
-                                                         dialog.adjustSize();
-                                                     }
-                                                 });
-
-                                                 connect(thresholdRadio, &QRadioButton::toggled, [&dialog, regionStatusLabel, regionInfoLabel, thresholdWidget](bool checked) {
-                                                     if (checked) {
-                                                         thresholdWidget->setVisible(true);
-                                                         regionStatusLabel->setVisible(false);
-                                                         regionInfoLabel->setVisible(false);
-                                                         dialog.adjustSize();
-                                                     }
-                                                 });
-
-                                                 // Create and add button box
-                                                 QDialogButtonBox* buttonBox = new QDialogButtonBox(
-                                                     QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-                                                 layout->addWidget(buttonBox);
-
-                                                 // Connect button box
-                                                 connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-                                                 connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-
-                                                 // Initial status update
-                                                 updateRegionStatus();
-
-                                                 if (dialog.exec() == QDialog::Accepted) {
-                                                     float gamma = gammaSpinBox->value();
-                                                     try {
-                                                         const auto& finalImage = m_imageProcessor.getFinalImage();
-                                                         if (!finalImage) {
-                                                             QMessageBox::warning(this, "Error", "No image data available");
-                                                             return;
-                                                         }
-
-                                                         int height = m_imageProcessor.getFinalImageHeight();
-                                                         int width = m_imageProcessor.getFinalImageWidth();
-
-                                                         // Allocate memory using malloc2D from pch.h
-                                                         double** imgData = nullptr;
-                                                         malloc2D(imgData, height, width);
-
-                                                         // Copy data
-                                                         for (int y = 0; y < height; y++) {
-                                                             for (int x = 0; x < width; x++) {
-                                                                 imgData[y][x] = finalImage[y][x];
-                                                             }
-                                                         }
-
-                                                         QString modeStr;
-                                                         QString paramStr;
-
-                                                         if (thresholdRadio->isChecked()) {
-                                                             float threshold = thresholdSpinBox->value();
-                                                             ImageAdjustments::adjustGammaWithThreshold(imgData, height, width, gamma, threshold);
-                                                             modeStr = "Threshold";
-                                                             paramStr = QString("Gamma: %1, Threshold: %2")
-                                                                            .arg(gamma, 0, 'f', 2)
-                                                                            .arg(threshold);
-                                                         }
-                                                         else if (regionalRadio->isChecked()) {
-                                                             if (!m_imageLabel->isRegionSelected()) {
-                                                                 // Clean up allocated memory
-                                                                 for (int i = 0; i < height; i++) {
-                                                                     free(imgData[i]);
-                                                                 }
-                                                                 free(imgData);
-
-                                                                 QMessageBox::information(this, "Region Selection",
-                                                                                          "Please select a region first, then try again.");
-                                                                 return;
-                                                             }
-
-                                                             QRect selectedRegion = m_imageLabel->getSelectedRegion();
-                                                             ImageAdjustments::adjustGammaForSelectedRegion(
-                                                                 imgData, height, width, gamma, selectedRegion);
-
-                                                             modeStr = "Regional";
-                                                             paramStr = QString("Gamma: %1\nRegion: (%2,%3,%4,%5)")
-                                                                            .arg(gamma, 0, 'f', 2)
-                                                                            .arg(selectedRegion.x())
-                                                                            .arg(selectedRegion.y())
-                                                                            .arg(selectedRegion.width())
-                                                                            .arg(selectedRegion.height());
-                                                         }
-                                                         else {
-                                                             ImageAdjustments::adjustGammaOverall(imgData, height, width, gamma);
-                                                             modeStr = "Overall";
-                                                             paramStr = QString("Gamma: %1").arg(gamma, 0, 'f', 2);
-                                                         }
-
-                                                         // Update image
-                                                         m_imageProcessor.updateAndSaveFinalImage(imgData, height, width);
-
-                                                         // Clean up
-                                                         for (int i = 0; i < height; i++) {
-                                                             free(imgData[i]);
-                                                         }
-                                                         free(imgData);
-
-                                                         // Update display
-                                                         m_imageLabel->clearSelection();
-                                                         updateImageDisplay();
-                                                         updateLastAction("Gamma Adjustment",
-                                                                          QString("Mode: %1\n%2").arg(modeStr).arg(paramStr));
-
-                                                     } catch (const std::exception& e) {
-                                                         QMessageBox::critical(this, "Error",
-                                                                               QString("Failed to apply gamma adjustment: %1").arg(e.what()));
-                                                     }
-                                                 }
-                                             }},
-                                            {"Contrast Adjustment", [this]() {
-                                                 if (checkZoomMode()) return;
-                                                 m_imageProcessor.saveCurrentState();
-                                                 m_darkLineInfoLabel->hide();
-                                                 resetDetectedLinesPointer();
-
-                                                 QDialog dialog(this);
-                                                 dialog.setWindowTitle("Contrast Adjustment");
-                                                 dialog.setMinimumWidth(350);
-
-                                                 QVBoxLayout* layout = new QVBoxLayout(&dialog);
-
-                                                 // Mode selection
-                                                 QGroupBox* modeBox = new QGroupBox("Adjustment Mode");
-                                                 QVBoxLayout* modeLayout = new QVBoxLayout(modeBox);
-
-                                                 QRadioButton* overallRadio = new QRadioButton("Overall Adjustment");
-                                                 QRadioButton* regionalRadio = new QRadioButton("Regional Adjustment");
-                                                 QRadioButton* thresholdRadio = new QRadioButton("Threshold-based Adjustment");
-
-                                                 overallRadio->setChecked(true);
-
-                                                 // Add explanatory labels
-                                                 QLabel* overallLabel = new QLabel("Adjust contrast across the entire image");
-                                                 QLabel* regionalLabel = new QLabel("Adjust contrast in a selected region only");
-                                                 QLabel* thresholdLabel = new QLabel("Adjust contrast for pixels below threshold only");
-
-                                                 overallLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
-                                                 regionalLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
-                                                 thresholdLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
-
-                                                 modeLayout->addWidget(overallRadio);
-                                                 modeLayout->addWidget(overallLabel);
-                                                 modeLayout->addWidget(regionalRadio);
-                                                 modeLayout->addWidget(regionalLabel);
-                                                 modeLayout->addWidget(thresholdRadio);
-                                                 modeLayout->addWidget(thresholdLabel);
-
-                                                 layout->addWidget(modeBox);
-
-                                                 // Parameter inputs group
-                                                 QGroupBox* paramBox = new QGroupBox("Parameters");
-                                                 QVBoxLayout* paramLayout = new QVBoxLayout(paramBox);
-
-                                                 // Define spinbox style
-                                                 QString spinBoxStyle =
-                                                     "QSpinBox, QDoubleSpinBox {"
-                                                     "    background-color: white;"
-                                                     "    border: 1px solid #c0c0c0;"
-                                                     "    border-radius: 3px;"
-                                                     "    padding: 1px;"
-                                                     "    min-width: 100px;"
-                                                     "}"
-                                                     "QSpinBox:focus, QDoubleSpinBox:focus {"
-                                                     "    border: 1px solid #0078d7;"
-                                                     "}"
-                                                     "QSpinBox::up-button, QSpinBox::down-button,"
-                                                     "QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {"
-                                                     "    width: 0px;"
-                                                     "    border: none;"
-                                                     "}";
-
-                                                 // Contrast factor input
-                                                 QLabel* contrastLabel = new QLabel("Contrast Factor:");
-                                                 QDoubleSpinBox* contrastSpinBox = new QDoubleSpinBox();
-                                                 contrastSpinBox->setRange(0.01, 5.0);
-                                                 contrastSpinBox->setValue(1.0);
-                                                 contrastSpinBox->setDecimals(2);
-                                                 contrastSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
-                                                 contrastSpinBox->setStyleSheet(spinBoxStyle);
-                                                 contrastSpinBox->setToolTip("Enter contrast value (0.01-5.00)");
-
-                                                 paramLayout->addWidget(contrastLabel);
-                                                 paramLayout->addWidget(contrastSpinBox);
-
-                                                 // Threshold value input
-                                                 QWidget* thresholdWidget = new QWidget();
-                                                 QVBoxLayout* thresholdLayout = new QVBoxLayout(thresholdWidget);
-
-                                                 QLabel* thresholdValueLabel = new QLabel("Threshold Value:");
-                                                 QSpinBox* thresholdSpinBox = new QSpinBox();
-                                                 thresholdSpinBox->setRange(0, 65535);
-                                                 thresholdSpinBox->setValue(32767);
-                                                 thresholdSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
-                                                 thresholdSpinBox->setStyleSheet(spinBoxStyle);
-                                                 thresholdSpinBox->setToolTip("Enter threshold value (0-65535)");
-
-                                                 thresholdLayout->addWidget(thresholdValueLabel);
-                                                 thresholdLayout->addWidget(thresholdSpinBox);
-                                                 thresholdWidget->setVisible(false);
-
-                                                 paramLayout->addWidget(thresholdWidget);
-
-                                                 // Region selection status and info
-                                                 QLabel* regionStatusLabel = new QLabel();
-                                                 QLabel* regionInfoLabel = new QLabel(
-                                                     "Please select a region in the image before applying the adjustment.\n"
-                                                     "Click and drag to define the region of interest.");
-
-                                                 regionStatusLabel->setStyleSheet("font-weight: bold;");
-                                                 regionInfoLabel->setStyleSheet("color: #666666; font-size: 10px; padding: 5px;");
-                                                 regionInfoLabel->setWordWrap(true);
-
-                                                 regionStatusLabel->setVisible(false);
-                                                 regionInfoLabel->setVisible(false);
-
-                                                 paramLayout->addWidget(regionStatusLabel);
-                                                 paramLayout->addWidget(regionInfoLabel);
-
-                                                 layout->addWidget(paramBox);
-
-                                                 // Add this update region status lambda before the radio button connections
-                                                 auto updateRegionStatus = [=]() {
-                                                     if (regionalRadio->isChecked()) {
-                                                         if (m_imageLabel->isRegionSelected()) {
-                                                             QRect region = m_imageLabel->getSelectedRegion();
-                                                             regionStatusLabel->setText(
-                                                                 QString("Selected Region: (%1,%2) - %3x%4")
-                                                                     .arg(region.x())
-                                                                     .arg(region.y())
-                                                                     .arg(region.width())
-                                                                     .arg(region.height()));
-                                                             regionStatusLabel->setStyleSheet("color: green; font-weight: bold;");
-                                                             regionInfoLabel->setVisible(false);
-                                                         } else {
-                                                             regionStatusLabel->setText("No region selected");
-                                                             regionStatusLabel->setStyleSheet("color: red; font-weight: bold;");
-                                                             regionInfoLabel->setVisible(true);
-                                                         }
-                                                         regionStatusLabel->setVisible(true);
-                                                     } else {
-                                                         regionStatusLabel->setVisible(false);
-                                                         regionInfoLabel->setVisible(false);
-                                                     }
-                                                 };
-
-                                                 // Connect radio buttons to update control visibility
-                                                 connect(overallRadio, &QRadioButton::toggled, [&dialog, regionStatusLabel, regionInfoLabel, thresholdWidget](bool checked) {
-                                                     if (checked) {
-                                                         thresholdWidget->setVisible(false);
-                                                         regionStatusLabel->setVisible(false);
-                                                         regionInfoLabel->setVisible(false);
-                                                         dialog.adjustSize();
-                                                     }
-                                                 });
-
-                                                 connect(regionalRadio, &QRadioButton::toggled, [&dialog, thresholdWidget, updateRegionStatus](bool checked) {
-                                                     if (checked) {
-                                                         thresholdWidget->setVisible(false);
-                                                         updateRegionStatus();
-                                                         dialog.adjustSize();
-                                                     }
-                                                 });
-
-                                                 connect(thresholdRadio, &QRadioButton::toggled, [&dialog, regionStatusLabel, regionInfoLabel, thresholdWidget](bool checked) {
-                                                     if (checked) {
-                                                         thresholdWidget->setVisible(true);
-                                                         regionStatusLabel->setVisible(false);
-                                                         regionInfoLabel->setVisible(false);
-                                                         dialog.adjustSize();
-                                                     }
-                                                 });
-
-                                                 // Create and add button box
-                                                 QDialogButtonBox* buttonBox = new QDialogButtonBox(
-                                                     QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-                                                 layout->addWidget(buttonBox);
-
-                                                 connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-                                                 connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-
-                                                 if (dialog.exec() == QDialog::Accepted) {
-                                                     // Process the adjustment
-                                                     float contrastFactor = contrastSpinBox->value();
-
-                                                     try {
-                                                         const auto& finalImage = m_imageProcessor.getFinalImage();
-                                                         if (!finalImage) {
-                                                             QMessageBox::warning(this, "Error", "No image data available");
-                                                             return;
-                                                         }
-
-                                                         int height = m_imageProcessor.getFinalImageHeight();
-                                                         int width = m_imageProcessor.getFinalImageWidth();
-
-                                                         // Allocate memory
-                                                         double** imgData = nullptr;
-                                                         malloc2D(imgData, height, width);
-
-                                                         // Copy data
-                                                         for (int y = 0; y < height; y++) {
-                                                             for (int x = 0; x < width; x++) {
-                                                                 imgData[y][x] = finalImage[y][x];
-                                                             }
-                                                         }
-
-                                                         QString modeStr;
-                                                         QString paramStr;
-
-                                                         if (thresholdRadio->isChecked()) {
-                                                             float threshold = thresholdSpinBox->value();
-                                                             ImageAdjustments::adjustContrastWithThreshold(imgData, height, width, contrastFactor, threshold);
-                                                             modeStr = "Threshold";
-                                                             paramStr = QString("Factor: %1, Threshold: %2")
-                                                                            .arg(contrastFactor, 0, 'f', 2)
-                                                                            .arg(threshold);
-                                                         }
-                                                         else if (regionalRadio->isChecked()) {
-                                                             if (!m_imageLabel->isRegionSelected()) {
-                                                                 // Clean up allocated memory
-                                                                 for (int i = 0; i < height; i++) {
-                                                                     free(imgData[i]);
-                                                                 }
-                                                                 free(imgData);
-
-                                                                 QMessageBox::information(this, "Region Selection",
-                                                                                          "Please select a region first, then try again.");
-                                                                 return;
-                                                             }
-
-                                                             QRect selectedRegion = m_imageLabel->getSelectedRegion();
-                                                             ImageAdjustments::applyContrastToRegion(
-                                                                 imgData, height, width, contrastFactor, selectedRegion);
-
-                                                             modeStr = "Regional";
-                                                             paramStr = QString("Factor: %1\nRegion: (%2,%3,%4,%5)")
-                                                                            .arg(contrastFactor, 0, 'f', 2)
-                                                                            .arg(selectedRegion.x())
-                                                                            .arg(selectedRegion.y())
-                                                                            .arg(selectedRegion.width())
-                                                                            .arg(selectedRegion.height());
-                                                         }
-                                                         else {
-                                                             ImageAdjustments::adjustContrast(imgData, height, width, contrastFactor);
-                                                             modeStr = "Overall";
-                                                             paramStr = QString("Factor: %1").arg(contrastFactor, 0, 'f', 2);
-                                                         }
-
-                                                         // Update image
-                                                         m_imageProcessor.updateAndSaveFinalImage(imgData, height, width);
-
-                                                         // Clean up
-                                                         for (int i = 0; i < height; i++) {
-                                                             free(imgData[i]);
-                                                         }
-                                                         free(imgData);
-
-                                                         // Update display
-                                                         m_imageLabel->clearSelection();
-                                                         updateImageDisplay();
-                                                         updateLastAction("Contrast Adjustment",
-                                                                          QString("Mode: %1\n%2").arg(modeStr).arg(paramStr));
-
-                                                     } catch (const std::exception& e) {
-                                                         QMessageBox::critical(this, "Error",
-                                                                               QString("Failed to apply contrast adjustment: %1").arg(e.what()));
-                                                     }
-                                                 }
-                                             }},
-                                            {"Sharpen Adjustment", [this]() {
-                                                 if (checkZoomMode()) return;
-                                                 m_imageProcessor.saveCurrentState();
-                                                 m_darkLineInfoLabel->hide();
-                                                 resetDetectedLinesPointer();
-
-                                                 QDialog dialog(this);
-                                                 dialog.setWindowTitle("Sharpen Adjustment");
-                                                 dialog.setMinimumWidth(350);
-
-                                                 QVBoxLayout* layout = new QVBoxLayout(&dialog);
-
-                                                 // Mode selection
-                                                 QGroupBox* modeBox = new QGroupBox("Adjustment Mode");
-                                                 QVBoxLayout* modeLayout = new QVBoxLayout(modeBox);
-
-                                                 QRadioButton* overallRadio = new QRadioButton("Overall Adjustment");
-                                                 QRadioButton* regionalRadio = new QRadioButton("Regional Adjustment");
-                                                 QRadioButton* thresholdRadio = new QRadioButton("Threshold-based Adjustment");
-
-                                                 overallRadio->setChecked(true);
-
-                                                 // Add explanatory labels
-                                                 QLabel* overallLabel = new QLabel("Apply sharpening to the entire image");
-                                                 QLabel* regionalLabel = new QLabel("Apply sharpening to a selected region only");
-                                                 QLabel* thresholdLabel = new QLabel("Apply sharpening to pixels below threshold only");
-
-                                                 overallLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
-                                                 regionalLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
-                                                 thresholdLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
-
-                                                 modeLayout->addWidget(overallRadio);
-                                                 modeLayout->addWidget(overallLabel);
-                                                 modeLayout->addWidget(regionalRadio);
-                                                 modeLayout->addWidget(regionalLabel);
-                                                 modeLayout->addWidget(thresholdRadio);
-                                                 modeLayout->addWidget(thresholdLabel);
-
-                                                 layout->addWidget(modeBox);
-
-                                                 // Parameter inputs group
-                                                 QGroupBox* paramBox = new QGroupBox("Parameters");
-                                                 QVBoxLayout* paramLayout = new QVBoxLayout(paramBox);
-
-                                                 // Define spinbox style
-                                                 QString spinBoxStyle =
-                                                     "QSpinBox, QDoubleSpinBox {"
-                                                     "    background-color: white;"
-                                                     "    border: 1px solid #c0c0c0;"
-                                                     "    border-radius: 3px;"
-                                                     "    padding: 1px;"
-                                                     "    min-width: 100px;"
-                                                     "}"
-                                                     "QSpinBox:focus, QDoubleSpinBox:focus {"
-                                                     "    border: 1px solid #0078d7;"
-                                                     "}"
-                                                     "QSpinBox::up-button, QSpinBox::down-button,"
-                                                     "QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {"
-                                                     "    width: 0px;"
-                                                     "    border: none;"
-                                                     "}";
-
-                                                 // Sharpen strength input
-                                                 QLabel* strengthLabel = new QLabel("Sharpening Strength:");
-                                                 QDoubleSpinBox* strengthSpinBox = new QDoubleSpinBox();
-                                                 strengthSpinBox->setRange(0.01, 3.0);
-                                                 strengthSpinBox->setValue(1.0);
-                                                 strengthSpinBox->setDecimals(2);
-                                                 strengthSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
-                                                 strengthSpinBox->setStyleSheet(spinBoxStyle);
-                                                 strengthSpinBox->setToolTip("Enter strength value (0.01-3.00)");
-
-                                                 paramLayout->addWidget(strengthLabel);
-                                                 paramLayout->addWidget(strengthSpinBox);
-
-                                                 // Threshold value input
-                                                 QWidget* thresholdWidget = new QWidget();
-                                                 QVBoxLayout* thresholdLayout = new QVBoxLayout(thresholdWidget);
-
-                                                 QLabel* thresholdValueLabel = new QLabel("Threshold Value:");
-                                                 QSpinBox* thresholdSpinBox = new QSpinBox();
-                                                 thresholdSpinBox->setRange(0, 65535);
-                                                 thresholdSpinBox->setValue(32767);
-                                                 thresholdSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
-                                                 thresholdSpinBox->setStyleSheet(spinBoxStyle);
-                                                 thresholdSpinBox->setToolTip("Enter threshold value (0-65535)");
-
-                                                 thresholdLayout->addWidget(thresholdValueLabel);
-                                                 thresholdLayout->addWidget(thresholdSpinBox);
-                                                 thresholdWidget->setVisible(false);
-
-                                                 paramLayout->addWidget(thresholdWidget);
-
-                                                 // Region selection status and info
-                                                 QLabel* regionStatusLabel = new QLabel();
-                                                 QLabel* regionInfoLabel = new QLabel(
-                                                     "Please select a region in the image before applying the adjustment.\n"
-                                                     "Click and drag to define the region of interest.");
-
-                                                 regionStatusLabel->setStyleSheet("font-weight: bold;");
-                                                 regionInfoLabel->setStyleSheet("color: #666666; font-size: 10px; padding: 5px;");
-                                                 regionInfoLabel->setWordWrap(true);
-
-                                                 regionStatusLabel->setVisible(false);
-                                                 regionInfoLabel->setVisible(false);
-
-                                                 paramLayout->addWidget(regionStatusLabel);
-                                                 paramLayout->addWidget(regionInfoLabel);
-
-                                                 layout->addWidget(paramBox);
-
-                                                 // Update region status when selection changes
-                                                 auto updateRegionStatus = [=]() {
-                                                     if (regionalRadio->isChecked()) {
-                                                         if (m_imageLabel->isRegionSelected()) {
-                                                             QRect region = m_imageLabel->getSelectedRegion();
-                                                             regionStatusLabel->setText(
-                                                                 QString("Selected Region: (%1,%2) - %3x%4")
-                                                                     .arg(region.x())
-                                                                     .arg(region.y())
-                                                                     .arg(region.width())
-                                                                     .arg(region.height()));
-                                                             regionStatusLabel->setStyleSheet("color: green; font-weight: bold;");
-                                                             regionInfoLabel->setVisible(false);
-                                                         } else {
-                                                             regionStatusLabel->setText("No region selected");
-                                                             regionStatusLabel->setStyleSheet("color: red; font-weight: bold;");
-                                                             regionInfoLabel->setVisible(true);
-                                                         }
-                                                         regionStatusLabel->setVisible(true);
-                                                     } else {
-                                                         regionStatusLabel->setVisible(false);
-                                                         regionInfoLabel->setVisible(false);
-                                                     }
-                                                 };
-
-                                                 // Connect radio buttons to update control visibility
-                                                 connect(overallRadio, &QRadioButton::toggled, [&dialog, regionStatusLabel, regionInfoLabel, thresholdWidget](bool checked) {
-                                                     if (checked) {
-                                                         thresholdWidget->setVisible(false);
-                                                         regionStatusLabel->setVisible(false);
-                                                         regionInfoLabel->setVisible(false);
-                                                         dialog.adjustSize();
-                                                     }
-                                                 });
-
-                                                 connect(regionalRadio, &QRadioButton::toggled, [&dialog, thresholdWidget, updateRegionStatus](bool checked) {
-                                                     if (checked) {
-                                                         thresholdWidget->setVisible(false);
-                                                         updateRegionStatus();
-                                                         dialog.adjustSize();
-                                                     }
-                                                 });
-
-                                                 connect(thresholdRadio, &QRadioButton::toggled, [&dialog, regionStatusLabel, regionInfoLabel, thresholdWidget](bool checked) {
-                                                     if (checked) {
-                                                         thresholdWidget->setVisible(true);
-                                                         regionStatusLabel->setVisible(false);
-                                                         regionInfoLabel->setVisible(false);
-                                                         dialog.adjustSize();
-                                                     }
-                                                 });
-
-                                                 // Create and add button box
-                                                 QDialogButtonBox* buttonBox = new QDialogButtonBox(
-                                                     QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-                                                 layout->addWidget(buttonBox);
-
-                                                 connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-                                                 connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-
-                                                 // Initial status update
-                                                 updateRegionStatus();
-
-                                                 if (dialog.exec() == QDialog::Accepted) {
-                                                     float strength = strengthSpinBox->value();
-
-                                                     try {
-                                                         const auto& finalImage = m_imageProcessor.getFinalImage();
-                                                         if (!finalImage) {
-                                                             QMessageBox::warning(this, "Error", "No image data available");
-                                                             return;
-                                                         }
-
-                                                         int height = m_imageProcessor.getFinalImageHeight();
-                                                         int width = m_imageProcessor.getFinalImageWidth();
-
-                                                         // Allocate memory
-                                                         double** imgData = nullptr;
-                                                         malloc2D(imgData, height, width);
-
-                                                         // Copy data
-                                                         for (int y = 0; y < height; y++) {
-                                                             for (int x = 0; x < width; x++) {
-                                                                 imgData[y][x] = finalImage[y][x];
-                                                             }
-                                                         }
-
-                                                         QString modeStr;
-                                                         QString paramStr;
-
-                                                         if (thresholdRadio->isChecked()) {
-                                                             float threshold = thresholdSpinBox->value();
-                                                             ImageAdjustments::sharpenWithThreshold(imgData, height, width, strength, threshold);
-                                                             modeStr = "Threshold";
-                                                             paramStr = QString("Strength: %1, Threshold: %2")
-                                                                            .arg(strength, 0, 'f', 2)
-                                                                            .arg(threshold);
-                                                         }
-                                                         else if (regionalRadio->isChecked()) {
-                                                             if (!m_imageLabel->isRegionSelected()) {
-                                                                 // Clean up allocated memory
-                                                                 for (int i = 0; i < height; i++) {
-                                                                     free(imgData[i]);
-                                                                 }
-                                                                 free(imgData);
-
-                                                                 QMessageBox::information(this, "Region Selection",
-                                                                                          "Please select a region first, then try again.");
-                                                                 return;
-                                                             }
-
-                                                             QRect selectedRegion = m_imageLabel->getSelectedRegion();
-                                                             ImageAdjustments::applySharpenToRegion(
-                                                                 imgData, height, width, strength, selectedRegion);
-
-                                                             modeStr = "Regional";
-                                                             paramStr = QString("Strength: %1\nRegion: (%2,%3,%4,%5)")
-                                                                            .arg(strength, 0, 'f', 2)
-                                                                            .arg(selectedRegion.x())
-                                                                            .arg(selectedRegion.y())
-                                                                            .arg(selectedRegion.width())
-                                                                            .arg(selectedRegion.height());
-                                                         }
-                                                         else {
-                                                             ImageAdjustments::sharpenImage(imgData, height, width, strength);
-                                                             modeStr = "Overall";
-                                                             paramStr = QString("Strength: %1").arg(strength, 0, 'f', 2);
-                                                         }
-
-                                                         // Update image
-                                                         m_imageProcessor.updateAndSaveFinalImage(imgData, height, width);
-
-                                                         // Clean up
-                                                         for (int i = 0; i < height; i++) {
-                                                             free(imgData[i]);
-                                                         }
-                                                         free(imgData);
-
-                                                         // Update display
-                                                         m_imageLabel->clearSelection();
-                                                         updateImageDisplay();
-                                                         updateLastAction("Sharpen Adjustment",
-                                                                          QString("Mode: %1\n%2").arg(modeStr).arg(paramStr));
-
-                                                     } catch (const std::exception& e) {
-                                                         QMessageBox::critical(this, "Error",
-                                                                               QString("Failed to apply sharpening: %1").arg(e.what()));
-                                                     }
-                                                 }
-                                             }}
-                                        });
+                       {"Gamma Adjustment", [this]() {
+                            if (checkZoomMode()) return;
+                            m_imageProcessor.saveCurrentState();
+                            m_darkLineInfoLabel->hide();
+                            resetDetectedLinesPointer();
+
+                            QDialog dialog(this);
+                            dialog.setWindowTitle("Gamma Adjustment");
+                            dialog.setMinimumWidth(350);
+
+                            QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+                            // Mode selection
+                            QGroupBox* modeBox = new QGroupBox("Adjustment Mode");
+                            QVBoxLayout* modeLayout = new QVBoxLayout(modeBox);
+
+                            QRadioButton* overallRadio = new QRadioButton("Overall Adjustment");
+                            QRadioButton* regionalRadio = new QRadioButton("Regional Adjustment");
+                            QRadioButton* thresholdRadio = new QRadioButton("Threshold-based Adjustment");
+
+                            overallRadio->setChecked(true);
+
+                            // Add explanatory labels
+                            QLabel* overallLabel = new QLabel("Apply gamma correction to the entire image");
+                            QLabel* regionalLabel = new QLabel("Apply gamma correction to a selected region only");
+                            QLabel* thresholdLabel = new QLabel("Apply gamma correction to pixels below threshold only");
+
+                            overallLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+                            regionalLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+                            thresholdLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+
+                            modeLayout->addWidget(overallRadio);
+                            modeLayout->addWidget(overallLabel);
+                            modeLayout->addWidget(regionalRadio);
+                            modeLayout->addWidget(regionalLabel);
+                            modeLayout->addWidget(thresholdRadio);
+                            modeLayout->addWidget(thresholdLabel);
+
+                            layout->addWidget(modeBox);
+
+                            // Parameter inputs group
+                            QGroupBox* paramBox = new QGroupBox("Parameters");
+                            QVBoxLayout* paramLayout = new QVBoxLayout(paramBox);
+
+                            // Style for spinboxes
+                            QString spinBoxStyle =
+                            "QSpinBox, QDoubleSpinBox {"
+                            "    background-color: white;"
+                            "    border: 1px solid #c0c0c0;"
+                            "    border-radius: 3px;"
+                            "    padding: 1px;"
+                            "}"
+                            "QSpinBox:focus, QDoubleSpinBox:focus {"
+                            "    border: 1px solid #0078d7;"
+                            "}"
+                            "QSpinBox::up-button, QSpinBox::down-button,"
+                            "QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {"
+                            "    width: 0px;"
+                            "    border: none;"
+                            "}";
+
+                            // Gamma value input
+                            QLabel* gammaLabel = new QLabel("Gamma Value:");
+                            QDoubleSpinBox* gammaSpinBox = new QDoubleSpinBox();
+                            gammaSpinBox->setRange(0.01, 10.0);
+                            gammaSpinBox->setValue(1.0);
+                            gammaSpinBox->setDecimals(2);
+                            gammaSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
+                            gammaSpinBox->setStyleSheet(spinBoxStyle);
+                            gammaSpinBox->setMinimumWidth(150);  // Increased width
+                            gammaSpinBox->setToolTip("Enter gamma value (0.01-10.00)");
+
+                            paramLayout->addWidget(gammaLabel);
+                            paramLayout->addWidget(gammaSpinBox);
+
+                            // Threshold value input
+                            QWidget* thresholdWidget = new QWidget();
+                            QVBoxLayout* thresholdLayout = new QVBoxLayout(thresholdWidget);
+
+                            QLabel* thresholdValueLabel = new QLabel("Threshold Value:");
+                            QSpinBox* thresholdSpinBox = new QSpinBox();
+                            thresholdSpinBox->setRange(0, 65535);
+                            thresholdSpinBox->setValue(32767);
+                            thresholdSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
+                            thresholdSpinBox->setStyleSheet(spinBoxStyle);
+                            thresholdSpinBox->setToolTip("Enter threshold value (0-65535)");
+
+                            thresholdLayout->addWidget(thresholdValueLabel);
+                            thresholdLayout->addWidget(thresholdSpinBox);
+                            thresholdWidget->setVisible(false);
+
+                            paramLayout->addWidget(thresholdWidget);
+                            // Region selection status and info
+                            QLabel* regionStatusLabel = new QLabel();
+                            QLabel* regionInfoLabel = new QLabel(
+                            "Please select a region in the image before applying the adjustment.\n"
+                            "Click and drag to define the region of interest.");
+
+                            regionStatusLabel->setStyleSheet("font-weight: bold;");
+                            regionInfoLabel->setStyleSheet("color: #666666; font-size: 10px; padding: 5px;");
+                            regionInfoLabel->setWordWrap(true);
+
+                            regionStatusLabel->setVisible(false);
+                            regionInfoLabel->setVisible(false);
+
+                            paramLayout->addWidget(regionStatusLabel);
+                            paramLayout->addWidget(regionInfoLabel);
+
+                            layout->addWidget(paramBox);
+
+                            // Update region status when selection changes
+                            auto updateRegionStatus = [=]() {
+                                if (regionalRadio->isChecked()) {
+                                    if (m_imageLabel->isRegionSelected()) {
+                                        QRect region = m_imageLabel->getSelectedRegion();
+                                        regionStatusLabel->setText(
+                                        QString("Selected Region: (%1,%2) - %3x%4")
+                                        .arg(region.x())
+                                        .arg(region.y())
+                                        .arg(region.width())
+                                        .arg(region.height()));
+                                        regionStatusLabel->setStyleSheet("color: green; font-weight: bold;");
+                                        regionInfoLabel->setVisible(false);
+                                    } else {
+                                        regionStatusLabel->setText("No region selected");
+                                        regionStatusLabel->setStyleSheet("color: red; font-weight: bold;");
+                                        regionInfoLabel->setVisible(true);
+                                    }
+                                    regionStatusLabel->setVisible(true);
+                                } else {
+                                    regionStatusLabel->setVisible(false);
+                                    regionInfoLabel->setVisible(false);
+                                }
+                            };
+
+                            // Connect radio buttons to update control visibility
+                            connect(overallRadio, &QRadioButton::toggled, [&dialog, regionStatusLabel, regionInfoLabel, thresholdWidget](bool checked) {
+                                if (checked) {
+                                    thresholdWidget->setVisible(false);
+                                    regionStatusLabel->setVisible(false);
+                                    regionInfoLabel->setVisible(false);
+                                    dialog.adjustSize();
+                                }
+                            });
+
+                            connect(regionalRadio, &QRadioButton::toggled, [&dialog, thresholdWidget, updateRegionStatus](bool checked) {
+                                if (checked) {
+                                    thresholdWidget->setVisible(false);
+                                    updateRegionStatus();
+                                    dialog.adjustSize();
+                                }
+                            });
+
+                            connect(thresholdRadio, &QRadioButton::toggled, [&dialog, regionStatusLabel, regionInfoLabel, thresholdWidget](bool checked) {
+                                if (checked) {
+                                    thresholdWidget->setVisible(true);
+                                    regionStatusLabel->setVisible(false);
+                                    regionInfoLabel->setVisible(false);
+                                    dialog.adjustSize();
+                                }
+                            });
+
+                            // Create and add button box
+                            QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                            QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                            layout->addWidget(buttonBox);
+
+                            // Connect button box
+                            connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                            connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+                            // Initial status update
+                            updateRegionStatus();
+
+                            if (dialog.exec() == QDialog::Accepted) {
+                                float gamma = gammaSpinBox->value();
+                                try {
+                                    const auto& finalImage = m_imageProcessor.getFinalImage();
+                                    if (!finalImage) {
+                                        QMessageBox::warning(this, "Error", "No image data available");
+                                        return;
+                                    }
+
+                                    int height = m_imageProcessor.getFinalImageHeight();
+                                    int width = m_imageProcessor.getFinalImageWidth();
+
+                                    // Allocate memory using malloc2D from pch.h
+                                    double** imgData = nullptr;
+                                    malloc2D(imgData, height, width);
+
+                                    // Copy data
+                                    for (int y = 0; y < height; y++) {
+                                        for (int x = 0; x < width; x++) {
+                                            imgData[y][x] = finalImage[y][x];
+                                        }
+                                    }
+
+                                    QString modeStr;
+                                    QString paramStr;
+
+                                    if (thresholdRadio->isChecked()) {
+                                        float threshold = thresholdSpinBox->value();
+                                        ImageAdjustments::adjustGammaWithThreshold(imgData, height, width, gamma, threshold);
+                                        modeStr = "Threshold";
+                                        paramStr = QString("Gamma: %1, Threshold: %2")
+                                        .arg(gamma, 0, 'f', 2)
+                                        .arg(threshold);
+                                    }
+                                    else if (regionalRadio->isChecked()) {
+                                        if (!m_imageLabel->isRegionSelected()) {
+                                            // Clean up allocated memory
+                                            for (int i = 0; i < height; i++) {
+                                                free(imgData[i]);
+                                            }
+                                            free(imgData);
+
+                                            QMessageBox::information(this, "Region Selection",
+                                            "Please select a region first, then try again.");
+                                            return;
+                                        }
+
+                                        QRect selectedRegion = m_imageLabel->getSelectedRegion();
+                                        ImageAdjustments::adjustGammaForSelectedRegion(
+                                        imgData, height, width, gamma, selectedRegion);
+
+                                        modeStr = "Regional";
+                                        paramStr = QString("Gamma: %1\nRegion: (%2,%3,%4,%5)")
+                                        .arg(gamma, 0, 'f', 2)
+                                        .arg(selectedRegion.x())
+                                        .arg(selectedRegion.y())
+                                        .arg(selectedRegion.width())
+                                        .arg(selectedRegion.height());
+                                    }
+                                    else {
+                                        ImageAdjustments::adjustGammaOverall(imgData, height, width, gamma);
+                                        modeStr = "Overall";
+                                        paramStr = QString("Gamma: %1").arg(gamma, 0, 'f', 2);
+                                    }
+
+                                    // Update image
+                                    m_imageProcessor.updateAndSaveFinalImage(imgData, height, width);
+
+                                    // Clean up
+                                    for (int i = 0; i < height; i++) {
+                                        free(imgData[i]);
+                                    }
+                                    free(imgData);
+
+                                    // Update display
+                                    m_imageLabel->clearSelection();
+                                    updateImageDisplay();
+                                    updateLastAction("Gamma Adjustment",
+                                    QString("Mode: %1\n%2").arg(modeStr).arg(paramStr));
+
+                                } catch (const std::exception& e) {
+                                    QMessageBox::critical(this, "Error",
+                                    QString("Failed to apply gamma adjustment: %1").arg(e.what()));
+                                }
+                            }
+                        }},
+                       {"Contrast Adjustment", [this]() {
+                            if (checkZoomMode()) return;
+                            m_imageProcessor.saveCurrentState();
+                            m_darkLineInfoLabel->hide();
+                            resetDetectedLinesPointer();
+
+                            QDialog dialog(this);
+                            dialog.setWindowTitle("Contrast Adjustment");
+                            dialog.setMinimumWidth(350);
+
+                            QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+                            // Mode selection
+                            QGroupBox* modeBox = new QGroupBox("Adjustment Mode");
+                            QVBoxLayout* modeLayout = new QVBoxLayout(modeBox);
+
+                            QRadioButton* overallRadio = new QRadioButton("Overall Adjustment");
+                            QRadioButton* regionalRadio = new QRadioButton("Regional Adjustment");
+                            QRadioButton* thresholdRadio = new QRadioButton("Threshold-based Adjustment");
+
+                            overallRadio->setChecked(true);
+
+                            // Add explanatory labels
+                            QLabel* overallLabel = new QLabel("Adjust contrast across the entire image");
+                            QLabel* regionalLabel = new QLabel("Adjust contrast in a selected region only");
+                            QLabel* thresholdLabel = new QLabel("Adjust contrast for pixels below threshold only");
+
+                            overallLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+                            regionalLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+                            thresholdLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+
+                            modeLayout->addWidget(overallRadio);
+                            modeLayout->addWidget(overallLabel);
+                            modeLayout->addWidget(regionalRadio);
+                            modeLayout->addWidget(regionalLabel);
+                            modeLayout->addWidget(thresholdRadio);
+                            modeLayout->addWidget(thresholdLabel);
+
+                            layout->addWidget(modeBox);
+
+                            // Parameter inputs group
+                            QGroupBox* paramBox = new QGroupBox("Parameters");
+                            QVBoxLayout* paramLayout = new QVBoxLayout(paramBox);
+
+                            // Define spinbox style
+                            QString spinBoxStyle =
+                            "QSpinBox, QDoubleSpinBox {"
+                            "    background-color: white;"
+                            "    border: 1px solid #c0c0c0;"
+                            "    border-radius: 3px;"
+                            "    padding: 1px;"
+                            "    min-width: 100px;"
+                            "}"
+                            "QSpinBox:focus, QDoubleSpinBox:focus {"
+                            "    border: 1px solid #0078d7;"
+                            "}"
+                            "QSpinBox::up-button, QSpinBox::down-button,"
+                            "QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {"
+                            "    width: 0px;"
+                            "    border: none;"
+                            "}";
+
+                            // Contrast factor input
+                            QLabel* contrastLabel = new QLabel("Contrast Factor:");
+                            QDoubleSpinBox* contrastSpinBox = new QDoubleSpinBox();
+                            contrastSpinBox->setRange(0.01, 5.0);
+                            contrastSpinBox->setValue(1.0);
+                            contrastSpinBox->setDecimals(2);
+                            contrastSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
+                            contrastSpinBox->setStyleSheet(spinBoxStyle);
+                            contrastSpinBox->setToolTip("Enter contrast value (0.01-5.00)");
+
+                            paramLayout->addWidget(contrastLabel);
+                            paramLayout->addWidget(contrastSpinBox);
+
+                            // Threshold value input
+                            QWidget* thresholdWidget = new QWidget();
+                            QVBoxLayout* thresholdLayout = new QVBoxLayout(thresholdWidget);
+
+                            QLabel* thresholdValueLabel = new QLabel("Threshold Value:");
+                            QSpinBox* thresholdSpinBox = new QSpinBox();
+                            thresholdSpinBox->setRange(0, 65535);
+                            thresholdSpinBox->setValue(32767);
+                            thresholdSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
+                            thresholdSpinBox->setStyleSheet(spinBoxStyle);
+                            thresholdSpinBox->setToolTip("Enter threshold value (0-65535)");
+
+                            thresholdLayout->addWidget(thresholdValueLabel);
+                            thresholdLayout->addWidget(thresholdSpinBox);
+                            thresholdWidget->setVisible(false);
+
+                            paramLayout->addWidget(thresholdWidget);
+
+                            // Region selection status and info
+                            QLabel* regionStatusLabel = new QLabel();
+                            QLabel* regionInfoLabel = new QLabel(
+                            "Please select a region in the image before applying the adjustment.\n"
+                            "Click and drag to define the region of interest.");
+
+                            regionStatusLabel->setStyleSheet("font-weight: bold;");
+                            regionInfoLabel->setStyleSheet("color: #666666; font-size: 10px; padding: 5px;");
+                            regionInfoLabel->setWordWrap(true);
+
+                            regionStatusLabel->setVisible(false);
+                            regionInfoLabel->setVisible(false);
+
+                            paramLayout->addWidget(regionStatusLabel);
+                            paramLayout->addWidget(regionInfoLabel);
+
+                            layout->addWidget(paramBox);
+
+                            // Add this update region status lambda before the radio button connections
+                            auto updateRegionStatus = [=]() {
+                                if (regionalRadio->isChecked()) {
+                                    if (m_imageLabel->isRegionSelected()) {
+                                        QRect region = m_imageLabel->getSelectedRegion();
+                                        regionStatusLabel->setText(
+                                        QString("Selected Region: (%1,%2) - %3x%4")
+                                        .arg(region.x())
+                                        .arg(region.y())
+                                        .arg(region.width())
+                                        .arg(region.height()));
+                                        regionStatusLabel->setStyleSheet("color: green; font-weight: bold;");
+                                        regionInfoLabel->setVisible(false);
+                                    } else {
+                                        regionStatusLabel->setText("No region selected");
+                                        regionStatusLabel->setStyleSheet("color: red; font-weight: bold;");
+                                        regionInfoLabel->setVisible(true);
+                                    }
+                                    regionStatusLabel->setVisible(true);
+                                } else {
+                                    regionStatusLabel->setVisible(false);
+                                    regionInfoLabel->setVisible(false);
+                                }
+                            };
+
+                            // Connect radio buttons to update control visibility
+                            connect(overallRadio, &QRadioButton::toggled, [&dialog, regionStatusLabel, regionInfoLabel, thresholdWidget](bool checked) {
+                                if (checked) {
+                                    thresholdWidget->setVisible(false);
+                                    regionStatusLabel->setVisible(false);
+                                    regionInfoLabel->setVisible(false);
+                                    dialog.adjustSize();
+                                }
+                            });
+
+                            connect(regionalRadio, &QRadioButton::toggled, [&dialog, thresholdWidget, updateRegionStatus](bool checked) {
+                                if (checked) {
+                                    thresholdWidget->setVisible(false);
+                                    updateRegionStatus();
+                                    dialog.adjustSize();
+                                }
+                            });
+
+                            connect(thresholdRadio, &QRadioButton::toggled, [&dialog, regionStatusLabel, regionInfoLabel, thresholdWidget](bool checked) {
+                                if (checked) {
+                                    thresholdWidget->setVisible(true);
+                                    regionStatusLabel->setVisible(false);
+                                    regionInfoLabel->setVisible(false);
+                                    dialog.adjustSize();
+                                }
+                            });
+
+                            // Create and add button box
+                            QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                            QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                            layout->addWidget(buttonBox);
+
+                            connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                            connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+                            if (dialog.exec() == QDialog::Accepted) {
+                                // Process the adjustment
+                                float contrastFactor = contrastSpinBox->value();
+
+                                try {
+                                    const auto& finalImage = m_imageProcessor.getFinalImage();
+                                    if (!finalImage) {
+                                        QMessageBox::warning(this, "Error", "No image data available");
+                                        return;
+                                    }
+
+                                    int height = m_imageProcessor.getFinalImageHeight();
+                                    int width = m_imageProcessor.getFinalImageWidth();
+
+                                    // Allocate memory
+                                    double** imgData = nullptr;
+                                    malloc2D(imgData, height, width);
+
+                                    // Copy data
+                                    for (int y = 0; y < height; y++) {
+                                        for (int x = 0; x < width; x++) {
+                                            imgData[y][x] = finalImage[y][x];
+                                        }
+                                    }
+
+                                    QString modeStr;
+                                    QString paramStr;
+
+                                    if (thresholdRadio->isChecked()) {
+                                        float threshold = thresholdSpinBox->value();
+                                        ImageAdjustments::adjustContrastWithThreshold(imgData, height, width, contrastFactor, threshold);
+                                        modeStr = "Threshold";
+                                        paramStr = QString("Factor: %1, Threshold: %2")
+                                        .arg(contrastFactor, 0, 'f', 2)
+                                        .arg(threshold);
+                                    }
+                                    else if (regionalRadio->isChecked()) {
+                                        if (!m_imageLabel->isRegionSelected()) {
+                                            // Clean up allocated memory
+                                            for (int i = 0; i < height; i++) {
+                                                free(imgData[i]);
+                                            }
+                                            free(imgData);
+
+                                            QMessageBox::information(this, "Region Selection",
+                                            "Please select a region first, then try again.");
+                                            return;
+                                        }
+
+                                        QRect selectedRegion = m_imageLabel->getSelectedRegion();
+                                        ImageAdjustments::applyContrastToRegion(
+                                        imgData, height, width, contrastFactor, selectedRegion);
+
+                                        modeStr = "Regional";
+                                        paramStr = QString("Factor: %1\nRegion: (%2,%3,%4,%5)")
+                                        .arg(contrastFactor, 0, 'f', 2)
+                                        .arg(selectedRegion.x())
+                                        .arg(selectedRegion.y())
+                                        .arg(selectedRegion.width())
+                                        .arg(selectedRegion.height());
+                                    }
+                                    else {
+                                        ImageAdjustments::adjustContrast(imgData, height, width, contrastFactor);
+                                        modeStr = "Overall";
+                                        paramStr = QString("Factor: %1").arg(contrastFactor, 0, 'f', 2);
+                                    }
+
+                                    // Update image
+                                    m_imageProcessor.updateAndSaveFinalImage(imgData, height, width);
+
+                                    // Clean up
+                                    for (int i = 0; i < height; i++) {
+                                        free(imgData[i]);
+                                    }
+                                    free(imgData);
+
+                                    // Update display
+                                    m_imageLabel->clearSelection();
+                                    updateImageDisplay();
+                                    updateLastAction("Contrast Adjustment",
+                                    QString("Mode: %1\n%2").arg(modeStr).arg(paramStr));
+
+                                } catch (const std::exception& e) {
+                                    QMessageBox::critical(this, "Error",
+                                    QString("Failed to apply contrast adjustment: %1").arg(e.what()));
+                                }
+                            }
+                        }},
+                       {"Sharpen Adjustment", [this]() {
+                            if (checkZoomMode()) return;
+                            m_imageProcessor.saveCurrentState();
+                            m_darkLineInfoLabel->hide();
+                            resetDetectedLinesPointer();
+
+                            QDialog dialog(this);
+                            dialog.setWindowTitle("Sharpen Adjustment");
+                            dialog.setMinimumWidth(350);
+
+                            QVBoxLayout* layout = new QVBoxLayout(&dialog);
+
+                            // Mode selection
+                            QGroupBox* modeBox = new QGroupBox("Adjustment Mode");
+                            QVBoxLayout* modeLayout = new QVBoxLayout(modeBox);
+
+                            QRadioButton* overallRadio = new QRadioButton("Overall Adjustment");
+                            QRadioButton* regionalRadio = new QRadioButton("Regional Adjustment");
+                            QRadioButton* thresholdRadio = new QRadioButton("Threshold-based Adjustment");
+
+                            overallRadio->setChecked(true);
+
+                            // Add explanatory labels
+                            QLabel* overallLabel = new QLabel("Apply sharpening to the entire image");
+                            QLabel* regionalLabel = new QLabel("Apply sharpening to a selected region only");
+                            QLabel* thresholdLabel = new QLabel("Apply sharpening to pixels below threshold only");
+
+                            overallLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+                            regionalLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+                            thresholdLabel->setStyleSheet("color: gray; font-size: 10px; margin-left: 20px;");
+
+                            modeLayout->addWidget(overallRadio);
+                            modeLayout->addWidget(overallLabel);
+                            modeLayout->addWidget(regionalRadio);
+                            modeLayout->addWidget(regionalLabel);
+                            modeLayout->addWidget(thresholdRadio);
+                            modeLayout->addWidget(thresholdLabel);
+
+                            layout->addWidget(modeBox);
+
+                            // Parameter inputs group
+                            QGroupBox* paramBox = new QGroupBox("Parameters");
+                            QVBoxLayout* paramLayout = new QVBoxLayout(paramBox);
+
+                            // Define spinbox style
+                            QString spinBoxStyle =
+                            "QSpinBox, QDoubleSpinBox {"
+                            "    background-color: white;"
+                            "    border: 1px solid #c0c0c0;"
+                            "    border-radius: 3px;"
+                            "    padding: 1px;"
+                            "    min-width: 100px;"
+                            "}"
+                            "QSpinBox:focus, QDoubleSpinBox:focus {"
+                            "    border: 1px solid #0078d7;"
+                            "}"
+                            "QSpinBox::up-button, QSpinBox::down-button,"
+                            "QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {"
+                            "    width: 0px;"
+                            "    border: none;"
+                            "}";
+
+                            // Sharpen strength input
+                            QLabel* strengthLabel = new QLabel("Sharpening Strength:");
+                            QDoubleSpinBox* strengthSpinBox = new QDoubleSpinBox();
+                            strengthSpinBox->setRange(0.01, 3.0);
+                            strengthSpinBox->setValue(1.0);
+                            strengthSpinBox->setDecimals(2);
+                            strengthSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
+                            strengthSpinBox->setStyleSheet(spinBoxStyle);
+                            strengthSpinBox->setToolTip("Enter strength value (0.01-3.00)");
+
+                            paramLayout->addWidget(strengthLabel);
+                            paramLayout->addWidget(strengthSpinBox);
+
+                            // Threshold value input
+                            QWidget* thresholdWidget = new QWidget();
+                            QVBoxLayout* thresholdLayout = new QVBoxLayout(thresholdWidget);
+
+                            QLabel* thresholdValueLabel = new QLabel("Threshold Value:");
+                            QSpinBox* thresholdSpinBox = new QSpinBox();
+                            thresholdSpinBox->setRange(0, 65535);
+                            thresholdSpinBox->setValue(32767);
+                            thresholdSpinBox->setButtonSymbols(QAbstractSpinBox::NoButtons);
+                            thresholdSpinBox->setStyleSheet(spinBoxStyle);
+                            thresholdSpinBox->setToolTip("Enter threshold value (0-65535)");
+
+                            thresholdLayout->addWidget(thresholdValueLabel);
+                            thresholdLayout->addWidget(thresholdSpinBox);
+                            thresholdWidget->setVisible(false);
+
+                            paramLayout->addWidget(thresholdWidget);
+
+                            // Region selection status and info
+                            QLabel* regionStatusLabel = new QLabel();
+                            QLabel* regionInfoLabel = new QLabel(
+                            "Please select a region in the image before applying the adjustment.\n"
+                            "Click and drag to define the region of interest.");
+
+                            regionStatusLabel->setStyleSheet("font-weight: bold;");
+                            regionInfoLabel->setStyleSheet("color: #666666; font-size: 10px; padding: 5px;");
+                            regionInfoLabel->setWordWrap(true);
+
+                            regionStatusLabel->setVisible(false);
+                            regionInfoLabel->setVisible(false);
+
+                            paramLayout->addWidget(regionStatusLabel);
+                            paramLayout->addWidget(regionInfoLabel);
+
+                            layout->addWidget(paramBox);
+
+                            // Update region status when selection changes
+                            auto updateRegionStatus = [=]() {
+                                if (regionalRadio->isChecked()) {
+                                    if (m_imageLabel->isRegionSelected()) {
+                                        QRect region = m_imageLabel->getSelectedRegion();
+                                        regionStatusLabel->setText(
+                                        QString("Selected Region: (%1,%2) - %3x%4")
+                                        .arg(region.x())
+                                        .arg(region.y())
+                                        .arg(region.width())
+                                        .arg(region.height()));
+                                        regionStatusLabel->setStyleSheet("color: green; font-weight: bold;");
+                                        regionInfoLabel->setVisible(false);
+                                    } else {
+                                        regionStatusLabel->setText("No region selected");
+                                        regionStatusLabel->setStyleSheet("color: red; font-weight: bold;");
+                                        regionInfoLabel->setVisible(true);
+                                    }
+                                    regionStatusLabel->setVisible(true);
+                                } else {
+                                    regionStatusLabel->setVisible(false);
+                                    regionInfoLabel->setVisible(false);
+                                }
+                            };
+
+                            // Connect radio buttons to update control visibility
+                            connect(overallRadio, &QRadioButton::toggled, [&dialog, regionStatusLabel, regionInfoLabel, thresholdWidget](bool checked) {
+                                if (checked) {
+                                    thresholdWidget->setVisible(false);
+                                    regionStatusLabel->setVisible(false);
+                                    regionInfoLabel->setVisible(false);
+                                    dialog.adjustSize();
+                                }
+                            });
+
+                            connect(regionalRadio, &QRadioButton::toggled, [&dialog, thresholdWidget, updateRegionStatus](bool checked) {
+                                if (checked) {
+                                    thresholdWidget->setVisible(false);
+                                    updateRegionStatus();
+                                    dialog.adjustSize();
+                                }
+                            });
+
+                            connect(thresholdRadio, &QRadioButton::toggled, [&dialog, regionStatusLabel, regionInfoLabel, thresholdWidget](bool checked) {
+                                if (checked) {
+                                    thresholdWidget->setVisible(true);
+                                    regionStatusLabel->setVisible(false);
+                                    regionInfoLabel->setVisible(false);
+                                    dialog.adjustSize();
+                                }
+                            });
+
+                            // Create and add button box
+                            QDialogButtonBox* buttonBox = new QDialogButtonBox(
+                            QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+                            layout->addWidget(buttonBox);
+
+                            connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+                            connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+                            // Initial status update
+                            updateRegionStatus();
+
+                            if (dialog.exec() == QDialog::Accepted) {
+                                float strength = strengthSpinBox->value();
+
+                                try {
+                                    const auto& finalImage = m_imageProcessor.getFinalImage();
+                                    if (!finalImage) {
+                                        QMessageBox::warning(this, "Error", "No image data available");
+                                        return;
+                                    }
+
+                                    int height = m_imageProcessor.getFinalImageHeight();
+                                    int width = m_imageProcessor.getFinalImageWidth();
+
+                                    // Allocate memory
+                                    double** imgData = nullptr;
+                                    malloc2D(imgData, height, width);
+
+                                    // Copy data
+                                    for (int y = 0; y < height; y++) {
+                                        for (int x = 0; x < width; x++) {
+                                            imgData[y][x] = finalImage[y][x];
+                                        }
+                                    }
+
+                                    QString modeStr;
+                                    QString paramStr;
+
+                                    if (thresholdRadio->isChecked()) {
+                                        float threshold = thresholdSpinBox->value();
+                                        ImageAdjustments::sharpenWithThreshold(imgData, height, width, strength, threshold);
+                                        modeStr = "Threshold";
+                                        paramStr = QString("Strength: %1, Threshold: %2")
+                                        .arg(strength, 0, 'f', 2)
+                                        .arg(threshold);
+                                    }
+                                    else if (regionalRadio->isChecked()) {
+                                        if (!m_imageLabel->isRegionSelected()) {
+                                            // Clean up allocated memory
+                                            for (int i = 0; i < height; i++) {
+                                                free(imgData[i]);
+                                            }
+                                            free(imgData);
+
+                                            QMessageBox::information(this, "Region Selection",
+                                            "Please select a region first, then try again.");
+                                            return;
+                                        }
+
+                                        QRect selectedRegion = m_imageLabel->getSelectedRegion();
+                                        ImageAdjustments::applySharpenToRegion(
+                                        imgData, height, width, strength, selectedRegion);
+
+                                        modeStr = "Regional";
+                                        paramStr = QString("Strength: %1\nRegion: (%2,%3,%4,%5)")
+                                        .arg(strength, 0, 'f', 2)
+                                        .arg(selectedRegion.x())
+                                        .arg(selectedRegion.y())
+                                        .arg(selectedRegion.width())
+                                        .arg(selectedRegion.height());
+                                    }
+                                    else {
+                                        ImageAdjustments::sharpenImage(imgData, height, width, strength);
+                                        modeStr = "Overall";
+                                        paramStr = QString("Strength: %1").arg(strength, 0, 'f', 2);
+                                    }
+
+                                    // Update image
+                                    m_imageProcessor.updateAndSaveFinalImage(imgData, height, width);
+
+                                    // Clean up
+                                    for (int i = 0; i < height; i++) {
+                                        free(imgData[i]);
+                                    }
+                                    free(imgData);
+
+                                    // Update display
+                                    m_imageLabel->clearSelection();
+                                    updateImageDisplay();
+                                    updateLastAction("Sharpen Adjustment",
+                                    QString("Mode: %1\n%2").arg(modeStr).arg(paramStr));
+
+                                } catch (const std::exception& e) {
+                                    QMessageBox::critical(this, "Error",
+                                    QString("Failed to apply sharpening: %1").arg(e.what()));
+                                }
+                            }
+                        }}
+                   });
 }
 
 void ControlPanel::setupGraph() {
@@ -3949,24 +3932,24 @@ void ControlPanel::setupGraph() {
     m_histogram->setVisible(false);
 
     createGroupBox("Graph Operations", {
-                                           {"Histogram", [this]() {
-                                                bool isCurrentlyVisible = m_histogram->isVisible();
-                                                m_histogram->setVisible(!isCurrentlyVisible);
+                       {"Histogram", [this]() {
+                            bool isCurrentlyVisible = m_histogram->isVisible();
+                            m_histogram->setVisible(!isCurrentlyVisible);
 
-                                                if (!isCurrentlyVisible) {
-                                                    const auto& finalImage = m_imageProcessor.getFinalImage();
-                                                    int height = m_imageProcessor.getFinalImageHeight();
-                                                    int width = m_imageProcessor.getFinalImageWidth();
+                            if (!isCurrentlyVisible) {
+                                const auto& finalImage = m_imageProcessor.getFinalImage();
+                                int height = m_imageProcessor.getFinalImageHeight();
+                                int width = m_imageProcessor.getFinalImageWidth();
 
-                                                    if (finalImage) {
-                                                        m_histogram->updateHistogram(finalImage, height, width);
-                                                    }
-                                                }
+                                if (finalImage) {
+                                    m_histogram->updateHistogram(finalImage, height, width);
+                                }
+                            }
 
-                                                m_mainLayout->invalidate();
-                                                updateGeometry();
-                                            }}
-                                       });
+                            m_mainLayout->invalidate();
+                            updateGeometry();
+                        }}
+                   });
 
     // Find the Graph Operations group box and add histogram to it
     for (int i = 0; i < m_scrollLayout->count(); ++i) {
@@ -4163,19 +4146,19 @@ void ControlPanel::processCalibration(int linesToProcessY, int linesToProcessX, 
         updateImageDisplay();
 
         QString paramString = QString("Mode: %1\nParameters: Y=%2, X=%3")
-                                  .arg(actionDescription)
-                                  .arg(newY)
-                                  .arg(newX);
+                .arg(actionDescription)
+                .arg(newY)
+                .arg(newX);
 
         updateLastAction("Axis Calibration", paramString);
 
         InterlaceProcessor::setCalibrationParams(newY, newX);
 
         if (newY > 0 || newX > 0) {
-                InterlaceProcessor::setCalibrationParams(newY, newX);
-                m_resetCalibrationButton->setEnabled(true);
-                m_resetCalibrationButton->setVisible(true);
-            }
+            InterlaceProcessor::setCalibrationParams(newY, newX);
+            m_resetCalibrationButton->setEnabled(true);
+            m_resetCalibrationButton->setVisible(true);
+        }
 
     } catch (const std::exception& e) {
         QMessageBox::critical(this, "Calibration Error",
@@ -4192,8 +4175,8 @@ void ControlPanel::drawLineLabelWithCountPointer(QPainter& painter, const DarkLi
 
     // 准备标签文本
     QString labelText = QString("Line %1 - %2")
-                            .arg(count + 1)
-                            .arg(line.inObject ? "In Object" : "Isolated");
+            .arg(count + 1)
+            .arg(line.inObject ? "In Object" : "Isolated");
 
     // 计算标签位置，确保不会超出图像边界
     const int labelMargin = 10;
@@ -4409,5 +4392,4 @@ void ControlPanel::cleanupImageArray(double** array, int rows) {
         delete[] array;
     }
 }
-
 
