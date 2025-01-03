@@ -2081,11 +2081,9 @@ void ControlPanel::setupFilteringOperations() {
                                     double** inputBuffer = CLAHEProcessor::allocateImageBuffer(height, width);
                                     double** outputBuffer = CLAHEProcessor::allocateImageBuffer(height, width);
 
-                                    // Copy input data (already in 16-bit range)
+                                    // Copy input data using memcpy for each row
                                     for (int y = 0; y < height; ++y) {
-                                        for (int x = 0; x < width; ++x) {
-                                            inputBuffer[y][x] = finalImage[y][x];
-                                        }
+                                        memcpy(inputBuffer[y], finalImage[y], width * sizeof(double));
                                     }
 
                                     CLAHEProcessor claheProcessor;

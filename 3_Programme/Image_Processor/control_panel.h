@@ -29,6 +29,7 @@
 #include "CGParams.h"
 #include "CGProcessImage.h"
 #include "graph_3d_processor.h"
+#include "CLAHE_uint32.h"
 
 class ControlPanel : public QWidget {
     Q_OBJECT
