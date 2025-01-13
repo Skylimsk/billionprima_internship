@@ -98,7 +98,6 @@ win32 {
 
 # Source files
 SOURCES += \
-    CLAHE_uint32.cpp \
     third_party/qcustomplot/qcustomplot.cpp \
     graph_3d_processor.cpp \
     CLAHE.cpp \
@@ -118,7 +117,6 @@ SOURCES += \
     CGParams.cpp
 
 HEADERS += \
-    CLAHE_uint32.h \
     third_party/qcustomplot/qcustomplot.h \
     graph_3d_processor.h \
     CLAHE.h \

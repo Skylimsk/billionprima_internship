@@ -1,52 +1,99 @@
-Function Explanation for darkline_pointer.h and its source code.
+Function Explanation for CLAHE.cpp and CLAHE.h:
 
-1. detectDarkLines:
+1.	Constructor (CLAHEProcessor):
+•	Initializes CLAHE processor with hardware threading capabilities
+•	Sets up OpenCV CLAHE object and resets performance metrics
 
-- For detecting dark lines horizontally and vertically in an image
-- Uses multi-threading
-- Return array of detected lines via helper
+2.	Memory Management Functions:
 
-2. isInObject:
+•	allocateImageBuffer: 
+	Allocates 2D double array for image processing
+	Returns dynamically allocated memory for image data
 
-- Determines if a line is within a dark object.
-- Checks surround pixels via some parameters; if the surround pixels exceed the threshold, they will be declared isolated lines, and vice versa.
+•	deallocateImageBuffer: 
+	Safely frees memory allocated for image buffers
+	Prevents memory leaks by properly cleaning up 2D arrays
 
-3. createDarkLineArray:
+3.	Format Conversion Functions:
 
-- Creates a new array for storing dark lines.
+•	doubleToMat: 
+	Converts double array image data to OpenCV Mat format
+	Enables processing with OpenCV functions
 
-4. destroyDarkLineArray:
+•	matToDouble: 
+	Converts OpenCV Mat back to double array format
+	Preserves processed data in original format
 
-- Properly deallocates DarkLineArray memory
+4.	Standard CLAHE Functions:
 
-5. copyDarkLineArray:
+•	applyCLAHE: 
+	GPU-accelerated implementation
+	Enhances local contrast using histogram equalization
+	Applies clip limit to prevent noise amplification
 
-- Creates deep copy of DarkLineArray
+•	applyCLAHE_CPU: 
+	Multi-threaded CPU implementation
+	Processes image in parallel strips for better performance
+	Uses multiple CLAHE instances across threads
 
-6. createSafeDarkLineArray:
+5.	Combined CLAHE Functions:
 
-- Safely creating a new DarkLineArray object with specified dimensions
+•	applyCombinedCLAHE: 
+	GPU version preserving bright details
+	Takes maximum value between original and CLAHE-processed pixels
+	Maintains 16-bit precision
 
-7. createImageCopy：
+•	applyCombinedCLAHE_CPU: 
+	CPU version with brightness preservation
+	Multi-threaded implementation for performance
+	Preserves original bright areas while enhancing dark regions
 
-- Creates a deep copy of an ImageData object using smart pointers
+6.	Threshold CLAHE Functions:
 
-8.  copyImageData:
+•	applyThresholdCLAHE: 
+	GPU-accelerated selective CLAHE
+	Only processes regions below specified threshold
+	Leaves bright areas untouched
 
-- Copies content from a source ImageData to a destination ImageData
+•	applyThresholdCLAHE_CPU: 
+	CPU implementation of threshold-based CLAHE
+	Creates mask for dark regions
+	Selectively applies enhancement
 
-8. removeDarkLinesSelective:
+7.	Logging Functions:
 
-- Remove specific types of dark lines at once using specific removal methods.
+•	logThreadStart: 
+	Thread-safe logging of processing start
+	Records row range information
 
-9. removeDarkLineSequential:
+•	logThreadComplete: 
+	Logs thread completion status
 
-- Remove lines in a specific sequence using specific removal methods.
+•	logMessage: 
+	General purpose thread-safe logging
+	Includes thread identification
 
-10. calculateSearchRadius:
+8.	Performance Monitoring:
 
-- Determines search radius for neighbour value calculation
+•	PerformanceMetrics struct: 
+	Tracks processing and total time
+	Records number of threads used
+	Monitors CLAHE operation status
 
-11. findReplacementValue:
+9.	Thread Management:
 
-- Calculates replacement pixel values when removing dark lines
+•	ThreadConfig struct: 
+	Manages thread parameters
+	Configures number of threads and chunk sizes
+
+•	ThreadProgress struct: 
+	Tracks multi-threaded operation progress
+	Uses atomic counters for thread safety
+
+10.	Utility Classes:
+
+•	ScopedTimer: 
+	RAII-style timing mechanism
+	Automatically measures operation duration
+	Provides performance logging
+
