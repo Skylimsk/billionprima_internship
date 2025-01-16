@@ -1,6 +1,8 @@
+#define GLM_ENABLE_EXPERIMENTAL  // Add this before including GLM headers
 #include "graphics_items.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 #include <algorithm>
 
 // GraphicsItem Implementation
@@ -92,26 +94,24 @@ void GraphicsView::setScene(Scene* scene) {
 }
 
 void GraphicsView::zoom(float factor) {
+    // Update zoom level with the new factor
     m_zoom *= factor;
-
-    // Update view matrix
-    // Scale around the center of the view
-    glm::vec3 center = glm::vec3(m_viewMatrix[3]);
-    glm::mat4 transform = glm::translate(glm::mat4(1.0f), center);
-    transform = glm::scale(transform, glm::vec3(factor, factor, 1.0f));
-    transform = glm::translate(transform, -center);
-
-    m_viewMatrix = transform * m_viewMatrix;
+    // Get the center of the viewport
+    glm::vec2 viewCenter(0.0f, 0.0f);
+    // Create transformation matrices
+    glm::mat4 toOrigin = glm::translate(glm::mat4(1.0f), glm::vec3(-viewCenter.x, -viewCenter.y, 0.0f));
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(factor, factor, 1.0f));
+    glm::mat4 fromOrigin = glm::translate(glm::mat4(1.0f), glm::vec3(viewCenter.x, viewCenter.y, 0.0f));
+    // Combine transformations
+    m_viewMatrix = fromOrigin * scale * toOrigin * m_viewMatrix;
 }
 
 void GraphicsView::pan(const glm::vec2& delta) {
-    // Create translation matrix and update view
-    glm::mat4 translation = glm::translate(
-        glm::mat4(1.0f),
-        glm::vec3(delta.x, delta.y, 0.0f)
-    );
-    m_viewMatrix = translation * m_viewMatrix;
+    
+    m_viewMatrix[3][0] += delta.x;
+    m_viewMatrix[3][1] += delta.y;
 }
+
 
 void GraphicsView::fitInView(const glm::vec4& rect) {
     // Reset view matrix
@@ -122,17 +122,33 @@ void GraphicsView::fitInView(const glm::vec4& rect) {
     float scaleY = 2.0f / rect.w;
     float scale = std::min(scaleX, scaleY);
 
-    // Center the rect
-    glm::vec2 center = glm::vec2(
-        rect.x + rect.z / 2.0f,
-        rect.y + rect.w / 2.0f
-    );
+    // Calculate center of rect
+    glm::vec2 center(rect.x + rect.z * 0.5f, rect.y + rect.w * 0.5f);
 
-    // Apply transformations
-    m_viewMatrix = glm::translate(m_viewMatrix, glm::vec3(-center.x, -center.y, 0.0f));
-    m_viewMatrix = glm::scale(m_viewMatrix, glm::vec3(scale, scale, 1.0f));
+    // Create transformation matrices
+    glm::mat4 translate = glm::translate(glm::mat4(1.0f), glm::vec3(-center.x, -center.y, 0.0f));
+    glm::mat4 scaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(scale, scale, 1.0f));
 
-    m_zoom = scale;
+    // Combine transformations
+    m_viewMatrix = scaleMatrix * translate;
+
+    // Don't modify zoom level here anymore
+    // m_zoom = scale;  // Remove this line
+}
+
+float GraphicsView::getActualZoom() const {
+    // Get the scale factor from the transform matrix
+    glm::vec3 scale;
+    glm::quat rotation;
+    glm::vec3 translation;
+    glm::vec3 skew;
+    glm::vec4 perspective;
+    bool success = glm::decompose(m_viewMatrix, scale, rotation, translation, skew, perspective);
+
+    if (success) {
+        return (scale.x + scale.y) / 2.0f;
+    }
+    return m_zoom;  // Return stored zoom if decomposition fails
 }
 
 glm::vec2 GraphicsView::mapToScene(const glm::vec2& viewPos) const {
@@ -315,7 +331,117 @@ TextureItem::TextureItem()
     , m_dataMin(0)
     , m_dataMax(65535)
 {
-    initializeGL();
+    // Vertex shader for basic texture rendering
+    const char* vertexShaderSource = R"(
+        #version 330 core
+        layout (location = 0) in vec3 aPos;
+        layout (location = 1) in vec2 aTexCoord;
+        
+        uniform mat4 model;
+        uniform mat4 view;
+        
+        out vec2 TexCoord;
+        
+        void main() {
+            gl_Position = view * model * vec4(aPos, 1.0);
+            TexCoord = aTexCoord;
+        }
+    )";
+
+    // Fragment shader for grayscale display with enhanced contrast
+    // Fragment shader for grayscale display
+    const char* fragmentShaderSource = R"(
+    #version 330 core
+    out vec4 FragColor;
+    
+    in vec2 TexCoord;
+    
+    uniform sampler2D texture1;
+    uniform bool isSelected;
+    uniform float windowMin;
+    uniform float windowMax;
+    
+    void main() {
+        float value = texture(texture1, TexCoord).r;
+        
+        // Apply window/level adjustment
+        value = (value - windowMin) / (windowMax - windowMin);
+        value = clamp(value, 0.0, 1.0);
+        
+        // Simply output grayscale value
+        FragColor = vec4(value, value, value, 1.0);
+    }
+)";
+    // Create and compile vertex shader
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+    glCompileShader(vertexShader);
+
+    // Check vertex shader compilation
+    int success;
+    char infoLog[512];
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        std::cerr << "Vertex shader compilation failed: " << infoLog << std::endl;
+        throw std::runtime_error("Vertex shader compilation failed");
+    }
+
+    // Create and compile fragment shader
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+    glCompileShader(fragmentShader);
+
+    // Check fragment shader compilation
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        std::cerr << "Fragment shader compilation failed: " << infoLog << std::endl;
+        glDeleteShader(vertexShader);
+        throw std::runtime_error("Fragment shader compilation failed");
+    }
+
+    // Create shader program and link shaders
+    m_shader = glCreateProgram();
+    glAttachShader(m_shader, vertexShader);
+    glAttachShader(m_shader, fragmentShader);
+    glLinkProgram(m_shader);
+
+    // Check shader program linking
+    glGetProgramiv(m_shader, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(m_shader, 512, NULL, infoLog);
+        std::cerr << "Shader program linking failed: " << infoLog << std::endl;
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+        throw std::runtime_error("Shader program linking failed");
+    }
+
+    // Cleanup individual shaders as they're now linked into the program
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    // Generate and bind vertex array object (VAO)
+    glGenVertexArrays(1, &m_vao);
+    glGenBuffers(1, &m_vbo);
+
+    // Generate texture
+    glGenTextures(1, &m_texture);
+    glBindTexture(GL_TEXTURE_2D, m_texture);
+
+    // Set default texture parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Check for OpenGL errors
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR) {
+        std::cerr << "OpenGL error during initialization: " << err << std::endl;
+        cleanup();
+        throw std::runtime_error("OpenGL initialization failed");
+    }
 }
 
 TextureItem::~TextureItem() {
@@ -448,36 +574,42 @@ void TextureItem::setImage(const std::vector<uint16_t>& data, int width, int hei
     m_width = width;
     m_height = height;
 
-    // Find data range for auto-windowing
-    uint16_t minVal = 65535;
-    uint16_t maxVal = 0;
-    for (const auto& value : data) {
-        minVal = std::min(minVal, value);
-        maxVal = std::max(maxVal, value);
-    }
-    maxVal = std::max(maxVal, uint16_t(1)); // Prevent division by zero
+    // Store original data range
+    m_dataMin = *std::min_element(data.begin(), data.end());
+    m_dataMax = *std::max_element(data.begin(), data.end());
 
-    // Normalize to [0,1] range
-    std::vector<float> normalizedData;
-    normalizedData.reserve(data.size());
-    float range = maxVal - minVal;
-    for (const auto& value : data) {
-        normalizedData.push_back((value - minVal) / range);
+    // Convert 16-bit data to normalized float values
+    std::vector<float> normalizedData(data.size());
+    for (size_t i = 0; i < data.size(); ++i) {
+        normalizedData[i] = static_cast<float>(data[i]) / 65535.0f;  // Normalize to [0,1]
     }
 
-    // Upload to texture
+    // Create and bind texture
     glBindTexture(GL_TEXTURE_2D, m_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, width, height, 0, GL_RED, GL_FLOAT, normalizedData.data());
 
-    // Update geometry
+    // Upload texture data
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F,  // Internal format: 32-bit float
+        width, height, 0,
+        GL_RED, GL_FLOAT,            // Format and type of the pixel data
+        normalizedData.data());
+
+    // Set texture parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Set swizzle mask to show grayscale properly
+    GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
+    glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+
+    // Update geometry for the quad that will display the texture
     updateGeometry();
 
-    // Store range for window/level controls
-    m_dataMin = minVal;
-    m_dataMax = maxVal;
-    setWindowLevel(0.0f, 1.0f);  // Reset window level
+    // Set initial window/level values
+    float range = m_dataMax - m_dataMin;
+    setWindowLevel(m_dataMin / 65535.0f, m_dataMax / 65535.0f);
 }
-
 
 void TextureItem::updateGeometry() {
     float vertices[] = {

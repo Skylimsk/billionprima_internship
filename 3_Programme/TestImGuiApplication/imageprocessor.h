@@ -68,7 +68,6 @@ private:
     // UI rendering
     void drawMainWindow();
     void drawControlsWindow();
-    void drawStatusBar();
     void handleLoadDialog();
     void handleSaveDialog();
 
@@ -93,6 +92,32 @@ private:
     uint16_t m_minValue = 0;
     uint16_t m_maxValue = 0;
     double m_meanValue = 0.0;
+
+    // OpenGL texture handle for displaying the image
+    GLuint m_displayTexture = 0;
+    // Function to convert the raw data to a displayable texture
+    void convertDataToTexture();
+
+    static void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+
+    void handleWindowStateChange();
+
+    bool m_controlWindowCollapsed = false;  // Track control window collapsed state
+
+    bool m_isPanning = false;
+    double m_lastMouseX = 0.0;
+    double m_lastMouseY = 0.0;
+
+    // Static callbacks
+    static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+    static void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
+
+    // Make friend functions to access private members
+    friend void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+    friend void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
+    friend void scrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+    friend void framebufferSizeCallback(GLFWwindow* window, int width, int height);
+
 };
 
 #endif // IMAGEPROCESSOR_H

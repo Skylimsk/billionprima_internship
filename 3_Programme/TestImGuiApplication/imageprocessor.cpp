@@ -3,6 +3,12 @@
 #include <fstream>
 #include <sstream>
 
+// Disable warnings for external library
+#define _CRT_SECURE_NO_WARNINGS
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+#undef _CRT_SECURE_NO_WARNINGS
+
 class LoadingProgress {
 public:
     static void updateProgress(const std::string& filename, float percentage, char* statusText, size_t bufferSize) {
@@ -46,6 +52,10 @@ ImageProcessor::ImageProcessor()
 }
 
 ImageProcessor::~ImageProcessor() {
+    if (m_displayTexture) {
+        glDeleteTextures(1, &m_displayTexture);
+        m_displayTexture = 0;
+    }
     cleanup();
 }
 
@@ -61,6 +71,11 @@ bool ImageProcessor::initializeWindow() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+
+    // Disable window resizing and maximization
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_MAXIMIZED, GLFW_FALSE);
+    glfwWindowHint(GLFW_DECORATED, GLFW_TRUE);  // Keep window decorations (title bar, etc)
 
     // Enable MSAA
     glfwWindowHint(GLFW_SAMPLES, 4);
@@ -89,6 +104,14 @@ bool ImageProcessor::initializeWindow() {
     std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
     std::cout << "GLSL Version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 
+    glfwSetWindowUserPointer(m_window, this);
+
+    // Set callbacks
+    glfwSetMouseButtonCallback(m_window, ImageProcessor::mouseButtonCallback);
+    glfwSetCursorPosCallback(m_window, ImageProcessor::cursorPositionCallback);
+    glfwSetScrollCallback(m_window, ImageProcessor::scrollCallback);
+    glfwSetFramebufferSizeCallback(m_window, ImageProcessor::framebufferSizeCallback);
+
     return true;
 }
 
@@ -116,22 +139,6 @@ void ImageProcessor::cleanup() {
 
 void ImageProcessor::drawControlsWindow() {
     
-}
-
-void ImageProcessor::drawStatusBar() {
-    ImGui::SetNextWindowPos(ImVec2(0, m_windowHeight - 25));
-    ImGui::SetNextWindowSize(ImVec2(m_windowWidth, 25));
-
-    ImGuiWindowFlags flags =
-        ImGuiWindowFlags_NoTitleBar |
-        ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_NoScrollbar |
-        ImGuiWindowFlags_NoCollapse;
-
-    ImGui::Begin("##StatusBar", nullptr, flags);
-    ImGui::Text("%s", m_statusText);
-    ImGui::End();
 }
 
 void ImageProcessor::handleLoadDialog() {
@@ -207,26 +214,85 @@ void ImageProcessor::handleLoadDialog() {
 }
 
 void ImageProcessor::handleSaveDialog() {
-    ImGui::SetNextWindowSize(ImVec2(400, 150), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowPos(
-        ImVec2(m_windowWidth * 0.5f - 200, m_windowHeight * 0.5f - 75),
-        ImGuiCond_FirstUseEver
+        ImVec2(m_windowWidth * 0.5f, m_windowHeight * 0.5f),
+        ImGuiCond_FirstUseEver,
+        ImVec2(0.5f, 0.5f)
     );
 
-    if (ImGui::Begin("Save Image", &m_showSaveDialog)) {
-        ImGui::Text("Save Location: %s", m_currentPath.c_str());
-        ImGui::InputText("Filename", m_inputFilename, sizeof(m_inputFilename));
-
+    if (ImGui::Begin("Save Image##Dialog", &m_showSaveDialog)) {
+        ImGui::Text("Current Path: %s", m_currentPath.c_str());
         ImGui::Separator();
 
-        if (ImGui::Button("Save", ImVec2(120, 0))) {
-            fs::path savePath = fs::path(m_currentPath) / m_inputFilename;
-            if (saveImage(savePath.string())) {
-                m_showSaveDialog = false;
+        // File browser
+        if (ImGui::BeginChild("Files", ImVec2(0, -90), true)) {
+            if (ImGui::Button("..")) {
+                fs::path current(m_currentPath);
+                if (current.has_parent_path()) {
+                    m_currentPath = current.parent_path().string();
+                }
+            }
+
+            try {
+                for (const auto& entry : fs::directory_iterator(m_currentPath)) {
+                    const auto& path = entry.path();
+                    std::string filename = path.filename().string();
+
+                    if (fs::is_directory(entry)) {
+                        if (ImGui::Selectable((filename + "/").c_str())) {
+                            m_currentPath = path.string();
+                        }
+                    }
+                    else if (path.extension() == ".png") {
+                        if (ImGui::Selectable(filename.c_str())) {
+                            strcpy_s(m_inputFilename, sizeof(m_inputFilename), filename.c_str());
+                        }
+                    }
+                }
+            }
+            catch (const std::exception& e) {
+                ImGui::TextColored(ImVec4(1, 0, 0, 1), "Error: %s", e.what());
+            }
+
+            ImGui::EndChild();
+        }
+
+        // Filename input
+        ImGui::Text("Filename:");
+        ImGui::SetNextItemWidth(-1);
+        if (ImGui::InputText("##filename", m_inputFilename, sizeof(m_inputFilename))) {
+            // Ensure filename ends with .png
+            std::string filename = m_inputFilename;
+            if (!filename.empty() && filename.substr(filename.length() - 4) != ".png") {
+                filename += ".png";
+                strcpy_s(m_inputFilename, sizeof(m_inputFilename), filename.c_str());
             }
         }
-        ImGui::SameLine();
-        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
+        float contentWidth = ImGui::GetContentRegionAvail().x;
+        float buttonWidth = 120;
+        float spacing = 10;
+
+        // Center the buttons
+        ImGui::SetCursorPosX((contentWidth - (2 * buttonWidth + spacing)) * 0.5f);
+
+        if (ImGui::Button("Save", ImVec2(buttonWidth, 0))) {
+            std::string filename = m_inputFilename;
+            if (!filename.empty()) {
+                // Ensure .png extension
+                if (filename.substr(filename.length() - 4) != ".png") {
+                    filename += ".png";
+                }
+                fs::path savePath = fs::path(m_currentPath) / filename;
+                if (saveImage(savePath.string())) {
+                    m_showSaveDialog = false;
+                }
+            }
+        }
+        ImGui::SameLine(0, spacing);
+        if (ImGui::Button("Cancel", ImVec2(buttonWidth, 0))) {
             m_showSaveDialog = false;
         }
 
@@ -323,6 +389,8 @@ bool ImageProcessor::loadImage(const std::string& path) {
         m_imgData[0].size(), m_imgData.size(),
         m_minValue, m_maxValue, m_meanValue);
 
+    convertDataToTexture();
+
     return true;
 }
 
@@ -332,172 +400,186 @@ bool ImageProcessor::saveImage(const std::string& path) {
         return false;
     }
 
-    std::ofstream outFile(path);
-    if (!outFile.is_open()) {
-        snprintf(m_statusText, sizeof(m_statusText),
-            "Error: Cannot create file %s", path.c_str());
-        return false;
+    int width = m_imgData[0].size();
+    int height = m_imgData.size();
+
+    // Allocate memory for pixel data (single channel)
+    std::vector<unsigned char> pixels(width * height);
+
+    // Convert 16-bit grayscale to 8-bit grayscale
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            float normalized = static_cast<float>(m_imgData[y][x] - m_minValue) /
+                static_cast<float>(m_maxValue - m_minValue);
+            pixels[y * width + x] = static_cast<unsigned char>(normalized * 255.0f);
+        }
     }
 
-    for (const auto& row : m_imgData) {
-        for (size_t i = 0; i < row.size(); ++i) {
-            outFile << row[i];
-            if (i < row.size() - 1) outFile << " ";
-        }
-        outFile << "\n";
+    // Save as PNG using stb_image_write (grayscale)
+    if (!stbi_write_png(path.c_str(), width, height, 1, pixels.data(), width)) {
+        snprintf(m_statusText, sizeof(m_statusText),
+            "Error: Failed to save PNG file %s", path.c_str());
+        return false;
     }
-    outFile.close();
 
     snprintf(m_statusText, sizeof(m_statusText), "Saved: %s", path.c_str());
     return true;
 }
 
+void ImageProcessor::convertDataToTexture() {
+    if (m_imgData.empty() || m_imgData[0].empty()) return;
+
+    int width = m_imgData[0].size();
+    int height = m_imgData.size();
+
+    // Generate single channel 8-bit image data
+    std::vector<unsigned char> pixels(width * height);
+
+    // Convert 16-bit data to 8-bit and normalize
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            float normalized = static_cast<float>(m_imgData[y][x] - m_minValue) /
+                static_cast<float>(m_maxValue - m_minValue);
+            pixels[y * width + x] = static_cast<unsigned char>(normalized * 255.0f);
+        }
+    }
+
+    // Delete existing texture if it exists
+    if (m_displayTexture) {
+        glDeleteTextures(1, &m_displayTexture);
+    }
+
+    // Create new OpenGL texture
+    glGenTextures(1, &m_displayTexture);
+    glBindTexture(GL_TEXTURE_2D, m_displayTexture);
+
+    // Set texture parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    // Set swizzle mask to show grayscale properly
+    GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
+    glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+
+    // Upload texture data as single channel
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0,
+        GL_RED, GL_UNSIGNED_BYTE, pixels.data());
+}
+
 void ImageProcessor::drawMainWindow() {
-    // Main window takes up full window width
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(m_windowWidth, m_windowHeight - 25));
+    // Calculate control panel dimensions
+    // Keep the panel height minimal to maximize image viewing area
+    float controlPanelHeight = ImGui::GetFrameHeightWithSpacing() * 5; // Three rows of controls
+    float windowPadding = 1.0f;
 
-    ImGuiWindowFlags flags =
-        ImGuiWindowFlags_NoTitleBar |
-        ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_NoScrollbar |
-        ImGuiWindowFlags_NoCollapse |
-        ImGuiWindowFlags_NoBringToFrontOnFocus;
+    // Set window flags to make the control panel behave as desired
+    ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize |    // Prevent resizing
+        ImGuiWindowFlags_NoMove |         // Prevent moving
+        ImGuiWindowFlags_NoCollapse |     // Prevent collapsing
+        ImGuiWindowFlags_NoBringToFrontOnFocus; // Keep z-order
 
-    if (ImGui::Begin("##MainWindow", nullptr, flags)) {
-        // Get the window's content region
-        ImVec2 windowPos = ImGui::GetWindowPos();
-        ImVec2 contentPos = ImGui::GetCursorScreenPos();
-        ImVec2 contentSize = ImGui::GetContentRegionAvail();
+    // Position the control panel at the top of the window
+    ImGui::SetNextWindowPos(ImVec2(windowPadding, windowPadding));
+    ImGui::SetNextWindowSize(ImVec2(m_windowWidth - 2 * windowPadding, controlPanelHeight));
 
-        // Update viewport for proper rendering
-        glViewport(
-            contentPos.x - windowPos.x,
-            contentPos.y - windowPos.y,
-            contentSize.x,
-            contentSize.y
-        );
+    if (ImGui::Begin("Controls", nullptr, windowFlags)) {
+        // Create two-column layout
+        ImGui::Columns(2, nullptr, false);
 
-        // Set the view size for correct image display
-        m_view.setViewportSize(contentSize.x, contentSize.y);
+        // Left column: File Operations
+        ImGui::Text("File Operations");
+        float columnWidth = ImGui::GetContentRegionAvail().x - 10.0f;
+        float buttonWidth = (columnWidth - 10.0f) / 2;
+        float buttonHeight = ImGui::GetFrameHeight();
 
-        // Create a full-window button to capture mouse events
-        ImGui::InvisibleButton("##canvas", contentSize);
-
-        ImGui::End();
-    }
-
-    // Fixed control panel in top-right corner
-    ImVec2 panelPos(m_windowWidth - 310, 10);
-    ImGui::SetNextWindowPos(panelPos);
-    ImGui::SetNextWindowSize(ImVec2(300, ImGui::GetFrameHeight() * 16));
-    ImGui::SetNextWindowBgAlpha(0.85f);
-
-    ImGuiWindowFlags controlFlags =
-        ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoCollapse |
-        ImGuiWindowFlags_NoTitleBar;
-
-    if (ImGui::Begin("##Controls", nullptr, controlFlags)) {
-        if (ImGui::CollapsingHeader("File Operations")) {
-            if (ImGui::Button("Load Image", ImVec2(140, 0))) {
-                m_showLoadDialog = true;
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Save Image", ImVec2(140, 0))) {
-                if (!m_imgData.empty()) {
-                    m_showSaveDialog = true;
-                }
-            }
+        // Load and Save buttons
+        if (ImGui::Button("Load Image", ImVec2(buttonWidth, buttonHeight))) {
+            m_showLoadDialog = true;
         }
-
-        if (ImGui::CollapsingHeader("View Controls")) {
-            static float zoomLevel = 1.0f;
-            ImGui::SetNextItemWidth(-1);
-            if (ImGui::SliderFloat("##zoom", &zoomLevel, 0.1f, 5.0f, "%.2fx", ImGuiSliderFlags_AlwaysClamp)) {
-                float zoomFactor = zoomLevel / m_view.getZoom();
-                m_view.zoom(1.0f / zoomFactor);
-            }
-
-            ImGui::SetNextItemWidth(-1);
-            ImGui::SliderFloat("Pan X", &m_panX, -100.0f, 100.0f);
-
-            ImGui::SetNextItemWidth(-1);
-            ImGui::SliderFloat("Pan Y", &m_panY, -100.0f, 100.0f);
-
-            if (ImGui::Button("Reset View", ImVec2(-1, 0))) {
-                resetView();
-            }
-        }
-
-        if (ImGui::CollapsingHeader("Image Information")) {
+        ImGui::SameLine(0, 10.0f);
+        if (ImGui::Button("Save Image", ImVec2(buttonWidth, buttonHeight))) {
             if (!m_imgData.empty()) {
-                ImGui::Text("Dimensions: %dx%d", m_imgData[0].size(), m_imgData.size());
-                ImGui::Text("Bit Depth: 16-bit");
-                ImGui::Text("Data Range: [%u, %u]", m_minValue, m_maxValue);
-                ImGui::Text("Mean Value: %.2f", m_meanValue);
-                ImGui::Text("Zoom: %.2fx", m_view.getZoom());
-
-                ImVec2 mousePos = ImGui::GetMousePos();
-                glm::vec2 scenePos = m_view.mapToScene({ mousePos.x, mousePos.y });
-                int x = static_cast<int>(scenePos.x);
-                int y = static_cast<int>(scenePos.y);
-
-                if (x >= 0 && x < m_imgData[0].size() && y >= 0 && y < m_imgData.size()) {
-                    uint16_t pixelValue = m_imgData[y][x];
-                    float normalizedValue = static_cast<float>(pixelValue - m_minValue) /
-                        (m_maxValue - m_minValue);
-
-                    ImGui::Text("Position: (%d, %d)", x, y);
-                    ImGui::Text("Value: %u (%.1f%%)",
-                        pixelValue,
-                        normalizedValue * 100.0f);
-                }
-            }
-            else {
-                ImGui::Text("No image loaded");
+                m_showSaveDialog = true;
             }
         }
 
-        ImGui::End();
+        ImGui::NextColumn();
+
+        // Right column: View Controls
+        ImGui::Text("View Controls");
+        columnWidth = ImGui::GetContentRegionAvail().x - 10.0f;
+
+        // First row: Zoom controls with Fit to View
+        float zoomButtonWidth = (columnWidth - 20.0f) / 2;  // Adjusted for 2 buttons
+        float currentZoom = m_view.getZoom();
+        ImGui::Text("Zoom: %.2fx", currentZoom);
+
+        if (ImGui::Button("-", ImVec2(zoomButtonWidth, buttonHeight))) {
+            m_view.zoom(0.9f); // Zoom out
+        }
+        ImGui::SameLine(0, 10.0f);
+        if (ImGui::Button("+", ImVec2(zoomButtonWidth, buttonHeight))) {
+            m_view.zoom(1.1f); // Zoom in
+        }
+
+        // Second row: Fit to View button
+        if (ImGui::Button("Fit to View", ImVec2(columnWidth, buttonHeight))) {
+            resetView(); // Fit image to view
+        }
+
+        ImGui::Columns(1);
     }
+    ImGui::End();
 }
 
 void ImageProcessor::run() {
     while (!glfwWindowShouldClose(m_window) && m_running) {
+        // Process window and input events
         glfwPollEvents();
 
-        // Start ImGui frame
+        // Initialize ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // Set initial viewport
+        // Clear the entire window with background color
         glViewport(0, 0, m_windowWidth, m_windowHeight);
-
-        // Clear the entire window first
         glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // Draw main window first
+        // Draw control panel first to get its actual height
         drawMainWindow();
 
-        // Draw scene BEFORE controls and dialogs
+        // Calculate control panel height based on its collapsed state
+        float controlPanelHeight = m_controlWindowCollapsed ? 0.0f : (ImGui::GetFrameHeightWithSpacing() * 4);
+
+        // Calculate viewport dimensions for the image area
+        // The image viewport starts right after the control panel
+        int imageViewportY = static_cast<int>(controlPanelHeight);
+        int imageViewportHeight = m_windowHeight - imageViewportY;
+
+        // Set OpenGL viewport for image rendering
+        // This ensures the image is rendered in the correct area
+        glViewport(0, imageViewportY, m_windowWidth, imageViewportHeight);
+
+        // Update the view with new viewport dimensions
+        // This ensures proper aspect ratio and scaling
+        m_view.setViewportSize(m_windowWidth, imageViewportHeight);
+
+        // Render the scene (image and any overlays)
         m_scene.draw(m_view.getViewMatrix());
 
-        // Draw UI components
-        drawControlsWindow();
-        drawStatusBar();
-
+        // Handle any open dialogs
         if (m_showLoadDialog) handleLoadDialog();
         if (m_showSaveDialog) handleSaveDialog();
 
-        // Render ImGui
+        // Render ImGui overlay elements
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
+        // Swap front and back buffers
         glfwSwapBuffers(m_window);
     }
 }
@@ -518,7 +600,10 @@ void ImageProcessor::updateDisplayImage() {
     // Update the texture item with new image data
     m_imageItem->setImage(textureData, width, height);
 
-    // Reset and center the view
+    // Set zoom to 1.0 first
+    m_view.setZoom(1.0f);
+
+    // Then reset and center the view
     resetView();
 }
 
@@ -536,10 +621,97 @@ void ImageProcessor::glfwErrorCallback(int error, const char* description) {
 
 void ImageProcessor::resetView() {
     if (!m_imgData.empty()) {
+        // Always set zoom to 1.0 first
+        m_view.setZoom(1.0f);
+
+        // Then fit in view with 1.0 zoom
+        m_view.setViewMatrix(glm::mat4(1.0f)); // Reset view matrix through GraphicsView
         m_view.fitInView(glm::vec4(0, 0, m_imgData[0].size(), m_imgData.size()));
+
         m_panX = 0.0f;
         m_panY = 0.0f;
         m_lastPanX = 0.0f;
         m_lastPanY = 0.0f;
     }
+}
+
+void ImageProcessor::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
+    auto app = static_cast<ImageProcessor*>(glfwGetWindowUserPointer(window));
+    if (!app) return;
+
+    // Get current mouse position
+    double mouseX, mouseY;
+    glfwGetCursorPos(window, &mouseX, &mouseY);
+
+    // Calculate control panel height and padding
+    float controlPanelHeight = app->m_windowHeight * 0.20f;
+    float padding = 10.0f;
+
+    // Calculate viewport area
+    float viewportY = app->m_controlWindowCollapsed ? padding : controlPanelHeight + 2 * padding;
+
+    // Check if mouse is in the image viewport area
+    if (mouseX >= padding &&
+        mouseX <= app->m_windowWidth - padding &&
+        mouseY >= viewportY &&
+        mouseY <= app->m_windowHeight - padding) {
+
+        float zoomFactor = (yoffset > 0) ? 1.1f : 0.9f;
+        app->m_view.zoom(zoomFactor);
+    }
+}
+
+void ImageProcessor::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+    auto app = static_cast<ImageProcessor*>(glfwGetWindowUserPointer(window));
+    if (!app) return;
+
+    if (ImGui::GetIO().WantCaptureMouse) {
+        return;
+    }
+
+    double mouseX, mouseY;
+    glfwGetCursorPos(window, &mouseX, &mouseY);
+
+    float controlPanelHeight = app->m_controlWindowCollapsed ? 0.0f : (ImGui::GetFrameHeightWithSpacing() * 4);
+
+    if (mouseY > controlPanelHeight) {
+        if (button == GLFW_MOUSE_BUTTON_LEFT) {
+            if (action == GLFW_PRESS) {
+                app->m_isPanning = true;
+                app->m_lastMouseX = mouseX;
+                app->m_lastMouseY = mouseY;
+
+                glfwSetCursor(window, glfwCreateStandardCursor(GLFW_HAND_CURSOR));
+            }
+            else if (action == GLFW_RELEASE) {
+                app->m_isPanning = false;
+
+                glfwSetCursor(window, glfwCreateStandardCursor(GLFW_ARROW_CURSOR));
+            }
+        }
+    }
+}
+
+void ImageProcessor::cursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
+    auto app = static_cast<ImageProcessor*>(glfwGetWindowUserPointer(window));
+    if (!app || !app->m_isPanning) return;
+
+    float deltaX = static_cast<float>(xpos - app->m_lastMouseX);
+    float deltaY = static_cast<float>(ypos - app->m_lastMouseY);
+
+    const float panSpeedFactor = 0.05f; 
+
+    float ndcDeltaX = (deltaX / (app->m_windowWidth * 0.5f)) * panSpeedFactor;
+    float ndcDeltaY = (deltaY / (app->m_windowHeight * 0.5f)) * panSpeedFactor;
+
+    float zoom = app->m_view.getActualZoom();
+    if (zoom != 0.0f) {
+        ndcDeltaX /= zoom;
+        ndcDeltaY /= zoom;
+    }
+
+    app->m_view.pan(glm::vec2(ndcDeltaX, -ndcDeltaY));
+
+    app->m_lastMouseX = xpos;
+    app->m_lastMouseY = ypos;
 }

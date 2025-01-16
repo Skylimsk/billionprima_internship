@@ -1,6 +1,7 @@
 #ifndef GRAPHICS_ITEMS_H
 #define GRAPHICS_ITEMS_H
 
+#define GLM_ENABLE_EXPERIMENTAL  // Add this before including GLM headers
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -65,8 +66,6 @@ public:
     GraphicsView(Scene* scene = nullptr);
     ~GraphicsView();
 
-    float getZoom() const { return m_zoom; }
-
     // Scene management
     void setScene(Scene* scene);
     Scene* scene() const { return m_scene; }
@@ -87,6 +86,11 @@ public:
     // Window dimensions
     void setViewportSize(int width, int height);
 
+    // Zoom control
+    void setZoom(float newZoom) { m_zoom = newZoom; }
+    float getZoom() const { return m_zoom; }
+    float getActualZoom() const;
+
 private:
     Scene* m_scene;           // Associated scene
     glm::mat4 m_viewMatrix;   // View transformation matrix
@@ -94,7 +98,6 @@ private:
     glm::vec2 m_viewportSize; // Current viewport dimensions
     float m_zoom;            // Current zoom level
 };
-
 class TextureItem : public GraphicsItem {
 public:
     TextureItem();
