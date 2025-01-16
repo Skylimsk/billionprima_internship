@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Users\\skyli\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\3_Programme\\TestImGuiApplication\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{D129EF5B-AA8A-4D68-B2B2-9DB8AED34129}|TestImGuiApplication.vcxproj|C:\\Users\\skyli\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\3_Programme\\TestImGuiApplication\\graphics_items.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{D129EF5B-AA8A-4D68-B2B2-9DB8AED34129}|TestImGuiApplication.vcxproj|solutionrelative:graphics_items.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{D129EF5B-AA8A-4D68-B2B2-9DB8AED34129}|TestImGuiApplication.vcxproj|C:\\Users\\skyli\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\3_Programme\\TestImGuiApplication\\imageprocessor.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{D129EF5B-AA8A-4D68-B2B2-9DB8AED34129}|TestImGuiApplication.vcxproj|solutionrelative:imageprocessor.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
@@ -13,10 +17,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{D129EF5B-AA8A-4D68-B2B2-9DB8AED34129}|TestImGuiApplication.vcxproj|C:\\Users\\skyli\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\3_Programme\\TestImGuiApplication\\imageprocessor.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{D129EF5B-AA8A-4D68-B2B2-9DB8AED34129}|TestImGuiApplication.vcxproj|solutionrelative:imageprocessor.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{D129EF5B-AA8A-4D68-B2B2-9DB8AED34129}|TestImGuiApplication.vcxproj|C:\\Users\\skyli\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\3_Programme\\TestImGuiApplication\\graphics_items.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{D129EF5B-AA8A-4D68-B2B2-9DB8AED34129}|TestImGuiApplication.vcxproj|solutionrelative:graphics_items.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{D129EF5B-AA8A-4D68-B2B2-9DB8AED34129}|TestImGuiApplication.vcxproj|C:\\Users\\skyli\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\3_Programme\\TestImGuiApplication\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
@@ -30,24 +30,24 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "imageprocessor.cpp",
               "DocumentMoniker": "C:\\Users\\skyli\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\3_Programme\\TestImGuiApplication\\imageprocessor.cpp",
               "RelativeDocumentMoniker": "imageprocessor.cpp",
               "ToolTip": "C:\\Users\\skyli\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\3_Programme\\TestImGuiApplication\\imageprocessor.cpp",
               "RelativeToolTip": "imageprocessor.cpp",
-              "ViewState": "AQIAAAICAAAAAAAAAADwvxYCAAABAAAA",
+              "ViewState": "AQIAAPYBAAAAAAAAAADwvwUCAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2025-01-14T08:19:07.691Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "imageprocessor.h",
               "DocumentMoniker": "C:\\Users\\skyli\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\3_Programme\\TestImGuiApplication\\imageprocessor.h",
               "RelativeDocumentMoniker": "imageprocessor.h",
@@ -59,7 +59,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "graphics_items.cpp",
               "DocumentMoniker": "C:\\Users\\skyli\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\3_Programme\\TestImGuiApplication\\graphics_items.cpp",
               "RelativeDocumentMoniker": "graphics_items.cpp",
@@ -71,15 +71,16 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 0,
               "Title": "graphics_items.h",
               "DocumentMoniker": "C:\\Users\\skyli\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\3_Programme\\TestImGuiApplication\\graphics_items.h",
               "RelativeDocumentMoniker": "graphics_items.h",
               "ToolTip": "C:\\Users\\skyli\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\3_Programme\\TestImGuiApplication\\graphics_items.h",
               "RelativeToolTip": "graphics_items.h",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAABIAAAA5AAAA",
+              "ViewState": "AQIAACQAAAAAAAAAAAAmwCgAAAALAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2025-01-14T08:12:51.566Z"
+              "WhenOpened": "2025-01-14T08:12:51.566Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
