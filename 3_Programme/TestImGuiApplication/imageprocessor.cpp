@@ -389,7 +389,7 @@ bool ImageProcessor::loadImage(const std::string& path) {
         m_imgData[0].size(), m_imgData.size(),
         m_minValue, m_maxValue, m_meanValue);
 
-    convertDataToTexture();
+    //convertDataToTexture();
 
     return true;
 }
@@ -510,7 +510,7 @@ void ImageProcessor::drawMainWindow() {
         // Right column: View Controls
         ImGui::Text("View Controls");
         columnWidth = ImGui::GetContentRegionAvail().x - 10.0f;
-
+        
         // First row: Zoom controls with Fit to View
         float zoomButtonWidth = (columnWidth - 20.0f) / 2;  // Adjusted for 2 buttons
         float currentZoom = m_view.getZoom();
@@ -580,7 +580,7 @@ void ImageProcessor::run() {
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         // Swap front and back buffers
-        glfwSwapBuffers(m_window);
+        //glfwSwapBuffers(m_window);
     }
 }
 
