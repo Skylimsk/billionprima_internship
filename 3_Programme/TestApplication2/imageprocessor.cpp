@@ -159,6 +159,15 @@ bool ImageProcessor::initializeWindow() {
     // Enable VSync
     SDL_GL_SetSwapInterval(1);
 
+    // Get the actual window size after creation (may be different due to maximization)
+    SDL_GetWindowSize(m_window, &m_windowWidth, &m_windowHeight);
+
+    // Initialize viewport with actual window size
+    glViewport(0, 0, m_windowWidth, m_windowHeight);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_MULTISAMPLE);
+
     return true;
 }
 
@@ -200,9 +209,8 @@ void ImageProcessor::cleanup() {
 void ImageProcessor::handleEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-        // Let ImGui handle its events first
+        // Let ImGui handle its events
         ImGui_ImplSDL2_ProcessEvent(&event);
-        ImGuiIO& io = ImGui::GetIO();
 
         switch (event.type) {
         case SDL_QUIT:
@@ -217,8 +225,7 @@ void ImageProcessor::handleEvents() {
         case SDL_MOUSEBUTTONUP:
         case SDL_MOUSEMOTION:
         case SDL_MOUSEWHEEL:
-            // Only process mouse events if ImGui isn't using them
-            if (!io.WantCaptureMouse) {
+            if (!ImGui::GetIO().WantCaptureMouse) {
                 handleMouseEvent(event);
             }
             break;
@@ -227,92 +234,118 @@ void ImageProcessor::handleEvents() {
 }
 
 void ImageProcessor::handleWindowEvent(const SDL_Event& event) {
-    if (event.window.event == SDL_WINDOWEVENT_RESIZED ||
-        event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+    // Declare variables outside switch statement
+    float controlPanelHeight = m_controlWindowCollapsed ? 0.0f : (ImGui::GetFrameHeightWithSpacing() * 4);
+    int imageViewportHeight = m_windowHeight - static_cast<int>(controlPanelHeight);
+
+    switch (event.window.event) {
+    case SDL_WINDOWEVENT_RESIZED:
+    case SDL_WINDOWEVENT_SIZE_CHANGED:
         m_windowWidth = event.window.data1;
         m_windowHeight = event.window.data2;
+        glViewport(0, 0, m_windowWidth, m_windowHeight);
 
-        // Update ImGui display size
-        ImGuiIO& io = ImGui::GetIO();
-        io.DisplaySize = ImVec2(static_cast<float>(m_windowWidth),
-            static_cast<float>(m_windowHeight));
+        // Update viewport sizes
+        imageViewportHeight = m_windowHeight - static_cast<int>(controlPanelHeight);
+        m_view.setViewportSize(m_windowWidth, imageViewportHeight);
+        break;
+
+    case SDL_WINDOWEVENT_MAXIMIZED:
+        SDL_GetWindowSize(m_window, &m_windowWidth, &m_windowHeight);
+        glViewport(0, 0, m_windowWidth, m_windowHeight);
+
+        // Update viewport sizes for maximized window
+        imageViewportHeight = m_windowHeight - static_cast<int>(controlPanelHeight);
+        m_view.setViewportSize(m_windowWidth, imageViewportHeight);
+        break;
     }
 }
 
 void ImageProcessor::handleMouseEvent(const SDL_Event& event) {
-    // Get keyboard state for Alt key
-    const Uint8* keystate = SDL_GetKeyboardState(nullptr);
-    bool altPressed = keystate[SDL_SCANCODE_LALT] || keystate[SDL_SCANCODE_RALT];
-
-    // Calculate viewport area
-    float controlPanelHeight = ImGui::GetFrameHeightWithSpacing() * 4;
-    float statusBarHeight = ImGui::GetFrameHeightWithSpacing();
+    // Calculate UI boundaries - remove bottom padding
+    float controlPanelHeight = m_controlWindowCollapsed ? 0.0f : (ImGui::GetFrameHeightWithSpacing() * 2);
     float viewportY = controlPanelHeight;
 
+    // Get keyboard state for both Alt and Ctrl key checks
+    const Uint8* keystate = SDL_GetKeyboardState(nullptr);
+    bool altPressed = keystate[SDL_SCANCODE_LALT] || keystate[SDL_SCANCODE_RALT];
+    bool ctrlPressed = keystate[SDL_SCANCODE_LCTRL] || keystate[SDL_SCANCODE_RCTRL];
+
     switch (event.type) {
-    case SDL_MOUSEBUTTONDOWN:
-        if (event.button.button == SDL_BUTTON_LEFT && altPressed) {
-            // Start panning only if within viewport
-            if (event.button.y > viewportY &&
-                event.button.y < (m_windowHeight - statusBarHeight)) {
+    case SDL_MOUSEBUTTONDOWN: {
+        if (event.button.y > viewportY) {  // Only handle clicks in viewport area
+            if (event.button.button == SDL_BUTTON_LEFT && altPressed) {
+                // Start panning when Alt + Left mouse button is pressed
                 m_isPanning = true;
                 m_lastMouseX = event.button.x;
                 m_lastMouseY = event.button.y;
             }
         }
         break;
+    }
 
-    case SDL_MOUSEBUTTONUP:
+    case SDL_MOUSEBUTTONUP: {
         if (event.button.button == SDL_BUTTON_LEFT) {
             m_isPanning = false;
         }
         break;
+    }
 
-    case SDL_MOUSEMOTION:
+    case SDL_MOUSEMOTION: {
         if (m_isPanning && altPressed) {
-            // Calculate pan delta in pixels
+            // Calculate pan delta in screen coordinates
             float deltaX = static_cast<float>(event.motion.x - m_lastMouseX);
             float deltaY = static_cast<float>(event.motion.y - m_lastMouseY);
 
-            // Convert to NDC coordinates
-            float ndcDeltaX = deltaX / (m_windowWidth * 0.5f);
-            float ndcDeltaY = deltaY / (m_windowHeight * 0.5f);
+            // Convert to scene coordinates with speed factor
+            const float panSpeedFactor = 0.05f;
+            float ndcDeltaX = (deltaX / (m_windowWidth * 0.5f)) * panSpeedFactor;
+            float ndcDeltaY = (deltaY / (m_windowHeight * 0.5f)) * panSpeedFactor;
 
-            // Apply inverse zoom scaling to pan delta
+            // Adjust for current zoom level
             float zoom = m_view.getActualZoom();
             if (zoom != 0.0f) {
                 ndcDeltaX /= zoom;
                 ndcDeltaY /= zoom;
             }
 
-            // Update view
-            m_view.pan(glm::vec2(ndcDeltaX, -ndcDeltaY));  // Invert Y for OpenGL coordinates
+            // Apply pan transformation
+            m_view.pan(glm::vec2(ndcDeltaX, -ndcDeltaY));
 
             m_lastMouseX = event.motion.x;
             m_lastMouseY = event.motion.y;
         }
         break;
+    }
 
     case SDL_MOUSEWHEEL: {
-        // Only process wheel if mouse is in viewport
-        int mouseX, mouseY;
-        SDL_GetMouseState(&mouseX, &mouseY);
+        if (ctrlPressed) {
+            // Get current mouse position
+            int mouseX, mouseY;
+            SDL_GetMouseState(&mouseX, &mouseY);
 
-        if (mouseY > viewportY && mouseY < (m_windowHeight - statusBarHeight)) {
-            float zoomFactor = (event.wheel.y > 0) ? 1.1f : 0.9f;
+            // Only handle zoom if mouse is in viewport area
+            if (mouseY >= viewportY &&
+                mouseY <= m_windowHeight &&
+                mouseX >= 0 &&
+                mouseX <= m_windowWidth) {
 
-            // Get scene coordinates before zoom
-            glm::vec2 scenePosBefore = m_view.mapToScene(glm::vec2(mouseX, mouseY));
+                // Calculate zoom factor based on wheel direction
+                float zoomFactor = (event.wheel.y > 0) ? 1.1f : 0.9f;
 
-            // Apply zoom
-            m_view.zoom(zoomFactor);
+                // Store scene coordinates before zoom
+                glm::vec2 scenePosBefore = m_view.mapToScene(glm::vec2(mouseX, mouseY));
 
-            // Get scene coordinates after zoom
-            glm::vec2 scenePosAfter = m_view.mapToScene(glm::vec2(mouseX, mouseY));
+                // Apply zoom
+                m_view.zoom(zoomFactor);
 
-            // Adjust position to keep mouse point fixed
-            glm::vec2 delta = scenePosAfter - scenePosBefore;
-            m_view.pan(-delta);
+                // Get new scene coordinates after zoom
+                glm::vec2 scenePosAfter = m_view.mapToScene(glm::vec2(mouseX, mouseY));
+
+                // Calculate and apply offset to maintain mouse position
+                glm::vec2 offset = scenePosAfter - scenePosBefore;
+                m_view.pan(-offset);
+            }
         }
         break;
     }
@@ -321,6 +354,7 @@ void ImageProcessor::handleMouseEvent(const SDL_Event& event) {
 
 void ImageProcessor::run() {
     while (m_running) {
+        // Handle SDL events
         handleEvents();
 
         // Start ImGui frame
@@ -328,93 +362,29 @@ void ImageProcessor::run() {
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
-        // Clear the entire window
+        // Clear the entire window with background color
         glViewport(0, 0, m_windowWidth, m_windowHeight);
         glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // Draw top control panel
+        // Draw control panel
         drawMainWindow();
 
-        // Draw bottom status bar
-        float statusBarHeight = ImGui::GetFrameHeightWithSpacing();
-        ImGui::SetNextWindowPos(ImVec2(0, m_windowHeight - statusBarHeight));
-        ImGui::SetNextWindowSize(ImVec2(m_windowWidth, statusBarHeight));
+        // Calculate control panel height
+        float controlPanelHeight = m_controlWindowCollapsed ? 0.0f : (ImGui::GetFrameHeightWithSpacing() * 2);
 
-        ImGuiWindowFlags statusFlags = ImGuiWindowFlags_NoMove |
-            ImGuiWindowFlags_NoResize |
-            ImGuiWindowFlags_NoCollapse |
-            ImGuiWindowFlags_NoTitleBar;
+        // Calculate viewport for image area - now using full height minus control panel
+        int imageViewportY = static_cast<int>(controlPanelHeight);
+        int imageViewportHeight = m_windowHeight - imageViewportY; // Remove any bottom padding
 
-        if (ImGui::Begin("Status", nullptr, statusFlags)) {
-            ImGui::Text("%s", m_statusText);
-        }
-        ImGui::End();
+        // Set OpenGL viewport for image rendering - use full available space
+        glViewport(0, 0, m_windowWidth, imageViewportHeight);
 
-        // Calculate available space for image viewport
-        float controlPanelHeight = ImGui::GetFrameHeight() * 1.5f;
-        float padding = 10.0f;
-        int viewportY = static_cast<int>(controlPanelHeight + padding);
-        int viewportHeight = m_windowHeight - viewportY - statusBarHeight - padding;
-        int viewportWidth = m_windowWidth - 2 * static_cast<int>(padding);
+        // Update view with new dimensions
+        m_view.setViewportSize(m_windowWidth, imageViewportHeight);
 
-        // Determine if scrollbars are needed based on image size
-        bool needScrollbars = false;
-        ImGuiWindowFlags viewport_flags = ImGuiWindowFlags_NoTitleBar |
-            ImGuiWindowFlags_NoMove |
-            ImGuiWindowFlags_NoCollapse |
-            ImGuiWindowFlags_NoBackground;
-
-        if (!m_imgData.empty()) {
-            int imageWidth = m_imgData[0].size();
-            int imageHeight = m_imgData.size();
-
-            // Check if image exceeds viewport size
-            if (imageWidth > viewportWidth || imageHeight > viewportHeight) {
-                needScrollbars = true;
-                viewport_flags |= ImGuiWindowFlags_HorizontalScrollbar |
-                    ImGuiWindowFlags_AlwaysVerticalScrollbar;
-            }
-        }
-
-        // Set up viewport window
-        ImGui::SetNextWindowPos(ImVec2(padding, viewportY));
-        ImGui::SetNextWindowSize(ImVec2(viewportWidth, viewportHeight));
-
-        if (ImGui::Begin("##Viewport", nullptr, viewport_flags)) {
-            if (!m_imgData.empty() && needScrollbars) {
-                // Set content size to actual image dimensions
-                ImGui::SetNextWindowContentSize(ImVec2(
-                    static_cast<float>(m_imgData[0].size()),
-                    static_cast<float>(m_imgData.size())
-                ));
-            }
-
-            // Get window position and size for viewport
-            ImVec2 window_pos = ImGui::GetWindowPos();
-            ImVec2 window_size = ImGui::GetWindowSize();
-
-            // Set OpenGL viewport
-            glViewport(
-                static_cast<int>(window_pos.x),
-                static_cast<int>(m_windowHeight - window_pos.y - window_size.y),
-                static_cast<int>(window_size.x),
-                static_cast<int>(window_size.y)
-            );
-
-            // Apply scroll offset only if scrollbars are needed
-            if (needScrollbars) {
-                float scrollX = ImGui::GetScrollX();
-                float scrollY = ImGui::GetScrollY();
-                glm::mat4 scrollMatrix = glm::translate(glm::mat4(1.0f),
-                    glm::vec3(-scrollX, -scrollY, 0.0f));
-                m_scene.draw(scrollMatrix * m_view.getViewMatrix());
-            }
-            else {
-                m_scene.draw(m_view.getViewMatrix());
-            }
-        }
-        ImGui::End();
+        // Render the scene
+        m_scene.draw(m_view.getViewMatrix());
 
         // Handle dialogs
         if (m_showLoadDialog) handleLoadDialog();
@@ -424,9 +394,9 @@ void ImageProcessor::run() {
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
+        // Swap buffers
         SDL_GL_SwapWindow(m_window);
     }
-
 }
 
 void ImageProcessor::resetView() {
@@ -490,138 +460,111 @@ void ImageProcessor::processSDLEvent(const SDL_Event& event) {
 }
 
 void ImageProcessor::drawMainWindow() {
-    // Fixed height control panel
-    float controlPanelHeight = ImGui::GetFrameHeight() * 1.5f;  // Fixed height to fit buttons
-    float windowPadding = 1.0f;
+    float controlPanelHeight = ImGui::GetFrameHeightWithSpacing() * 2;
 
-    // Set window flags
-    ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoMove |
+    ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoMove |
         ImGuiWindowFlags_NoCollapse |
-        ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoTitleBar |
-        ImGuiWindowFlags_NoScrollbar |
-        ImGuiWindowFlags_NoBringToFrontOnFocus;
+        ImGuiWindowFlags_NoBringToFrontOnFocus |
+        ImGuiWindowFlags_NoTitleBar;
 
-    // Position the control panel
-    ImGui::SetNextWindowPos(ImVec2(windowPadding, windowPadding));
-    ImGui::SetNextWindowSize(ImVec2(m_windowWidth - 2 * windowPadding, controlPanelHeight));
+    // Position window at the very top
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(m_windowWidth, controlPanelHeight));
 
-    if (ImGui::Begin("Controls", nullptr, windowFlags)) {
-        // Calculate button sizes for single row
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 4));
+    if (ImGui::Begin("##TopPanel", nullptr, windowFlags)) {
+        float totalWidth = ImGui::GetContentRegionAvail().x;
         float buttonHeight = ImGui::GetFrameHeight();
-        float availableWidth = ImGui::GetContentRegionAvail().x;
-        float spacing = ImGui::GetStyle().ItemSpacing.x;
+        float buttonSpacing = ImGui::GetStyle().ItemSpacing.x;
+        
+        // Calculate button widths using full width minus space for zoom text
+        float zoomTextWidth = 120; // Width reserved for zoom text
+        float availableWidth = totalWidth - zoomTextWidth - buttonSpacing;
+        float standardButtonWidth = (availableWidth - buttonSpacing * 7) / 7;
+        float zoomButtonWidth = standardButtonWidth * 0.4f;
+        float fitButtonWidth = standardButtonWidth * 0.8f;
 
-        // Calculate widths for different types of buttons
-        float standardWidth = (availableWidth - spacing * 8) / 7;  // 7 standard buttons
-        float zoomControlWidth = standardWidth * 0.4f;  // Smaller width for +/- buttons
-
-        // Center all controls vertically
-        float verticalOffset = (controlPanelHeight - buttonHeight) * 0.5f;
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + verticalOffset);
-
+        // First row: Buttons
         // File Operations
-        if (ImGui::Button("Load Image", ImVec2(standardWidth, buttonHeight))) {
+        if (ImGui::Button("Load", ImVec2(standardButtonWidth, buttonHeight))) {
             m_showLoadDialog = true;
         }
         ImGui::SameLine();
 
-        if (ImGui::Button("Save Image", ImVec2(standardWidth, buttonHeight))) {
+        if (ImGui::Button("Save", ImVec2(standardButtonWidth, buttonHeight))) {
             if (!m_imgData.empty()) {
                 m_showSaveDialog = true;
             }
         }
         ImGui::SameLine();
 
-        // Zoom Controls
-        float currentZoom = m_view.getZoom();
-        ImGui::SetNextItemWidth(standardWidth * 0.8f);
-        ImGui::Text("%.1fx", currentZoom);
-        ImGui::SameLine();
-
-        if (ImGui::Button("-", ImVec2(zoomControlWidth, buttonHeight))) {
-            m_view.zoom(0.9f);
+        // Zoom Controls Group
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
+            if (ImGui::Button("-", ImVec2(zoomButtonWidth, buttonHeight))) {
+                m_view.zoom(0.9f);
+            }
+            ImGui::PopStyleColor();
+            ImGui::SameLine(0, buttonSpacing);
         }
-        ImGui::SameLine(0, 2.0f);
-        if (ImGui::Button("+", ImVec2(zoomControlWidth, buttonHeight))) {
-            m_view.zoom(1.1f);
-        }
-        ImGui::SameLine();
 
-        // View Controls
-        if (ImGui::Button("Fit View", ImVec2(standardWidth, buttonHeight))) {
+        if (ImGui::Button("Fit", ImVec2(fitButtonWidth, buttonHeight))) {
             resetView();
         }
-        ImGui::SameLine();
+        ImGui::SameLine(0, buttonSpacing);
 
-        // Image Operations
-        if (ImGui::Button("Process", ImVec2(standardWidth, buttonHeight))) {
-            if (!m_imgData.empty()) {
-                processCurrentImage();
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
+            if (ImGui::Button("+", ImVec2(zoomButtonWidth, buttonHeight))) {
+                m_view.zoom(1.1f);
             }
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
         }
-        ImGui::SameLine();
 
-        if (ImGui::Button("Rotate L", ImVec2(standardWidth, buttonHeight))) {
+        if (ImGui::Button("Rotate L", ImVec2(standardButtonWidth, buttonHeight))) {
             if (!m_imgData.empty()) {
                 rotateImageCounterClockwise();
             }
         }
         ImGui::SameLine();
 
-        if (ImGui::Button("Rotate R", ImVec2(standardWidth, buttonHeight))) {
+        if (ImGui::Button("Rotate R", ImVec2(standardButtonWidth, buttonHeight))) {
             if (!m_imgData.empty()) {
                 rotateImageClockwise();
             }
         }
+        ImGui::SameLine();
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.7f, 0.3f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.4f, 1.0f));
+        if (ImGui::Button("Process", ImVec2(standardButtonWidth, buttonHeight))) {
+            if (!m_imgData.empty()) {
+                processCurrentImage();
+            }
+        }
+        ImGui::PopStyleColor(2);
+
+        // Zoom level text (aligned to the right)
+        ImGui::SameLine();
+        float currentZoom = m_view.getZoom();
+        ImGui::SetCursorPosX(totalWidth - zoomTextWidth);
+        ImGui::Text("Zoom: %.2fx", currentZoom);
+
+        // Second row: Status text
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2); // Small spacing after buttons
+        ImGui::Text("%s", m_statusText);
     }
     ImGui::End();
+    ImGui::PopStyleVar();
 }
 
-void ImageProcessor::drawImageArea() {
-    if (m_imgData.empty()) return;
-
-    // Calculate available space for image area
-    float controlPanelHeight = m_controlWindowCollapsed ? 0.0f : (ImGui::GetFrameHeightWithSpacing() * 5);
-    float padding = 10.0f;
-    ImVec2 windowPos(padding, controlPanelHeight + padding);
-    ImVec2 windowSize(
-        m_windowWidth - 2 * padding,
-        m_windowHeight - controlPanelHeight - 2 * padding
-    );
-
-    // Create a child window for the image area with scrollbars
-    ImGui::SetNextWindowPos(windowPos);
-    ImGui::SetNextWindowSize(windowSize);
-    ImGui::Begin("Image Viewport", nullptr,
-        ImGuiWindowFlags_NoTitleBar |
-        ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_HorizontalScrollbar);
-
-    // Calculate content size based on image dimensions and zoom
-    float zoom = m_view.getActualZoom();
-    ImVec2 contentSize(
-        m_imgData[0].size() * zoom,
-        m_imgData.size() * zoom
-    );
-
-    // Set the content size for scrolling
-    ImGui::SetNextWindowContentSize(contentSize);
-
-    // Get scroll position
-    float scrollX = ImGui::GetScrollX();
-    float scrollY = ImGui::GetScrollY();
-
-    // Update view matrix with scroll offset
-    glm::mat4 scrollMatrix = glm::translate(glm::mat4(1.0f),
-        glm::vec3(-scrollX / zoom, -scrollY / zoom, 0.0f));
-    m_view.setViewMatrix(scrollMatrix * m_view.getViewMatrix());
-
-    // Draw the scene
-    m_scene.draw(m_view.getViewMatrix());
-
-    ImGui::End();
+// Status bar is now integrated into the main window
+void ImageProcessor::drawStatusBar() {
+    // Empty implementation as status is now part of main window
 }
+
 
 void ImageProcessor::handleLoadDialog() {
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_Once);
@@ -1174,24 +1117,8 @@ void ImageProcessor::rotateImageClockwise() {
     // Update image data
     m_imgData = std::move(rotated);
 
-    // Reset view matrix
-    m_view.setViewMatrix(glm::mat4(1.0f));
-
-    // Update the display with proper aspect ratio
-    if (m_imageItem) {
-        // Convert image data to texture data
-        std::vector<uint16_t> textureData;
-        textureData.reserve(m_imgData.size() * m_imgData[0].size());
-        for (const auto& row : m_imgData) {
-            textureData.insert(textureData.end(), row.begin(), row.end());
-        }
-
-        // Update texture with new dimensions
-        m_imageItem->setImage(textureData, m_imgData[0].size(), m_imgData.size());
-
-        // Fit to view while maintaining aspect ratio
-        m_view.fitInView(glm::vec4(0, 0, m_imgData[0].size(), m_imgData.size()));
-    }
+    // Update display
+    updateDisplayImage();
 
     // Update status
     snprintf(m_statusText, sizeof(m_statusText),
@@ -1217,24 +1144,8 @@ void ImageProcessor::rotateImageCounterClockwise() {
     // Update image data
     m_imgData = std::move(rotated);
 
-    // Reset view matrix
-    m_view.setViewMatrix(glm::mat4(1.0f));
-
-    // Update the display with proper aspect ratio
-    if (m_imageItem) {
-        // Convert image data to texture data
-        std::vector<uint16_t> textureData;
-        textureData.reserve(m_imgData.size() * m_imgData[0].size());
-        for (const auto& row : m_imgData) {
-            textureData.insert(textureData.end(), row.begin(), row.end());
-        }
-
-        // Update texture with new dimensions
-        m_imageItem->setImage(textureData, m_imgData[0].size(), m_imgData.size());
-
-        // Fit to view while maintaining aspect ratio
-        m_view.fitInView(glm::vec4(0, 0, m_imgData[0].size(), m_imgData.size()));
-    }
+    // Update display
+    updateDisplayImage();
 
     // Update status
     snprintf(m_statusText, sizeof(m_statusText),

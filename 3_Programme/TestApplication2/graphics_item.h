@@ -97,10 +97,6 @@ public:
     float getZoom() const { return m_zoom; }
     float getActualZoom() const;
 
-    glm::vec2 getViewportSize() const {
-        return m_viewportSize;
-    }
-
 private:
     Scene* m_scene;           // Associated scene
     glm::mat4 m_viewMatrix;   // View transformation matrix

@@ -82,6 +82,7 @@ private:
     // UI rendering methods
     void drawMainWindow();
     void drawControlsWindow();
+    void drawStatusBar();
     void handleLoadDialog();
     void handleSaveDialog();
     void updateWindowTitle(const std::string& filename);
@@ -124,6 +125,8 @@ private:
     glm::vec2 m_mousePos;    // Current mouse position
     glm::vec2 m_mousePosOld; // Previous mouse position
 
+
+
     void rotateImageClockwise();
     void rotateImageCounterClockwise();
 
@@ -148,8 +151,6 @@ private:
             array = nullptr;
         }
     }
-
-    void drawImageArea();
 
 };
 

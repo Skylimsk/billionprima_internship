@@ -94,21 +94,21 @@ void GraphicsView::setScene(Scene* scene) {
 }
 
 void GraphicsView::zoom(float factor) {
+    // Update zoom level with the new factor
     m_zoom *= factor;
-
-    // Create scale matrix around origin
+    // Get the center of the viewport
+    glm::vec2 viewCenter(0.0f, 0.0f);
+    // Create transformation matrices
+    glm::mat4 toOrigin = glm::translate(glm::mat4(1.0f), glm::vec3(-viewCenter.x, -viewCenter.y, 0.0f));
     glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(factor, factor, 1.0f));
-
-    // Apply scale to view matrix
-    m_viewMatrix = scale * m_viewMatrix;
+    glm::mat4 fromOrigin = glm::translate(glm::mat4(1.0f), glm::vec3(viewCenter.x, viewCenter.y, 0.0f));
+    // Combine transformations
+    m_viewMatrix = fromOrigin * scale * toOrigin * m_viewMatrix;
 }
 
 void GraphicsView::pan(const glm::vec2& delta) {
-    // Create translation matrix
-    glm::mat4 translation = glm::translate(glm::mat4(1.0f), glm::vec3(delta.x, delta.y, 0.0f));
-
-    // Apply translation to view matrix
-    m_viewMatrix = translation * m_viewMatrix;
+    m_viewMatrix[3][0] += delta.x;
+    m_viewMatrix[3][1] += delta.y;
 }
 
 void GraphicsView::fitInView(const glm::vec4& rect) {
