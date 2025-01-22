@@ -30,9 +30,6 @@ ImageProcessor::ImageProcessor()
     , m_showLoadDialog(false)
     , m_showSaveDialog(false)
     , m_showControlsWindow(true)
-    , m_currentPath(std::filesystem::current_path().string())
-    , m_lastPanX(0.0f)
-    , m_lastPanY(0.0f)
     , m_controlWindowCollapsed(false)
     , m_isPanning(false)
     , m_lastMouseX(0.0)
@@ -43,12 +40,14 @@ ImageProcessor::ImageProcessor()
     , m_minValue(0)
     , m_maxValue(65535)
     , m_meanValue(0.0)
-    , m_processImage(std::make_unique<CGProcessImage>())
+    , m_currentPath(std::filesystem::current_path().string())
     , m_processedData(nullptr)
     , m_processedRows(0)
     , m_processedCols(0)
 {
     std::cout << "Initializing ImageProcessor..." << std::endl;
+
+    m_processImage = std::make_unique<CGProcessImage>();
 
     // Initialize mouse button states
     for (bool& button : m_mouseButtons) {
@@ -104,6 +103,10 @@ ImageProcessor::ImageProcessor()
 }
 
 ImageProcessor::~ImageProcessor() {
+
+    if (m_processedData) {
+        free2D(m_processedData, m_processedRows);
+    }
     if (m_displayTexture) {
         glDeleteTextures(1, &m_displayTexture);
         m_displayTexture = 0;
@@ -266,6 +269,11 @@ void ImageProcessor::handleMouseEvent(const SDL_Event& event) {
     float controlPanelHeight = m_controlWindowCollapsed ? 0.0f : (ImGui::GetFrameHeightWithSpacing() * 2);
     float viewportY = controlPanelHeight;
 
+    // Get current mouse position and convert to scene coordinates
+    int mouseX, mouseY;
+    SDL_GetMouseState(&mouseX, &mouseY);
+    glm::vec2 scenePos = m_view.mapToScene(glm::vec2(mouseX, mouseY - viewportY));
+
     // Get keyboard state for both Alt and Ctrl key checks
     const Uint8* keystate = SDL_GetKeyboardState(nullptr);
     bool altPressed = keystate[SDL_SCANCODE_LALT] || keystate[SDL_SCANCODE_RALT];
@@ -273,13 +281,10 @@ void ImageProcessor::handleMouseEvent(const SDL_Event& event) {
 
     switch (event.type) {
     case SDL_MOUSEBUTTONDOWN: {
-        if (event.button.y > viewportY) {  // Only handle clicks in viewport area
-            if (event.button.button == SDL_BUTTON_LEFT && altPressed) {
-                // Start panning when Alt + Left mouse button is pressed
-                m_isPanning = true;
-                m_lastMouseX = event.button.x;
-                m_lastMouseY = event.button.y;
-            }
+        if (event.button.y > viewportY && event.button.button == SDL_BUTTON_LEFT && altPressed) {
+            m_isPanning = true;
+            m_lastMouseX = event.button.x;
+            m_lastMouseY = event.button.y;
         }
         break;
     }
@@ -312,6 +317,7 @@ void ImageProcessor::handleMouseEvent(const SDL_Event& event) {
             // Apply pan transformation
             m_view.pan(glm::vec2(ndcDeltaX, -ndcDeltaY));
 
+            // Update last mouse position
             m_lastMouseX = event.motion.x;
             m_lastMouseY = event.motion.y;
         }
@@ -370,14 +376,11 @@ void ImageProcessor::run() {
         // Draw control panel
         drawMainWindow();
 
-        // Calculate control panel height
+        // Calculate viewport for image area
         float controlPanelHeight = m_controlWindowCollapsed ? 0.0f : (ImGui::GetFrameHeightWithSpacing() * 2);
+        int imageViewportHeight = m_windowHeight - static_cast<int>(controlPanelHeight);
 
-        // Calculate viewport for image area - now using full height minus control panel
-        int imageViewportY = static_cast<int>(controlPanelHeight);
-        int imageViewportHeight = m_windowHeight - imageViewportY; // Remove any bottom padding
-
-        // Set OpenGL viewport for image rendering - use full available space
+        // Set OpenGL viewport for image rendering
         glViewport(0, 0, m_windowWidth, imageViewportHeight);
 
         // Update view with new dimensions
@@ -477,7 +480,7 @@ void ImageProcessor::drawMainWindow() {
         float totalWidth = ImGui::GetContentRegionAvail().x;
         float buttonHeight = ImGui::GetFrameHeight();
         float buttonSpacing = ImGui::GetStyle().ItemSpacing.x;
-        
+
         // Calculate button widths using full width minus space for zoom text
         float zoomTextWidth = 120; // Width reserved for zoom text
         float availableWidth = totalWidth - zoomTextWidth - buttonSpacing;
@@ -720,7 +723,7 @@ void ImageProcessor::handleSaveDialog() {
 }
 
 void ImageProcessor::processCurrentImage() {
-    if (m_imgData.empty()) return;
+    if (m_imgData.empty() || !m_processImage) return;
 
     try {
         // Convert current image data to double array
@@ -740,17 +743,19 @@ void ImageProcessor::processCurrentImage() {
             }
         }
 
-        // Configure process image settings
-        m_processImage->SetEnergyMode(CGImageDisplayParameters.LaneData.EnergyMode);
-        m_processImage->SetDualRowMode(CGImageDisplayParameters.LaneData.DualRowMode);
-        m_processImage->SetDualRowDirection(CGImageDisplayParameters.LaneData.DualRowDirection);
-        m_processImage->SetHighLowLayout(CGImageDisplayParameters.LaneData.HighLowLayout);
-        m_processImage->SetPixelMaxValue(65535);  // 16-bit max value
-        m_processImage->SetAirSampleStart(CGImageCalculationVariables.AirSampleStart);
-        m_processImage->SetAirSampleEnd(CGImageCalculationVariables.AirSampleEnd);
+        // Safely configure process image settings
+        if (m_processImage) {
+            m_processImage->SetEnergyMode(CGImageDisplayParameters.LaneData.EnergyMode);
+            m_processImage->SetDualRowMode(CGImageDisplayParameters.LaneData.DualRowMode);
+            m_processImage->SetDualRowDirection(CGImageDisplayParameters.LaneData.DualRowDirection);
+            m_processImage->SetHighLowLayout(CGImageDisplayParameters.LaneData.HighLowLayout);
+            m_processImage->SetPixelMaxValue(65535);
+            m_processImage->SetAirSampleStart(CGImageCalculationVariables.AirSampleStart);
+            m_processImage->SetAirSampleEnd(CGImageCalculationVariables.AirSampleEnd);
 
-        // Process the image
-        m_processImage->Process(inputMatrix, rows, cols);
+            // Process the image
+            m_processImage->Process(inputMatrix, rows, cols);
+        }
 
         // Get the processed data
         if (m_processImage->GetMergedData(m_processedData, m_processedRows, m_processedCols)) {

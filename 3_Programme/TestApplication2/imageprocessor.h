@@ -120,12 +120,15 @@ private:
     float m_panX;
     float m_panY;
 
+    // ImGui image display
+    GLuint m_imageTexture;
+    int m_imgWidth;
+    int m_imgHeight;
+
     // Mouse state
     bool m_mouseButtons[5];  // Track mouse button states
     glm::vec2 m_mousePos;    // Current mouse position
     glm::vec2 m_mousePosOld; // Previous mouse position
-
-
 
     void rotateImageClockwise();
     void rotateImageCounterClockwise();
@@ -151,7 +154,6 @@ private:
             array = nullptr;
         }
     }
-
 };
 
 #endif // IMAGEPROCESSOR_H

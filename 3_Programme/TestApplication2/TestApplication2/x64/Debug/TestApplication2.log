@@ -1,14 +1,15 @@
 ﻿  imageprocessor.cpp
-C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(473,37): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
-C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(727,18): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(728,18): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(931,15): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(932,16): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(960,15): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(961,16): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(983,15): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(984,16): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
-C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(1028,37): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(277,15): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
+C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(480,37): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(734,18): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(735,18): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(940,15): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(941,16): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(969,15): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(970,16): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(992,15): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(993,16): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\imageprocessor.cpp(1037,37): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
   TestApplication2.vcxproj -> C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\x64\Debug\TestApplication2.exe
   'pwsh.exe' is not recognized as an internal or external command,
   operable program or batch file.

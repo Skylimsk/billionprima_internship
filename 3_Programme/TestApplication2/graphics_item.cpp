@@ -67,7 +67,9 @@ void Scene::clear() {
 void Scene::draw(const glm::mat4& viewMatrix) const {
     // Draw all items in order
     for (const auto& item : m_items) {
-        item->draw(viewMatrix);
+        if (item) {  // Add null check
+            item->draw(viewMatrix);
+        }
     }
 }
 
@@ -274,17 +276,13 @@ void RectItem::setRect(const glm::vec4& rect) {
 }
 
 void RectItem::draw(const glm::mat4& viewMatrix) const {
-    // Add debug output
-    std::cout << "Drawing RectItem... Selected: " << m_isSelected << std::endl;
-
-    if (!m_isSelected) {
-        std::cout << "RectItem not selected, skipping draw" << std::endl;
-        return;
+    // Remove any selection-based checks
+    // Always draw if we have a valid rect
+    if (m_rect.z <= 0 || m_rect.w <= 0) {
+        return;  // Only skip if the rectangle has no size
     }
 
     glUseProgram(m_shader);
-
-    // Enable blending for transparency
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -293,13 +291,12 @@ void RectItem::draw(const glm::mat4& viewMatrix) const {
         1, GL_FALSE, glm::value_ptr(m_transform));
     glUniformMatrix4fv(glGetUniformLocation(m_shader, "view"),
         1, GL_FALSE, glm::value_ptr(viewMatrix));
-    glUniform1i(glGetUniformLocation(m_shader, "isSelected"), true);  // Always draw if selected
+    glUniform1i(glGetUniformLocation(m_shader, "isSelected"), true);  // Always draw as selected
 
     // Draw rectangle
     glBindVertexArray(m_vao);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-    // Restore blend state
     glDisable(GL_BLEND);
 }
 
