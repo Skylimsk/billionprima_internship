@@ -1,0 +1,134 @@
+09-04 17:54:15 [25264] :[HBI_Init][678][0] SDK_x64_Ver4.0.2.8_Release20240806
+09-04 17:54:15 [25264] :[HBI_Init][722][0] HBI_Init,CFpdServer(2,6),pcieId=7024
+09-04 17:54:15 [25264] :[CFpdServer::InitImageQueue][376][0] InitImageQueue success!
+09-04 17:54:15 [25264] :[CFpdServer::read_init_cfg][22303][0] warnning:file not exist!,C:\New folder\hbi_fpd_pro_ver4.0.2.8-release_build20240806\HBI_Tool\x64\HBI_FPD_CONFIG.ini
+09-04 17:54:15 [25264] :[HBI_Init][747][0] warnning:read_init_cfg is not exists!
+09-04 17:54:15 [25264] :[HBI_Init][766][0] HBI_Init success!
+09-04 17:54:15 [25264] :[HBI_RegEventCallBackFun][2937] HBI_RegEventCallBackFun
+09-04 17:54:15 [25264] :[HBI_RegEventCallBackFun][2952][0] succss!
+09-04 17:54:19 [25264] :[HBI_GetSoftwareCorrect][3416] HBI_GetSoftwareCorrect
+09-04 17:54:19 [25264] :[HBI_GetSoftwareCorrect][3443][0] HBI_GetSoftwareCorrect:succss!
+09-04 17:54:56 [25264] :[HBI_GetSoftwareCorrect][3416] HBI_GetSoftwareCorrect
+09-04 17:54:56 [25264] :[HBI_GetSoftwareCorrect][3443][0] HBI_GetSoftwareCorrect:succss!
+09-04 17:55:01 [25264] :[HBI_GetSoftwareCorrect][3416] HBI_GetSoftwareCorrect
+09-04 17:55:01 [25264] :[HBI_GetSoftwareCorrect][3443][0] HBI_GetSoftwareCorrect:succss!
+09-04 17:58:07 [25264] :[HBI_DisConnectDetector][2861] HBI_DisConnectDetector
+09-04 17:58:07 [25264] :[HBI_DisConnectDetector][2893][0] Send the command to stop continuous acquisition!
+09-04 17:58:07 [25264] :[CFpdServer::SendCommandMessage][738][0] SendCommandMessage:cmd=EDL_COMMON_TYPE_STOP_ACQ
+09-04 17:58:07 [25264] :[CFpdServer::SendData][701][0] err:disconnect
+09-04 17:58:07 [25264] :[HBI_DisConnectDetector][2897][0] err:SendStopLiveAqcCmd:failed!
+09-04 17:58:08 [25264] :[HBI_DisConnectDetector][2907][0] Close the main listening thread!
+09-04 17:58:08 [25264] :[CFpdServer::Stop][597][0] Stop
+09-04 17:58:08 [25264] :[HBI_DisConnectDetector][2910][0] ResetImageQueue!
+09-04 17:58:08 [25264] :[CHbiQueueProcess::Reset2FreeQueue][410][0] Reset2FreeQueue
+09-04 17:58:08 [25264] :[CHbiQueueProcess::Reset2FreeQueue][442][0] End:m_work_queue size is 0,m_free_queue size is 6,nodesize=6
+09-04 17:58:08 [25264] :[HBI_DisConnectDetector][2918][0] Close the communication interface!
+09-04 17:58:08 [25264] :[CComm::COMM_CLOSE][183][0] COMM_CLOSE BEGAIN!
+09-04 17:58:08 [25264] :[CComm::COMM_CLOSE][210][0] CLOSE PCIE!
+09-04 17:58:08 [25264] :[CComm::COMM_CLOSE][213][0] COMM_CLOSE END!
+09-04 17:58:08 [25264] :[CFpdServer::FreeOffsetTemplate][13533][0] FreeOffsetTemplate Complex
+09-04 17:58:08 [25264] :[HBI_DisConnectDetector][2925][0] HBI_DisConnectDetector succss!
+09-04 17:58:08 [25264] :[HBI_StopDownloadTemplate][7169] HBI_StopDownloadTemplate
+09-04 17:58:08 [25264] :[HBI_StopDownloadTemplate][7177][0] HBI_StopDownloadTemplate:CloseUpDownFileThread!
+09-04 17:58:08 [25264] :[HBI_DisConnectDetector][2861] HBI_DisConnectDetector
+09-04 17:58:08 [25264] :[HBI_DisConnectDetector][2893][0] Send the command to stop continuous acquisition!
+09-04 17:58:08 [25264] :[CFpdServer::SendCommandMessage][738][0] SendCommandMessage:cmd=EDL_COMMON_TYPE_STOP_ACQ
+09-04 17:58:08 [25264] :[CFpdServer::SendData][701][0] err:disconnect
+09-04 17:58:08 [25264] :[HBI_DisConnectDetector][2897][0] err:SendStopLiveAqcCmd:failed!
+09-04 17:58:08 [25264] :[HBI_DisConnectDetector][2907][0] Close the main listening thread!
+09-04 17:58:08 [25264] :[CFpdServer::Stop][597][0] Stop
+09-04 17:58:08 [25264] :[HBI_DisConnectDetector][2910][0] ResetImageQueue!
+09-04 17:58:08 [25264] :[CHbiQueueProcess::Reset2FreeQueue][410][0] Reset2FreeQueue
+09-04 17:58:08 [25264] :[CHbiQueueProcess::Reset2FreeQueue][442][0] End:m_work_queue size is 0,m_free_queue size is 6,nodesize=6
+09-04 17:58:08 [25264] :[HBI_DisConnectDetector][2918][0] Close the communication interface!
+09-04 17:58:08 [25264] :[CComm::COMM_CLOSE][183][0] COMM_CLOSE BEGAIN!
+09-04 17:58:08 [25264] :[CComm::COMM_CLOSE][210][0] CLOSE PCIE!
+09-04 17:58:08 [25264] :[CComm::COMM_CLOSE][213][0] COMM_CLOSE END!
+09-04 17:58:08 [25264] :[CFpdServer::FreeOffsetTemplate][13533][0] FreeOffsetTemplate Complex
+09-04 17:58:08 [25264] :[HBI_DisConnectDetector][2925][0] HBI_DisConnectDetector succss!
+09-04 17:58:08 [25264] :[HBI_DestroyEx][483][0] free
+09-04 17:58:08 [25264] :[CFpdServer::FreeImageQueue][484][0] DestroyQueueProcess
+09-04 17:58:08 [25264] :[CHbiQueueProcess::Reset2FreeQueue][410][0] Reset2FreeQueue
+09-04 17:58:08 [25264] :[CHbiQueueProcess::Reset2FreeQueue][442][0] End:m_work_queue size is 0,m_free_queue size is 6,nodesize=6
+09-04 17:58:08 [25264] :[CHbiQueueProcess::FreeNode][401][0] FreeNode:node->buffsize:18874368
+09-04 17:58:08 [25264] :[CHbiQueueProcess::FreeNode][401][0] FreeNode:node->buffsize:18874368
+09-04 17:58:08 [25264] :[CHbiQueueProcess::FreeNode][401][0] FreeNode:node->buffsize:18874368
+09-04 17:58:08 [25264] :[CHbiQueueProcess::FreeNode][401][0] FreeNode:node->buffsize:18874368
+09-04 17:58:08 [25264] :[CHbiQueueProcess::FreeNode][401][0] FreeNode:node->buffsize:18874368
+09-04 17:58:08 [25264] :[CHbiQueueProcess::FreeNode][401][0] FreeNode:node->buffsize:18874368
+09-04 17:58:08 [25264] :[CHbiQueueProcess::ClearQueue][392][0] ClearQueue queue type:1
+09-04 17:58:08 [25264] :[CHbiQueueProcess::ClearQueue][392][0] ClearQueue queue type:0
+09-04 17:58:08 [25264] :[CHbiQueueProcess::DestroyQueueProcess][99][0] DestroyQueueProcess.
+09-04 17:58:08 [25264] :[CHbiQueueProcess::Reset2FreeQueue][410][0] Reset2FreeQueue
+09-04 17:58:08 [25264] :[CHbiQueueProcess::Reset2FreeQueue][414][0] Reset2FreeQueue m_free_queue is NULL!
+09-04 17:58:08 [25264] :[CHbiQueueProcess::Reset2FreeQueue][416][0] Reset2FreeQueue m_work_queue is NULL!
+09-04 17:58:08 [25264] :[CHbiQueueProcess::DestroyQueueProcess][99][0] DestroyQueueProcess.
+09-04 17:58:08 [25264] :[CFpdServer::FreeImageQueue][489][0] FreeImageQueue success!
+09-04 17:58:08 [25264] :[CFpdServer::FreeUserDdr][24583][0] FreeUserDdr!
+09-04 17:58:08 [25264] :[CComm::~CComm][77][0] Free m_pcie!
+09-04 17:58:08 [25264] :[CComm::~CComm][85][0] WSACleanup
+09-12 12:56:09 [21876] :[HBI_Init][678][0] SDK_x64_Ver4.0.2.8_Release20240806
+09-12 12:56:09 [21876] :[HBI_Init][722][0] HBI_Init,CFpdServer(2,6),pcieId=7024
+09-12 12:56:09 [21876] :[CFpdServer::InitImageQueue][376][0] InitImageQueue success!
+09-12 12:56:09 [21876] :[CFpdServer::read_init_cfg][22303][0] warnning:file not exist!,C:\New folder\hbi_fpd_pro_ver4.0.2.8-release_build20240806\HBI_Tool\x64\HBI_FPD_CONFIG.ini
+09-12 12:56:09 [21876] :[HBI_Init][747][0] warnning:read_init_cfg is not exists!
+09-12 12:56:09 [21876] :[HBI_Init][766][0] HBI_Init success!
+09-12 12:56:09 [21876] :[HBI_RegEventCallBackFun][2937] HBI_RegEventCallBackFun
+09-12 12:56:09 [21876] :[HBI_RegEventCallBackFun][2952][0] succss!
+09-12 12:56:11 [21876] :[HBI_GetSoftwareCorrect][3416] HBI_GetSoftwareCorrect
+09-12 12:56:11 [21876] :[HBI_GetSoftwareCorrect][3443][0] HBI_GetSoftwareCorrect:succss!
+09-12 14:12:38 [21876] :[HBI_DisConnectDetector][2861] HBI_DisConnectDetector
+09-12 14:12:38 [21876] :[HBI_DisConnectDetector][2893][0] Send the command to stop continuous acquisition!
+09-12 14:12:38 [21876] :[CFpdServer::SendCommandMessage][738][0] SendCommandMessage:cmd=EDL_COMMON_TYPE_STOP_ACQ
+09-12 14:12:38 [21876] :[CFpdServer::SendData][701][0] err:disconnect
+09-12 14:12:38 [21876] :[HBI_DisConnectDetector][2897][0] err:SendStopLiveAqcCmd:failed!
+09-12 14:12:39 [21876] :[HBI_DisConnectDetector][2907][0] Close the main listening thread!
+09-12 14:12:39 [21876] :[CFpdServer::Stop][597][0] Stop
+09-12 14:12:39 [21876] :[HBI_DisConnectDetector][2910][0] ResetImageQueue!
+09-12 14:12:39 [21876] :[CHbiQueueProcess::Reset2FreeQueue][410][0] Reset2FreeQueue
+09-12 14:12:39 [21876] :[CHbiQueueProcess::Reset2FreeQueue][442][0] End:m_work_queue size is 0,m_free_queue size is 6,nodesize=6
+09-12 14:12:39 [21876] :[HBI_DisConnectDetector][2918][0] Close the communication interface!
+09-12 14:12:39 [21876] :[CComm::COMM_CLOSE][183][0] COMM_CLOSE BEGAIN!
+09-12 14:12:39 [21876] :[CComm::COMM_CLOSE][210][0] CLOSE PCIE!
+09-12 14:12:39 [21876] :[CComm::COMM_CLOSE][213][0] COMM_CLOSE END!
+09-12 14:12:39 [21876] :[CFpdServer::FreeOffsetTemplate][13533][0] FreeOffsetTemplate Complex
+09-12 14:12:39 [21876] :[HBI_DisConnectDetector][2925][0] HBI_DisConnectDetector succss!
+09-12 14:12:39 [21876] :[HBI_StopDownloadTemplate][7169] HBI_StopDownloadTemplate
+09-12 14:12:39 [21876] :[HBI_StopDownloadTemplate][7177][0] HBI_StopDownloadTemplate:CloseUpDownFileThread!
+09-12 14:12:39 [21876] :[HBI_DisConnectDetector][2861] HBI_DisConnectDetector
+09-12 14:12:39 [21876] :[HBI_DisConnectDetector][2893][0] Send the command to stop continuous acquisition!
+09-12 14:12:39 [21876] :[CFpdServer::SendCommandMessage][738][0] SendCommandMessage:cmd=EDL_COMMON_TYPE_STOP_ACQ
+09-12 14:12:39 [21876] :[CFpdServer::SendData][701][0] err:disconnect
+09-12 14:12:39 [21876] :[HBI_DisConnectDetector][2897][0] err:SendStopLiveAqcCmd:failed!
+09-12 14:12:39 [21876] :[HBI_DisConnectDetector][2907][0] Close the main listening thread!
+09-12 14:12:39 [21876] :[CFpdServer::Stop][597][0] Stop
+09-12 14:12:39 [21876] :[HBI_DisConnectDetector][2910][0] ResetImageQueue!
+09-12 14:12:39 [21876] :[CHbiQueueProcess::Reset2FreeQueue][410][0] Reset2FreeQueue
+09-12 14:12:39 [21876] :[CHbiQueueProcess::Reset2FreeQueue][442][0] End:m_work_queue size is 0,m_free_queue size is 6,nodesize=6
+09-12 14:12:39 [21876] :[HBI_DisConnectDetector][2918][0] Close the communication interface!
+09-12 14:12:39 [21876] :[CComm::COMM_CLOSE][183][0] COMM_CLOSE BEGAIN!
+09-12 14:12:39 [21876] :[CComm::COMM_CLOSE][210][0] CLOSE PCIE!
+09-12 14:12:39 [21876] :[CComm::COMM_CLOSE][213][0] COMM_CLOSE END!
+09-12 14:12:39 [21876] :[CFpdServer::FreeOffsetTemplate][13533][0] FreeOffsetTemplate Complex
+09-12 14:12:39 [21876] :[HBI_DisConnectDetector][2925][0] HBI_DisConnectDetector succss!
+09-12 14:12:39 [21876] :[HBI_DestroyEx][483][0] free
+09-12 14:12:39 [21876] :[CFpdServer::FreeImageQueue][484][0] DestroyQueueProcess
+09-12 14:12:39 [21876] :[CHbiQueueProcess::Reset2FreeQueue][410][0] Reset2FreeQueue
+09-12 14:12:39 [21876] :[CHbiQueueProcess::Reset2FreeQueue][442][0] End:m_work_queue size is 0,m_free_queue size is 6,nodesize=6
+09-12 14:12:39 [21876] :[CHbiQueueProcess::FreeNode][401][0] FreeNode:node->buffsize:18874368
+09-12 14:12:39 [21876] :[CHbiQueueProcess::FreeNode][401][0] FreeNode:node->buffsize:18874368
+09-12 14:12:39 [21876] :[CHbiQueueProcess::FreeNode][401][0] FreeNode:node->buffsize:18874368
+09-12 14:12:39 [21876] :[CHbiQueueProcess::FreeNode][401][0] FreeNode:node->buffsize:18874368
+09-12 14:12:39 [21876] :[CHbiQueueProcess::FreeNode][401][0] FreeNode:node->buffsize:18874368
+09-12 14:12:39 [21876] :[CHbiQueueProcess::FreeNode][401][0] FreeNode:node->buffsize:18874368
+09-12 14:12:39 [21876] :[CHbiQueueProcess::ClearQueue][392][0] ClearQueue queue type:1
+09-12 14:12:39 [21876] :[CHbiQueueProcess::ClearQueue][392][0] ClearQueue queue type:0
+09-12 14:12:39 [21876] :[CHbiQueueProcess::DestroyQueueProcess][99][0] DestroyQueueProcess.
+09-12 14:12:39 [21876] :[CHbiQueueProcess::Reset2FreeQueue][410][0] Reset2FreeQueue
+09-12 14:12:39 [21876] :[CHbiQueueProcess::Reset2FreeQueue][414][0] Reset2FreeQueue m_free_queue is NULL!
+09-12 14:12:39 [21876] :[CHbiQueueProcess::Reset2FreeQueue][416][0] Reset2FreeQueue m_work_queue is NULL!
+09-12 14:12:39 [21876] :[CHbiQueueProcess::DestroyQueueProcess][99][0] DestroyQueueProcess.
+09-12 14:12:39 [21876] :[CFpdServer::FreeImageQueue][489][0] FreeImageQueue success!
+09-12 14:12:39 [21876] :[CFpdServer::FreeUserDdr][24583][0] FreeUserDdr!
+09-12 14:12:39 [21876] :[CComm::~CComm][77][0] Free m_pcie!
+09-12 14:12:39 [21876] :[CComm::~CComm][85][0] WSACleanup

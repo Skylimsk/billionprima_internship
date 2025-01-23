@@ -1,0 +1,342 @@
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolApp::InitInstance][138] HBI_FPD_Tool start！!
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::init_register_plugin][9460] init_register_plugin success!
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::init_network_list][6728] init_network_list begin
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::free_network_list][6816] free_network_list
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::init_network_list][6801] init_network_list success!
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9341] m_pUserCfg->bRegisetUser=false
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9342] m_pUserCfg->nUserType=1
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9343] m_pUserCfg->szUserID=
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9344] m_pUserCfg->szUserKey=
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9345] m_pUserCfg->m_uDefaultFpdid=0
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9346] m_pUserCfg->m_uDefaultFpdsum=6
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9349] m_pUserCfg->m_fpdbasecfg.size=6
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9358] -----------------------
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9359] fpdid=0
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9360] fpdname=detect_00
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9361] handle=null
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9362] netType=71
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9363] netWorkName=
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9364] SrcMAC=00-00-00-00-00-00
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9365] SrcIP=192.168.10.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9366] SrcPort=32896
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9367] DstMAC=11-22-33-44-55-66
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9368] DstIP=192.168.10.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9369] DstPort=32897
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9370] nWlanMode=0
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9371] WlanApFpdIP=192.168.20.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9372] WlanApLocalIP=192.168.20.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9373] WlanClientFpdIP=192.168.20.80
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9374] WlanClientLocalIP=192.168.20.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9375] WlanWireIP=192.168.10.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9376] WlanWiredLocalIP=192.168.10.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9377] PcieDeviceId=0
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9378] xxxx=3072,yyyy=3072
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9379] (offset,gain,defect,dummy)=(00,00,00,00)
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9358] -----------------------
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9359] fpdid=1
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9360] fpdname=detect_01
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9361] handle=null
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9362] netType=71
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9363] netWorkName=
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9364] SrcMAC=00-00-00-00-00-00
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9365] SrcIP=192.168.10.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9366] SrcPort=32896
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9367] DstMAC=11-22-33-44-55-66
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9368] DstIP=192.168.10.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9369] DstPort=32897
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9370] nWlanMode=0
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9371] WlanApFpdIP=192.168.20.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9372] WlanApLocalIP=192.168.20.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9373] WlanClientFpdIP=192.168.20.80
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9374] WlanClientLocalIP=192.168.20.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9375] WlanWireIP=192.168.10.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9376] WlanWiredLocalIP=192.168.10.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9377] PcieDeviceId=0
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9378] xxxx=3072,yyyy=3072
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9379] (offset,gain,defect,dummy)=(00,00,00,00)
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9358] -----------------------
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9359] fpdid=2
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9360] fpdname=detect_02
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9361] handle=null
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9362] netType=71
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9363] netWorkName=
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9364] SrcMAC=00-00-00-00-00-00
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9365] SrcIP=192.168.10.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9366] SrcPort=32896
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9367] DstMAC=11-22-33-44-55-66
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9368] DstIP=192.168.10.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9369] DstPort=32897
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9370] nWlanMode=0
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9371] WlanApFpdIP=192.168.20.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9372] WlanApLocalIP=192.168.20.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9373] WlanClientFpdIP=192.168.20.80
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9374] WlanClientLocalIP=192.168.20.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9375] WlanWireIP=192.168.10.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9376] WlanWiredLocalIP=192.168.10.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9377] PcieDeviceId=0
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9378] xxxx=3072,yyyy=3072
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9379] (offset,gain,defect,dummy)=(00,00,00,00)
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9358] -----------------------
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9359] fpdid=3
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9360] fpdname=detect_03
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9361] handle=null
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9362] netType=71
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9363] netWorkName=
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9364] SrcMAC=00-00-00-00-00-00
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9365] SrcIP=192.168.10.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9366] SrcPort=32896
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9367] DstMAC=11-22-33-44-55-66
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9368] DstIP=192.168.10.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9369] DstPort=32897
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9370] nWlanMode=0
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9371] WlanApFpdIP=192.168.20.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9372] WlanApLocalIP=192.168.20.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9373] WlanClientFpdIP=192.168.20.80
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9374] WlanClientLocalIP=192.168.20.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9375] WlanWireIP=192.168.10.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9376] WlanWiredLocalIP=192.168.10.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9377] PcieDeviceId=0
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9378] xxxx=3072,yyyy=3072
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9379] (offset,gain,defect,dummy)=(00,00,00,00)
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9358] -----------------------
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9359] fpdid=4
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9360] fpdname=detect_04
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9361] handle=null
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9362] netType=71
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9363] netWorkName=
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9364] SrcMAC=00-00-00-00-00-00
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9365] SrcIP=192.168.10.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9366] SrcPort=32896
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9367] DstMAC=11-22-33-44-55-66
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9368] DstIP=192.168.10.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9369] DstPort=32897
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9370] nWlanMode=0
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9371] WlanApFpdIP=192.168.20.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9372] WlanApLocalIP=192.168.20.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9373] WlanClientFpdIP=192.168.20.80
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9374] WlanClientLocalIP=192.168.20.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9375] WlanWireIP=192.168.10.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9376] WlanWiredLocalIP=192.168.10.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9377] PcieDeviceId=0
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9378] xxxx=3072,yyyy=3072
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9379] (offset,gain,defect,dummy)=(00,00,00,00)
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9358] -----------------------
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9359] fpdid=5
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9360] fpdname=detect_05
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9361] handle=null
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9362] netType=71
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9363] netWorkName=
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9364] SrcMAC=00-00-00-00-00-00
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9365] SrcIP=192.168.10.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9366] SrcPort=32896
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9367] DstMAC=11-22-33-44-55-66
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9368] DstIP=192.168.10.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9369] DstPort=32897
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9370] nWlanMode=0
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9371] WlanApFpdIP=192.168.20.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9372] WlanApLocalIP=192.168.20.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9373] WlanClientFpdIP=192.168.20.80
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9374] WlanClientLocalIP=192.168.20.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9375] WlanWireIP=192.168.10.40
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9376] WlanWiredLocalIP=192.168.10.20
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9377] PcieDeviceId=0
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9378] xxxx=3072,yyyy=3072
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::print_user_config][9379] (offset,gain,defect,dummy)=(00,00,00,00)
+09-04 17:54:14 [25264] :[CHBI_FPD_ToolDoc::OnNewDocument][579] OnNewDocument end
+09-04 17:54:15 [25264] :[CHBI_FPD_ToolApp::InitInstance][232] HBI_Init begin
+09-04 17:54:15 [25264] :[CHBI_FPD_ToolApp::InitInstance][241] HBI_Init(0) success!
+09-04 17:54:15 [25264] :[CHBI_FPD_ToolDoc::DoRegCallbackFun][4124] HBI_RegEventCallBackFun
+09-04 17:54:15 [25264] :[CHBI_FPD_ToolApp::InitInstance][256][0] 用户注册回调函数成功!
+09-04 17:54:15 [25264] :[CImagePage::FillBitmapInfo][17647] FillBitmapInfo:width=100,height=100,bpp=8,origin=0
+09-04 17:54:16 [25264] :[CMainFrame::OnToolbarActiveModeView][1424] OnToolbarActiveModeView
+09-04 17:54:16 [25264] :[CModePage::InitModeListData][541] warnning:hbi_id0_mode_list.ini is not exist!
+09-04 17:54:16 [25264] :[CModePage::InitTemplateListData][1087] warnning:C:\New folder\hbi_fpd_pro_ver4.0.2.8-release_build20240806\HBI_Tool\x64\hbi_id0_template is not exist!
+09-04 17:54:16 [25264] :[CModePage::InitTemplateListData][1123] warnning:hbi_id0_mode_list.ini is not exist!
+09-04 17:54:18 [25264] :[CMainFrame::OnToolbarActiveImgView][1345] OnToolbarActiveImgView
+09-04 17:54:19 [25264] :[CMainFrame::OnToolbarActiveCltView][1401] OnToolbarActiveImgView
+09-04 17:54:19 [25264] :[CFirmUserCfgGui::OnInitDialog][176] ActiveUserShowPage(1).
+09-04 17:54:22 [25264] :[E:\HBI_FPD_Tool_20240726\HBI_FPD_Tool\UserCfgPage1.cpp][1193] OnBnClickedButtonUserSetMutiModeType
+09-04 17:54:27 [25264] :[E:\HBI_FPD_Tool_20240726\HBI_FPD_Tool\UserCfgPage1.cpp][1234] OnBnClickedButtonUserSetValidModeNum
+09-04 17:54:30 [25264] :[CMainFrame::OnToolbarActiveModeView][1424] OnToolbarActiveModeView
+09-04 17:54:30 [25264] :[CFirmUserCfgGui::PostNcDestroy][222] PostNcDestroy User Configure Management.
+09-04 17:54:30 [25264] :[CModePage::InitModeListData][541] warnning:hbi_id0_mode_list.ini is not exist!
+09-04 17:54:30 [25264] :[CModePage::InitTemplateListData][1087] warnning:C:\New folder\hbi_fpd_pro_ver4.0.2.8-release_build20240806\HBI_Tool\x64\hbi_id0_template is not exist!
+09-04 17:54:30 [25264] :[CModePage::InitTemplateListData][1123] warnning:hbi_id0_mode_list.ini is not exist!
+09-04 17:54:55 [25264] :[CMainFrame::OnToolbarActiveImgView][1345] OnToolbarActiveImgView
+09-04 17:54:55 [25264] :[CMainFrame::OnToolbarActiveCltView][1401] OnToolbarActiveImgView
+09-04 17:54:56 [25264] :[CFirmUserCfgGui::OnInitDialog][176] ActiveUserShowPage(1).
+09-04 17:55:00 [25264] :[CMainFrame::OnToolbarActiveCltView][1401] OnToolbarActiveImgView
+09-04 17:55:00 [25264] :[CFirmUserCfgGui::PostNcDestroy][222] PostNcDestroy User Configure Management.
+09-04 17:55:01 [25264] :[CFirmUserCfgGui::OnInitDialog][176] ActiveUserShowPage(1).
+09-04 17:58:07 [25264] :[CHBI_FPD_ToolDoc::DisConnect][5214] DisConnect
+09-04 17:58:07 [25264] :[CHBI_FPD_ToolDoc::DisConnect][5221] call HBI_DisConnectDetector
+09-04 17:58:08 [25264] :[CHBI_FPD_ToolDoc::DisConnect][5226] Disconncted
+09-04 17:58:08 [25264] :[CMainFrame::OnClose][1914] Exit XDiscovery!
+09-04 17:58:08 [25264] :[CFirmUserCfgGui::PostNcDestroy][222] PostNcDestroy User Configure Management.
+09-04 17:58:08 [25264] :[CHBI_FPD_ToolDoc::Save2Xml][8341] XML SaveFile success!
+09-04 17:58:08 [25264] :[CHBI_FPD_ToolDoc::~CHBI_FPD_ToolDoc][271] ~CHBI_FPD_ToolDoc,Save2Xml success,C:\New folder\hbi_fpd_pro_ver4.0.2.8-release_build20240806\HBI_Tool\x64\XDiscovery.xml
+09-04 17:58:08 [25264] :[CHBI_FPD_ToolDoc::free_network_list][6816] free_network_list
+09-04 17:58:08 [25264] :[CHBI_FPD_ToolDoc::destroy_register_plugin][9483] destroy_register_plugin success!
+09-04 17:58:08 [25264] :[CHBI_FPD_ToolApp::ExitInstance][291] HBI_FPD_Tool end！!
+09-12 12:56:08 [21876] :[CHBI_FPD_ToolApp::InitInstance][138] HBI_FPD_Tool start！!
+09-12 12:56:08 [21876] :[CHBI_FPD_ToolDoc::init_register_plugin][9460] init_register_plugin success!
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::init_network_list][6728] init_network_list begin
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::free_network_list][6816] free_network_list
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::init_network_list][6801] init_network_list success!
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9341] m_pUserCfg->bRegisetUser=false
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9342] m_pUserCfg->nUserType=1
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9343] m_pUserCfg->szUserID=
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9344] m_pUserCfg->szUserKey=(null)
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9345] m_pUserCfg->m_uDefaultFpdid=0
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9346] m_pUserCfg->m_uDefaultFpdsum=6
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9349] m_pUserCfg->m_fpdbasecfg.size=6
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9358] -----------------------
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9359] fpdid=0
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9360] fpdname=detect_00
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9361] handle=null
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9362] netType=71
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9363] netWorkName=(null)
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9364] SrcMAC=00-00-00-00-00-00
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9365] SrcIP=192.168.10.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9366] SrcPort=32896
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9367] DstMAC=11-22-33-44-55-66
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9368] DstIP=192.168.10.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9369] DstPort=32897
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9370] nWlanMode=0
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9371] WlanApFpdIP=192.168.20.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9372] WlanApLocalIP=192.168.20.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9373] WlanClientFpdIP=192.168.20.80
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9374] WlanClientLocalIP=192.168.20.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9375] WlanWireIP=192.168.10.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9376] WlanWiredLocalIP=192.168.10.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9377] PcieDeviceId=0
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9378] xxxx=3072,yyyy=3072
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9379] (offset,gain,defect,dummy)=(00,00,00,00)
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9358] -----------------------
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9359] fpdid=1
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9360] fpdname=detect_01
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9361] handle=null
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9362] netType=71
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9363] netWorkName=(null)
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9364] SrcMAC=00-00-00-00-00-00
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9365] SrcIP=192.168.10.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9366] SrcPort=32896
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9367] DstMAC=11-22-33-44-55-66
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9368] DstIP=192.168.10.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9369] DstPort=32897
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9370] nWlanMode=0
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9371] WlanApFpdIP=192.168.20.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9372] WlanApLocalIP=192.168.20.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9373] WlanClientFpdIP=192.168.20.80
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9374] WlanClientLocalIP=192.168.20.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9375] WlanWireIP=192.168.10.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9376] WlanWiredLocalIP=192.168.10.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9377] PcieDeviceId=0
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9378] xxxx=3072,yyyy=3072
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9379] (offset,gain,defect,dummy)=(00,00,00,00)
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9358] -----------------------
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9359] fpdid=2
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9360] fpdname=detect_02
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9361] handle=null
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9362] netType=71
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9363] netWorkName=(null)
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9364] SrcMAC=00-00-00-00-00-00
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9365] SrcIP=192.168.10.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9366] SrcPort=32896
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9367] DstMAC=11-22-33-44-55-66
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9368] DstIP=192.168.10.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9369] DstPort=32897
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9370] nWlanMode=0
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9371] WlanApFpdIP=192.168.20.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9372] WlanApLocalIP=192.168.20.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9373] WlanClientFpdIP=192.168.20.80
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9374] WlanClientLocalIP=192.168.20.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9375] WlanWireIP=192.168.10.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9376] WlanWiredLocalIP=192.168.10.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9377] PcieDeviceId=0
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9378] xxxx=3072,yyyy=3072
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9379] (offset,gain,defect,dummy)=(00,00,00,00)
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9358] -----------------------
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9359] fpdid=3
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9360] fpdname=detect_03
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9361] handle=null
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9362] netType=71
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9363] netWorkName=(null)
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9364] SrcMAC=00-00-00-00-00-00
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9365] SrcIP=192.168.10.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9366] SrcPort=32896
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9367] DstMAC=11-22-33-44-55-66
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9368] DstIP=192.168.10.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9369] DstPort=32897
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9370] nWlanMode=0
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9371] WlanApFpdIP=192.168.20.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9372] WlanApLocalIP=192.168.20.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9373] WlanClientFpdIP=192.168.20.80
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9374] WlanClientLocalIP=192.168.20.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9375] WlanWireIP=192.168.10.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9376] WlanWiredLocalIP=192.168.10.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9377] PcieDeviceId=0
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9378] xxxx=3072,yyyy=3072
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9379] (offset,gain,defect,dummy)=(00,00,00,00)
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9358] -----------------------
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9359] fpdid=4
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9360] fpdname=detect_04
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9361] handle=null
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9362] netType=71
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9363] netWorkName=(null)
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9364] SrcMAC=00-00-00-00-00-00
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9365] SrcIP=192.168.10.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9366] SrcPort=32896
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9367] DstMAC=11-22-33-44-55-66
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9368] DstIP=192.168.10.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9369] DstPort=32897
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9370] nWlanMode=0
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9371] WlanApFpdIP=192.168.20.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9372] WlanApLocalIP=192.168.20.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9373] WlanClientFpdIP=192.168.20.80
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9374] WlanClientLocalIP=192.168.20.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9375] WlanWireIP=192.168.10.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9376] WlanWiredLocalIP=192.168.10.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9377] PcieDeviceId=0
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9378] xxxx=3072,yyyy=3072
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9379] (offset,gain,defect,dummy)=(00,00,00,00)
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9358] -----------------------
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9359] fpdid=5
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9360] fpdname=detect_05
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9361] handle=null
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9362] netType=71
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9363] netWorkName=(null)
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9364] SrcMAC=00-00-00-00-00-00
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9365] SrcIP=192.168.10.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9366] SrcPort=32896
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9367] DstMAC=11-22-33-44-55-66
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9368] DstIP=192.168.10.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9369] DstPort=32897
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9370] nWlanMode=0
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9371] WlanApFpdIP=192.168.20.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9372] WlanApLocalIP=192.168.20.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9373] WlanClientFpdIP=192.168.20.80
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9374] WlanClientLocalIP=192.168.20.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9375] WlanWireIP=192.168.10.40
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9376] WlanWiredLocalIP=192.168.10.20
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9377] PcieDeviceId=0
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9378] xxxx=3072,yyyy=3072
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::print_user_config][9379] (offset,gain,defect,dummy)=(00,00,00,00)
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::OnNewDocument][579] OnNewDocument end
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolApp::InitInstance][232] HBI_Init begin
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolApp::InitInstance][241] HBI_Init(0) success!
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolDoc::DoRegCallbackFun][4124] HBI_RegEventCallBackFun
+09-12 12:56:09 [21876] :[CHBI_FPD_ToolApp::InitInstance][256][0] 用户注册回调函数成功!
+09-12 12:56:09 [21876] :[CImagePage::FillBitmapInfo][17647] FillBitmapInfo:width=100,height=100,bpp=8,origin=0
+09-12 12:56:10 [21876] :[CMainFrame::OnToolbarActiveCltView][1401] OnToolbarActiveImgView
+09-12 12:56:11 [21876] :[CFirmUserCfgGui::OnInitDialog][176] ActiveUserShowPage(1).
+09-12 14:12:38 [21876] :[CHBI_FPD_ToolDoc::DisConnect][5214] DisConnect
+09-12 14:12:38 [21876] :[CHBI_FPD_ToolDoc::DisConnect][5221] call HBI_DisConnectDetector
+09-12 14:12:39 [21876] :[CHBI_FPD_ToolDoc::DisConnect][5226] Disconncted
+09-12 14:12:39 [21876] :[CMainFrame::OnClose][1914] Exit XDiscovery!
+09-12 14:12:39 [21876] :[CFirmUserCfgGui::PostNcDestroy][222] PostNcDestroy User Configure Management.
+09-12 14:12:39 [21876] :[CHBI_FPD_ToolDoc::Save2Xml][8341] XML SaveFile success!
+09-12 14:12:39 [21876] :[CHBI_FPD_ToolDoc::~CHBI_FPD_ToolDoc][271] ~CHBI_FPD_ToolDoc,Save2Xml success,C:\New folder\hbi_fpd_pro_ver4.0.2.8-release_build20240806\HBI_Tool\x64\XDiscovery.xml
+09-12 14:12:39 [21876] :[CHBI_FPD_ToolDoc::free_network_list][6816] free_network_list
+09-12 14:12:39 [21876] :[CHBI_FPD_ToolDoc::destroy_register_plugin][9483] destroy_register_plugin success!
+09-12 14:12:39 [21876] :[CHBI_FPD_ToolApp::ExitInstance][291] HBI_FPD_Tool end！!

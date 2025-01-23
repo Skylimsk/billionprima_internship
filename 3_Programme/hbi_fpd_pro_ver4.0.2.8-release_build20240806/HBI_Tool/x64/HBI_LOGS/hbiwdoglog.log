@@ -1,0 +1,15 @@
+09-04 17:54:14 [25264] :[ChbiwdogApp::InitInstance][130] hbiwdog start£¡!
+09-04 17:54:14 [25264] :[hbi_init_reg][165] hbi_init_reg
+09-04 17:54:14 [25264] :[hbi_registar_callback][309] HBI_RegEventCallBackFun
+09-04 17:54:14 [25264] :[hbi_registar_callback][324] hbi_registar_callback:succss!
+09-04 17:58:08 [25264] :[hbi_del_reg][186] hbi_del_reg
+09-04 17:58:08 [25264] :[ChbiwdogApp::ExitInstance][139] hbiwdog end£¡!
+09-12 12:56:08 [21876] :[ChbiwdogApp::InitInstance][130] hbiwdog start£¡!
+09-12 12:56:08 [21876] :[hbi_init_reg][165] hbi_init_reg
+09-12 12:56:08 [21876] :[hbi_registar_callback][309] HBI_RegEventCallBackFun
+09-12 12:56:08 [21876] :[hbi_registar_callback][324] hbi_registar_callback:succss!
+09-12 12:56:09 [21876] :[hbi_user_check][342] hbi_user_check at time:2024-09-12 12:56
+09-12 12:56:09 [21876] :[CRegPlugIn::CheckRegisterCode][328] err:user_id's length=0
+09-12 12:56:09 [21876] :[hbi_user_check][361] err:hbi_user_check failed!
+09-12 14:12:39 [21876] :[hbi_del_reg][186] hbi_del_reg
+09-12 14:12:39 [21876] :[ChbiwdogApp::ExitInstance][139] hbiwdog end£¡!

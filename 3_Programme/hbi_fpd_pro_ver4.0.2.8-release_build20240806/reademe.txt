@@ -1,0 +1,7 @@
+HBI_DLL：昊博SDK API接口头文件和库文件，包括64位和32位；
+HBI_Tool：平板测试工具软件；
+SDK_Demo_Example：SDK Demo源码工程、工程和集成说明；
+
+HBI_ DLL: Haobo SDK API interface header file and library file, including 64-bit and 32-bit;
+HBI_ Tool: tablet test tool software;
+SDK_ Demo_ Example: SDK Demo source code engineering, engineering and integration description;

@@ -1,0 +1,627 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#ifndef APSTUDIO_INVOKED
+#include "targetver.h"
+#endif
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// 中文(简体，中国) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+#pragma code_page(936)
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#ifndef APSTUDIO_INVOKED\r\n"
+    "#include ""targetver.h""\r\n"
+    "#endif\r\n"
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "#define _AFX_NO_SPLITTER_RESOURCES\r\n"
+    "#define _AFX_NO_OLE_RESOURCES\r\n"
+    "#define _AFX_NO_TRACKER_RESOURCES\r\n"
+    "#define _AFX_NO_PROPERTY_RESOURCES\r\n"
+    "\r\n"
+    "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)\r\n"
+    "LANGUAGE 9, 1\r\n"
+    "#pragma code_page(1252)\r\n"
+    "#include ""res\\HB_SDK_DEMO2008.rc2""  // non-Microsoft Visual C++ edited resources\r\n"
+    "#include ""afxres.rc""     // Standard components\r\n"
+    "#endif\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDR_MAINFRAME           ICON                    "res\\HB_SDK_DEMO2008.ico"
+
+IDI_ICON_BUSY           ICON                    "res\\BUSY.ICO"
+
+IDI_ICON_CONNECT        ICON                    "res\\connect.ICO"
+
+IDI_ICON_DISCONNECT     ICON                    "res\\disconnect.ICO"
+
+IDI_ICON_PREPARE        ICON                    "res\\icon_bus.ico"
+
+IDI_ICON_READY          ICON                    "res\\READY.ICO"
+
+IDI_ICON_TEMPLATE       ICON                    "res\\Template.ico"
+
+IDI_ICON_CONTINUE_READY ICON                    "res\\CONTINUE_READY.ICO"
+
+IDI_ICON_EXPOSE         ICON                    "res\\EXPOSE.ICO"
+
+IDI_ICON_DEFECT_ACK     ICON                    "res\\icon_defect.ico"
+
+IDI_ICON_GAIN_ACK       ICON                    "res\\icon_gain.ico"
+
+IDI_ICON_OFFSET_ACK     ICON                    "res\\icon_offset.ico"
+
+IDI_ICON_RETRANS_MISS   ICON                    "res\\retrans_packet.ico"
+
+IDI_ICON_UPDATE_FIRMWARE ICON                    "res\\update_firmware.ico"
+
+IDI_ICON_CONTINUE_OFFSET ICON                    "res\\OFFSET.ICO"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_QGENERATE_TEMPLATE_TOOL DIALOGEX 0, 0, 218, 134
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Quickly Generate Calibration Template Tool"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "Generate Offset Template",IDC_BTN_TEMPLATE_GENERATE,20,103,178,14
+    CONTROL         "Offset Calibration",IDC_RADIO_OFFSET,"Button",BS_AUTORADIOBUTTON,72,18,73,10
+    CONTROL         "Gain Calibration",IDC_RADIO_GAIN,"Button",BS_AUTORADIOBUTTON,72,43,66,10
+    CONTROL         "Defect Calibration",IDC_RADIO_DEFECT,"Button",BS_AUTORADIOBUTTON,72,68,73,10
+END
+
+IDD_DETECTOR_SETTING DIALOGEX 0, 0, 309, 174
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Detector Setting"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "Save",IDC_BTN_SAVE_SETTING,63,144,71,19
+    PUSHBUTTON      "Cancel",IDCANCEL,176,144,71,19
+    EDITTEXT        IDC_EDIT_DETECTOR_A_ID,94,42,200,14,ES_CENTER | ES_AUTOHSCROLL | ES_READONLY | ES_NUMBER
+    COMBOBOX        IDC_COMBO_COMM_TYPE_A,94,66,200,106,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "",IDC_IPADDRESS_DETECTOR_IP_A,"SysIPAddress32",WS_TABSTOP,94,90,154,15
+    EDITTEXT        IDC_EDIT_DETECTOR_PORT_A,253,90,40,14,ES_CENTER | ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_IPADDRESS_LOCAL_IP_A,"SysIPAddress32",WS_TABSTOP,94,117,154,15
+    EDITTEXT        IDC_EDIT_LOCAL_PORT_A,253,117,40,14,ES_CENTER | ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Detect Id:",IDC_STATIC,16,45,70,8
+    LTEXT           "Communication Type:",IDC_STATIC,16,68,70,8
+    LTEXT           "FPD IP && Port:",IDC_STATIC,16,93,70,8
+    LTEXT           "Host IP && Port:",IDC_STATIC,16,120,70,8
+    GROUPBOX        "",IDC_STATIC,5,3,299,168
+    EDITTEXT        IDC_EDIT_DETECTOR_USER_NAME,94,17,200,14,ES_AUTOHSCROLL
+    LTEXT           "User Name:",IDC_STATIC,16,19,70,8
+END
+
+IDD_DIALOG_BINNING_TYPE DIALOGEX 0, 0, 209, 101
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Select Binning Type"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "确定",IDOK,35,62,139,24
+    COMBOBOX        IDC_COMBO_TEMPLATE_BINNING,35,27,139,67,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+END
+
+IDD_UPDATE_FIRMWARE_TOOL DIALOGEX 0, 0, 309, 152
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Firmware Update Tool"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "Start",IDC_BUTTON_UPDATE_START,29,90,87,22
+    PUSHBUTTON      "Stop",IDC_BUTTON_UPDATE_STOP,192,90,87,22
+    CONTROL         "",IDC_PROGRESS_UPGRADE_FIRMWARE,"msctls_progress32",WS_BORDER,0,135,309,15
+    EDITTEXT        IDC_EDIT_FIRMWARE_FILE_PATH,6,53,255,14,ES_AUTOHSCROLL
+    PUSHBUTTON      "...",IDC_BUTTON_OPEN_PATH,264,53,40,14
+    CTEXT           "Select firmware update file",IDC_STATIC_UPDATE_MSG,2,22,306,8
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_QGENERATE_TEMPLATE_TOOL, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 211
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 127
+    END
+
+    IDD_DETECTOR_SETTING, DIALOG
+    BEGIN
+    END
+
+    IDD_DIALOG_BINNING_TYPE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 202
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 94
+    END
+
+    IDD_UPDATE_FIRMWARE_TOOL, DIALOG
+    BEGIN
+        BOTTOMMARGIN, 150
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_MENU_MAIN MENU
+BEGIN
+    POPUP "&FILE(F)"
+    BEGIN
+        MENUITEM "Detector &Setting",           ID_FILE_SETTING
+        MENUITEM "Generate &Template",          ID_FILE_GENERATETEMPLATE
+        MENUITEM "Open Template Wizard",        ID_FILE_OPEN_TEMPLATE_WIZARD
+        MENUITEM "Update Firmware Tool",        32776
+        MENUITEM "&Exit App",                   ID_APP_EXIT
+    END
+    POPUP "&HELP(H)"
+    BEGIN
+        MENUITEM "&About Tool...",              ID_APP_ABOUT
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog Info
+//
+
+IDD_DETECTOR_SETTING DLGINIT
+BEGIN
+    IDC_COMBO_COMM_TYPE_A, 0x403, 23, 0
+0x2e31, 0x4455, 0x2d50, 0x6947, 0x6167, 0x6942, 0x2074, 0x7445, 0x6568, 
+0x6e72, 0x7465, "\000" 
+    IDC_COMBO_COMM_TYPE_A, 0x403, 12, 0
+0x2e32, 0x4455, 0x2d50, 0x754a, 0x626d, 0x006f, 
+    IDC_COMBO_COMM_TYPE_A, 0x403, 14, 0
+0x2e33, 0x4350, 0x2d49, 0x7845, 0x7270, 0x7365, 0x0073, 
+    IDC_COMBO_COMM_TYPE_A, 0x403, 15, 0
+0x2e34, 0x4455, 0x2d50, 0x6957, 0x6572, 0x656c, 0x7373, "\000" 
+    0
+END
+
+IDD_DIALOG_BINNING_TYPE DLGINIT
+BEGIN
+    IDC_COMBO_TEMPLATE_BINNING, 0x403, 15, 0
+0x2e31, 0x4220, 0x6e69, 0x696e, 0x676e, 0x312d, 0x312a, "\000" 
+    IDC_COMBO_TEMPLATE_BINNING, 0x403, 15, 0
+0x2e32, 0x4220, 0x6e69, 0x696e, 0x676e, 0x322d, 0x322a, "\000" 
+    IDC_COMBO_TEMPLATE_BINNING, 0x403, 15, 0
+0x2e33, 0x4220, 0x6e69, 0x696e, 0x676e, 0x332d, 0x332a, "\000" 
+    IDC_COMBO_TEMPLATE_BINNING, 0x403, 15, 0
+0x2e34, 0x4220, 0x6e69, 0x696e, 0x676e, 0x342d, 0x342a, "\000" 
+    0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_DETECTOR_SETTING AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_DIALOG_BINNING_TYPE AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_UPDATE_FIRMWARE_TOOL AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    ID_FILE_GENERATETEMPLATE "Generate Template"
+    ID_FILE_SETTING         "Detector Setting"
+END
+
+STRINGTABLE
+BEGIN
+    ID_APP_ABOUT            "Display program information, version number and copyright\nAbout"
+    ID_APP_EXIT             "Exit App"
+END
+
+#endif    // 中文(简体，中国) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// 英语(美国) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_ABOUTBOX DIALOGEX 0, 0, 239, 152
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About Detector Test Tool"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    ICON            IDR_MAINFRAME,IDC_STATIC,14,14,21,20
+    LTEXT           "Detector Test Tool, Version 2.0",IDC_STATIC,62,22,114,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2021 by mhyang",IDC_STATIC,62,7,114,8,NOT WS_VISIBLE
+    DEFPUSHBUTTON   "Firmware Version",IDC_BUTTON_GET_FIRMWARE_VER,85,74,69,14,WS_GROUP
+    PUSHBUTTON      "SDK Version",IDC_BUTTON_GET_SDK_VER,85,38,69,14
+    PUSHBUTTON      "Serial Number",IDC_BUTTON_GET_FPD_SN,85,110,69,14
+    CTEXT           "...",IDC_STATIC_FIRMWARE_VERSION,7,95,225,8
+    CTEXT           "...",IDC_STATIC_SDK_VERSION,7,59,225,8
+    CTEXT           "...",IDC_STATIC_SERIAL_NUMBER,7,131,225,8
+END
+
+IDD_HB_SDK_DEMO2008_DIALOG DIALOGEX 0, 0, 757, 413
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_APPWINDOW
+CAPTION "Detector Tool"
+MENU IDR_MENU_MAIN
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    PUSHBUTTON      "Connect",IDC_BTN_CONN,652,45,46,14
+    PUSHBUTTON      "Disconnect",IDC_BTN_DISCONN,700,45,46,14,WS_DISABLED
+    PUSHBUTTON      "Live Acquisition",IDC_BTN_LIVE_ACQ,429,389,73,14,WS_DISABLED
+    PUSHBUTTON      "Stop Live Acquisition",IDC_BTN_STOP_LIVE_ACQ,508,389,73,14,WS_DISABLED
+    CONTROL         "",IDC_STATIC_PICTURE_ZONE,"Static",SS_GRAYRECT | SS_NOTIFY,8,27,407,364
+    CONTROL         "Show Image",IDC_RADIO_SHOW_PIC,"Button",BS_AUTORADIOBUTTON,481,11,52,10
+    CONTROL         "Save Image",IDC_RADIO_SAVE_PIC,"Button",BS_AUTORADIOBUTTON,573,11,52,10
+    ICON            IDI_ICON_DISCONNECT,IDI_ICON_DISCONNECT,425,6,20,20
+    COMBOBOX        IDC_COMBO_TRIGGER_MODE,516,82,134,100,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_COMBO_ENABLE_OFFSET,516,97,134,62,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_COMBO_ENABLE_GAIN,516,112,134,59,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_COMBO_ENABLE_DEFECT,516,127,134,61,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "FPD Trigger Mode:",IDC_STATIC,433,85,60,8
+    LTEXT           "Offset Correction Status:",IDC_STATIC,433,99,82,8
+    LTEXT           "Gain Correction Status:",IDC_STATIC,433,114,82,8
+    LTEXT           "Defect Correction Status:",IDC_STATIC,433,129,83,8
+    EDITTEXT        IDC_EDIT_MAX_FRAME_SUM,508,329,73,14,ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_SPIN_MAX_FRAME_SUM,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_ARROWKEYS,575,329,10,14
+    EDITTEXT        IDC_EDIT_DISCARD_FRAME_NUM,508,347,73,14,ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_SPIN_DISCARD_FRAME_NUM,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_ARROWKEYS,575,347,10,14
+    EDITTEXT        IDC_EDIT_MAX_FPS,508,267,73,14,ES_AUTOHSCROLL | ES_NUMBER
+    CONTROL         "",IDC_SPIN_MAX_FPS,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_ARROWKEYS,575,267,10,14
+    LTEXT           "Discard Number:",IDC_STATIC,433,349,54,8
+    LTEXT           "Frame Number:",IDC_STATIC,433,332,60,8
+    LTEXT           "Frame Rate:",IDC_STATIC,433,270,47,8
+    COMBOBOX        IDC_COMBO_PGA_LEVEL,482,213,99,140,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_COMBO_BINNING,482,161,99,126,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "PGA Level:",IDC_STATIC,433,215,45,8
+    LTEXT           "Binning Type:",IDC_STATIC,433,163,45,8
+    PUSHBUTTON      "Firmware Version",IDC_BUTTON_FIRMWARE_VER,595,266,73,14,WS_DISABLED
+    PUSHBUTTON      "Set PGA Level",IDC_BUTTON_SET_GAIN_MODE,429,232,73,14,WS_DISABLED
+    PUSHBUTTON      "Get Image Property",IDC_BTN_GET_IMAGE_PROPERTY,595,291,73,14,WS_DISABLED
+    PUSHBUTTON      "Get Acquire Time",IDC_BUTTON_SET_PGA_LEVEL,508,307,73,14,WS_DISABLED
+    PUSHBUTTON      "Single Acquisition",IDC_BUTTON_SINGLE_SHOT,673,192,73,14,WS_DISABLED
+    PUSHBUTTON      "Set Trigger Mode",IDC_BTN_SET_TRIGGER_MODE,673,82,73,14,WS_DISABLED
+    PUSHBUTTON      "Set Acquire Time",IDC_BUTTON_SET_LIVE_ACQUISITION_TM,429,307,73,14,WS_DISABLED
+    PUSHBUTTON      "Get SDK Version",IDC_BUTTON_SOFTWARE_VER,673,266,73,14
+    PUSHBUTTON      "Get FPD Config",IDC_BUTTON_GET_CONFIG,673,291,73,14,WS_DISABLED
+    PUSHBUTTON      "Trigger && Correction",IDC_BTN_SET_TRIGGER_CORRECTION,673,126,73,14,WS_DISABLED
+    PUSHBUTTON      "Set Correct Enable",IDC_BTN_FIRMWARE_CORRECT_ENABLE,673,104,73,14,WS_DISABLED
+    PUSHBUTTON      "Get PGA Level",IDC_BUTTON_GET_GAIN_MODE,508,232,73,14,WS_DISABLED
+    PUSHBUTTON      "Set Binning Type",IDC_BUTTON_SET_BINNING,429,184,73,14,WS_DISABLED
+    PUSHBUTTON      "Get Serial Number",IDC_BUTTON_GET_SERIAL_NUMBER,595,316,73,14,WS_DISABLED
+    COMBOBOX        IDC_COMBO_CONN_OFFSETTEMP,516,46,133,57,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Connection Properties:",IDC_STATIC,433,48,74,8
+    PUSHBUTTON      "Download Template",IDC_BTN_DOWNLOAD_TEMPLATE,673,316,73,14,WS_DISABLED
+    LTEXT           "Live Acq Mode:",IDC_STATIC,433,368,50,8
+    COMBOBOX        IDC_COMBO_LIVE_ACQ_MODE,482,366,99,69,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    GROUPBOX        "1.Connect && Disconnect",IDC_GROUP_BOX_CONN,425,32,325,33
+    GROUPBOX        "2.Trigger Mode && Correction Enable",IDC_GROUP_BOX_CORRECTION,425,68,325,76
+    GROUPBOX        "5.Live Acquisition",IDC_GROUP_BOX_LIVE_ACQ,425,255,161,152
+    GROUPBOX        "4.Single Acquisition",IDC_GROUP_BOX_SIGLE_ACQ,591,146,160,104
+    GROUPBOX        "3.Binng && PGA Level",IDC_GROUP_BOX_BINNING,425,146,161,104
+    PUSHBUTTON      "Single Prepare",IDC_BUTTON_SINGLE_PREPARE,595,192,73,14,WS_DISABLED
+    LTEXT           "Prepare Time(ms):",IDC_STATIC,598,159,60,8
+    EDITTEXT        IDC_EDIT_PREPARE_TIME,673,157,73,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Live Time(ms):",IDC_STATIC,433,287,47,8
+    PUSHBUTTON      "Get Binning Type",IDC_BUTTON_GET_BINNING,508,184,73,14,WS_DISABLED
+    PUSHBUTTON      "Set Prepare Time",IDC_BUTTON_SET_PREPARE_TM,595,174,73,14,WS_DISABLED
+    PUSHBUTTON      "Get Prepare Time",IDC_BUTTON_GET_PREPARE_TM,673,174,73,14,WS_DISABLED
+    PUSHBUTTON      "Config File",IDC_BUTTON_OPEN_CONFIG,673,10,73,14
+    EDITTEXT        IDC_EDIT_LIVE_ACQ_TIME,508,284,73,14,ES_AUTOHSCROLL | ES_NUMBER
+    PUSHBUTTON      "Update Trigger&&Binning&&Fps",IDC_BTN_UPDATE_TRIGGER_BINNING_FPS,595,340,151,14,WS_DISABLED
+    PUSHBUTTON      "Update PGA&&Binning&&Fps",IDC_BUTTON_UPDATE_PGA_BINNING_FPS,595,365,151,14,WS_DISABLED
+    PUSHBUTTON      "Update Trigger&&PGA&&Binning&&Fps",IDC_BTN_UPDATE_TRIGGER_PGA_BINNING_FPS,595,390,151,14,WS_DISABLED
+    GROUPBOX        "6. Others",IDC_GROUP_BOX_CUSTOM,591,255,160,152
+    GROUPBOX        "Detector A",IDC_STATIC_DETECTOR_A,4,7,416,401,BS_CENTER | BS_NOTIFY
+    LTEXT           "Packet Interval Time(us):",IDC_STATIC,598,212,73,15
+    EDITTEXT        IDC_EDIT_PACKET_INTERVAL_TIME,673,214,73,14,ES_AUTOHSCROLL | ES_NUMBER
+    PUSHBUTTON      "Set Packet Interval",IDC_BTN_UPDATE_PACKET_INTERVAL_TIME,595,232,73,14,WS_DISABLED
+    PUSHBUTTON      "Get Packet Interval",IDC_BTN_GET_PACKET_INTERVAL_TIME,675,232,73,14,WS_DISABLED
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 232
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 145
+    END
+
+    IDD_HB_SDK_DEMO2008_DIALOG, DIALOG
+    BEGIN
+        RIGHTMARGIN, 755
+        BOTTOMMARGIN, 411
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog Info
+//
+
+IDD_HB_SDK_DEMO2008_DIALOG DLGINIT
+BEGIN
+    IDC_COMBO_TRIGGER_MODE, 0x403, 10, 0
+0x2d30, 0x6e49, 0x6176, 0x696c, 0x0064, 
+    IDC_COMBO_TRIGGER_MODE, 0x403, 11, 0
+0x2d31, 0x6f53, 0x7466, 0x6177, 0x6572, "\000" 
+    IDC_COMBO_TRIGGER_MODE, 0x403, 8, 0
+0x2d32, 0x6c43, 0x6165, 0x0072, 
+    IDC_COMBO_TRIGGER_MODE, 0x403, 28, 0
+0x3330, 0x532d, 0x6174, 0x6974, 0x3a63, 0x4820, 0x6776, 0x5420, 0x6972, 
+0x6767, 0x7265, 0x4d20, 0x646f, 0x0065, 
+    IDC_COMBO_TRIGGER_MODE, 0x403, 27, 0
+0x2d34, 0x7453, 0x7461, 0x6369, 0x203a, 0x4541, 0x2044, 0x7254, 0x6769, 
+0x6567, 0x2072, 0x6f4d, 0x6564, "\000" 
+    IDC_COMBO_TRIGGER_MODE, 0x403, 25, 0
+0x2d35, 0x7944, 0x616e, 0x696d, 0x3a63, 0x4820, 0x6776, 0x5320, 0x6e79, 
+0x2063, 0x6f4d, 0x6564, "\000" 
+    IDC_COMBO_TRIGGER_MODE, 0x403, 25, 0
+0x2d36, 0x7944, 0x616e, 0x696d, 0x3a63, 0x4620, 0x6470, 0x5320, 0x6e79, 
+0x2063, 0x6f4d, 0x6564, "\000" 
+    IDC_COMBO_TRIGGER_MODE, 0x403, 23, 0
+0x2d37, 0x7944, 0x616e, 0x696d, 0x3a63, 0x7046, 0x2064, 0x6f43, 0x746e, 
+0x6e69, 0x6575, "\000" 
+    IDC_COMBO_ENABLE_OFFSET, 0x403, 23, 0
+0x2d30, 0x6f4e, 0x4f20, 0x6666, 0x6573, 0x2074, 0x6f43, 0x7272, 0x6365, 
+0x6974, 0x6e6f, "\000" 
+    IDC_COMBO_ENABLE_OFFSET, 0x403, 29, 0
+0x2d31, 0x6f53, 0x7466, 0x6177, 0x6572, 0x4f20, 0x6666, 0x6573, 0x2074, 
+0x6f43, 0x7272, 0x6365, 0x6974, 0x6e6f, "\000" 
+    IDC_COMBO_ENABLE_OFFSET, 0x403, 33, 0
+0x2d32, 0x6946, 0x6d72, 0x6177, 0x6572, 0x5020, 0x736f, 0x4f74, 0x6666, 
+0x6573, 0x2074, 0x6f43, 0x7272, 0x6365, 0x6974, 0x6e6f, "\000" 
+    IDC_COMBO_ENABLE_OFFSET, 0x403, 32, 0
+0x2d33, 0x6946, 0x6d72, 0x6177, 0x6572, 0x5020, 0x6572, 0x664f, 0x7366, 
+0x7465, 0x4320, 0x726f, 0x6572, 0x7463, 0x6f69, 0x006e, 
+    IDC_COMBO_ENABLE_GAIN, 0x403, 21, 0
+0x2d30, 0x6f4e, 0x4720, 0x6961, 0x206e, 0x6f43, 0x7272, 0x6365, 0x6974, 
+0x6e6f, "\000" 
+    IDC_COMBO_ENABLE_GAIN, 0x403, 27, 0
+0x2d31, 0x6f53, 0x7466, 0x6177, 0x6572, 0x4720, 0x6961, 0x206e, 0x6f43, 
+0x7272, 0x6365, 0x6974, 0x6e6f, "\000" 
+    IDC_COMBO_ENABLE_GAIN, 0x403, 27, 0
+0x2d32, 0x6946, 0x6d72, 0x6177, 0x6572, 0x4720, 0x6961, 0x206e, 0x6f43, 
+0x7272, 0x6365, 0x6974, 0x6e6f, "\000" 
+    IDC_COMBO_ENABLE_DEFECT, 0x403, 23, 0
+0x2d30, 0x6f4e, 0x4420, 0x6665, 0x6365, 0x2074, 0x6f43, 0x7272, 0x6365, 
+0x6974, 0x6e6f, "\000" 
+    IDC_COMBO_ENABLE_DEFECT, 0x403, 29, 0
+0x2d31, 0x6f53, 0x7466, 0x6177, 0x6572, 0x4420, 0x6665, 0x6365, 0x2074, 
+0x6f43, 0x7272, 0x6365, 0x6974, 0x6e6f, "\000" 
+    IDC_COMBO_ENABLE_DEFECT, 0x403, 29, 0
+0x2d32, 0x6946, 0x6d72, 0x6177, 0x6572, 0x4420, 0x6665, 0x6365, 0x2074, 
+0x6f43, 0x7272, 0x6365, 0x6974, 0x6e6f, "\000" 
+    IDC_COMBO_PGA_LEVEL, 0x403, 10, 0
+0x2d30, 0x6e49, 0x6176, 0x696c, 0x0064, 
+    IDC_COMBO_PGA_LEVEL, 0x403, 8, 0
+0x2d31, 0x2e30, 0x7036, 0x0043, 
+    IDC_COMBO_PGA_LEVEL, 0x403, 8, 0
+0x2d32, 0x2e31, 0x7032, 0x0043, 
+    IDC_COMBO_PGA_LEVEL, 0x403, 8, 0
+0x2d33, 0x2e32, 0x7034, 0x0043, 
+    IDC_COMBO_PGA_LEVEL, 0x403, 8, 0
+0x2d34, 0x2e33, 0x7036, 0x0043, 
+    IDC_COMBO_PGA_LEVEL, 0x403, 8, 0
+0x2d35, 0x2e34, 0x7038, 0x0043, 
+    IDC_COMBO_PGA_LEVEL, 0x403, 8, 0
+0x2d36, 0x2e37, 0x7032, 0x0043, 
+    IDC_COMBO_PGA_LEVEL, 0x403, 8, 0
+0x2d37, 0x2e39, 0x7036, 0x0043, 
+    IDC_COMBO_BINNING, 0x403, 10, 0
+0x2d30, 0x6e49, 0x6176, 0x696c, 0x0064, 
+    IDC_COMBO_BINNING, 0x403, 8, 0
+0x2d31, 0x2031, 0x2078, 0x0031, 
+    IDC_COMBO_BINNING, 0x403, 8, 0
+0x2d32, 0x2032, 0x2078, 0x0032, 
+    IDC_COMBO_BINNING, 0x403, 8, 0
+0x2d33, 0x2033, 0x2078, 0x0033, 
+    IDC_COMBO_BINNING, 0x403, 8, 0
+0x2d34, 0x2034, 0x2078, 0x0034, 
+    IDC_COMBO_CONN_OFFSETTEMP, 0x403, 15, 0
+0x2d30, 0x6f43, 0x6e6e, 0x6365, 0x2074, 0x6e4f, 0x796c, "\000" 
+    IDC_COMBO_CONN_OFFSETTEMP, 0x403, 34, 0
+0x2d31, 0x6f43, 0x6e6e, 0x6365, 0x2074, 0x6e41, 0x2064, 0x7250, 0x2d65, 
+0x664f, 0x7366, 0x7465, 0x5420, 0x6d65, 0x6c70, 0x7461, 0x0065, 
+    IDC_COMBO_LIVE_ACQ_MODE, 0x403, 24, 0
+0x3a31, 0x6d49, 0x6761, 0x2b65, 0x664f, 0x7366, 0x7465, 0x5420, 0x6d65, 
+0x6c70, 0x7461, 0x0065, 
+    IDC_COMBO_LIVE_ACQ_MODE, 0x403, 13, 0
+0x3a32, 0x6e4f, 0x796c, 0x4920, 0x616d, 0x6567, "\000" 
+    IDC_COMBO_LIVE_ACQ_MODE, 0x403, 23, 0
+0x3a33, 0x6e4f, 0x796c, 0x4f20, 0x6666, 0x6573, 0x2074, 0x6554, 0x706d, 
+0x616c, 0x6574, "\000" 
+    IDC_COMBO_LIVE_ACQ_MODE, 0x403, 22, 0
+0x2e34, 0x764f, 0x7265, 0x616c, 0x2d70, 0x3631, 0x6962, 0x2774, 0x6d49, 
+0x6761, 0x0065, 
+    IDC_COMBO_LIVE_ACQ_MODE, 0x403, 22, 0
+0x2e35, 0x764f, 0x7265, 0x616c, 0x2d70, 0x3233, 0x6962, 0x2774, 0x6d49, 
+0x6761, 0x0065, 
+    0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_HB_SDK_DEMO2008_DIALOG AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_ABOUTBOX AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,3
+ PRODUCTVERSION 1,0,0,3
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904e4"
+        BEGIN
+            VALUE "CompanyName", "TODO: <Company name>"
+            VALUE "FileDescription", "TODO: <File description>"
+            VALUE "FileVersion", "1.0.0.3"
+            VALUE "InternalName", "DETECTOR_DEMO_TOOL.exe"
+            VALUE "LegalCopyright", "TODO: (c) <Company name>.  All rights reserved."
+            VALUE "OriginalFilename", "DETECTOR_DEMO_TOOL.exe"
+            VALUE "ProductName", "TODO: <Product name>"
+            VALUE "ProductVersion", "1.0.0.3"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1252
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDS_ABOUTBOX            "&About HB_SDK_DEMO2008..."
+    IDP_SOCKETS_INIT_FAILED "Windows sockets initialization failed."
+END
+
+#endif    // 英语(美国) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+#define _AFX_NO_SPLITTER_RESOURCES
+#define _AFX_NO_OLE_RESOURCES
+#define _AFX_NO_TRACKER_RESOURCES
+#define _AFX_NO_PROPERTY_RESOURCES
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE 9, 1
+#pragma code_page(1252)
+#include "res\HB_SDK_DEMO2008.rc2"  // non-Microsoft Visual C++ edited resources
+#include "afxres.rc"     // Standard components
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
