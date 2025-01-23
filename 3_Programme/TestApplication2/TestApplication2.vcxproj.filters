@@ -27,12 +27,42 @@
     <ClCompile Include="CGParams.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="graphics_scene.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="graphics_view.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="texture_item.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="rect_item.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="point_item.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="graphics_item.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="imageprocessor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="graphics_scene.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="graphics_view.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="texture_item.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rect_item.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="point_item.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

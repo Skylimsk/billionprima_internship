@@ -109,13 +109,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\include;$(VCPKG_ROOT)\installed\x64-windows\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\include;$(VCPKG_ROOT)\installed\x64-windows\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\Users\skyli\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\lib;$(VCPKG_ROOT)\installed\x64-windows\debug\lib</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>D:\OneDrive - Billion Prima Sdn.Bhd\billionprima_internship\3_Programme\TestApplication2\lib;$(VCPKG_ROOT)\installed\x64-windows\debug\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>SDL2d.lib;imguid.lib;opengl32.lib;glew32d.lib;CGProcessImage.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -142,12 +142,22 @@
   <ItemGroup>
     <ClCompile Include="CGParams.cpp" />
     <ClCompile Include="graphics_item.cpp" />
+    <ClCompile Include="graphics_scene.cpp" />
+    <ClCompile Include="graphics_view.cpp" />
     <ClCompile Include="imageprocessor.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="point_item.cpp" />
+    <ClCompile Include="rect_item.cpp" />
+    <ClCompile Include="texture_item.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="graphics_item.h" />
+    <ClInclude Include="graphics_scene.h" />
+    <ClInclude Include="graphics_view.h" />
     <ClInclude Include="imageprocessor.h" />
+    <ClInclude Include="point_item.h" />
+    <ClInclude Include="rect_item.h" />
+    <ClInclude Include="texture_item.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

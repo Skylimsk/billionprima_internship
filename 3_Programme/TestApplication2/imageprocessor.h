@@ -22,8 +22,12 @@
 #include <memory>
 #include <filesystem>
 
-// Project headers
-#include "graphics_item.h"
+// Project headers - Updated graphics includes
+#include "graphics_scene.h"
+#include "graphics_view.h"
+#include "texture_item.h"
+#include "rect_item.h"
+#include "point_item.h"
 
 #include "CGParams.h"     // For CGImageDisplayParameters and CGImageCalculationVariables
 #include "CGProcessImage.h" // For CGProcessImage class
@@ -41,6 +45,8 @@ public:
     ~ImageProcessor();
 
     void run();
+
+    void clearSelection();
 
 private:
     // SDL and OpenGL context
@@ -120,10 +126,20 @@ private:
     float m_panX;
     float m_panY;
 
+    // Undo history
+    std::vector<std::vector<std::vector<uint16_t>>> m_undoHistory;
+    void pushToHistory();
+    void undo();
+
     // ImGui image display
     GLuint m_imageTexture;
     int m_imgWidth;
     int m_imgHeight;
+
+    // Rectangle drawing related
+    std::shared_ptr<RectItem> m_rectItem;    // Current rectangle being drawn
+    bool m_isDrawingRect;                    // Flag for rectangle drawing state
+    glm::vec2 m_rectStartPos;               // Starting position of rectangle
 
     // Mouse state
     bool m_mouseButtons[5];  // Track mouse button states
@@ -132,6 +148,8 @@ private:
 
     void rotateImageClockwise();
     void rotateImageCounterClockwise();
+
+    void cropToSelection();
 
     std::unique_ptr<CGProcessImage> m_processImage;
     double** m_processedData;
@@ -154,6 +172,8 @@ private:
             array = nullptr;
         }
     }
+
+    std::shared_ptr<PointItem> m_pointItem;
 };
 
 #endif // IMAGEPROCESSOR_H

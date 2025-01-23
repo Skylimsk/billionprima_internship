@@ -9,6 +9,12 @@
 #include <fstream>
 #include <sstream>
 
+// Graphics components
+#include "graphics_scene.h"
+#include "graphics_view.h"
+#include "texture_item.h"
+#include "rect_item.h"
+
 // STB image implementation (after warning suppression)
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -44,6 +50,8 @@ ImageProcessor::ImageProcessor()
     , m_processedData(nullptr)
     , m_processedRows(0)
     , m_processedCols(0)
+    , m_isDrawingRect(false)  // Initialize rectangle drawing state
+    , m_rectStartPos(0.0f)    // Initialize start position
 {
     std::cout << "Initializing ImageProcessor..." << std::endl;
 
@@ -115,30 +123,45 @@ ImageProcessor::~ImageProcessor() {
 }
 
 bool ImageProcessor::initializeWindow() {
-    // Initialize SDL
+    // Initialize SDL video subsystem
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         std::cerr << "SDL could not initialize! SDL Error: " << SDL_GetError() << std::endl;
         return false;
     }
 
-    // Set OpenGL version to 3.3
+    // Set OpenGL version and profile
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
+    // Set OpenGL attributes for rendering
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
 
-    // Create window with resizable flag
+    // Additional buffer attributes for color precision
+    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+
+    // Create window with specified flags
     m_window = SDL_CreateWindow(
-        "Image Processor",
-        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        m_windowWidth, m_windowHeight,
-        SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED
+        "Image Processor",                           // Window title
+        SDL_WINDOWPOS_CENTERED,                      // Initial x position
+        SDL_WINDOWPOS_CENTERED,                      // Initial y position
+        m_windowWidth,                               // Initial width
+        m_windowHeight,                              // Initial height
+        SDL_WINDOW_OPENGL |                          // OpenGL support
+        SDL_WINDOW_SHOWN |                           // Show on creation
+        SDL_WINDOW_RESIZABLE |                       // Allow resizing
+        SDL_WINDOW_ALLOW_HIGHDPI |                   // High DPI support
+        SDL_WINDOW_MAXIMIZED                         // Start maximized
     );
 
+    // Check if window creation failed
     if (!m_window) {
         std::cerr << "Window could not be created! SDL Error: " << SDL_GetError() << std::endl;
         return false;
@@ -148,43 +171,67 @@ bool ImageProcessor::initializeWindow() {
     m_glContext = SDL_GL_CreateContext(m_window);
     if (!m_glContext) {
         std::cerr << "OpenGL context could not be created! SDL Error: " << SDL_GetError() << std::endl;
+        SDL_DestroyWindow(m_window);
+        m_window = nullptr;
         return false;
     }
 
     // Initialize GLEW
-    glewExperimental = GL_TRUE;
+    glewExperimental = GL_TRUE;  // Enable experimental features
     GLenum glewError = glewInit();
     if (glewError != GLEW_OK) {
         std::cerr << "Error initializing GLEW! " << glewGetErrorString(glewError) << std::endl;
+        SDL_GL_DeleteContext(m_glContext);
+        SDL_DestroyWindow(m_window);
+        m_window = nullptr;
+        m_glContext = nullptr;
         return false;
     }
 
     // Enable VSync
-    SDL_GL_SetSwapInterval(1);
+    if (SDL_GL_SetSwapInterval(1) < 0) {
+        std::cerr << "Warning: Unable to set VSync! SDL Error: " << SDL_GetError() << std::endl;
+    }
 
-    // Get the actual window size after creation (may be different due to maximization)
+    // Get the actual window size after creation
     SDL_GetWindowSize(m_window, &m_windowWidth, &m_windowHeight);
 
-    // Initialize viewport with actual window size
+    // Initialize viewport without ImGui dependency
     glViewport(0, 0, m_windowWidth, m_windowHeight);
+
+    // Configure OpenGL state
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_MULTISAMPLE);
+    glEnable(GL_LINE_SMOOTH);
+    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+
+    // Clear any existing OpenGL errors
+    while (glGetError() != GL_NO_ERROR) {}
+
+    // Update view with initial dimensions - no ImGui dependency here
+    m_view.setViewportSize(m_windowWidth, m_windowHeight);
+
+    // Print OpenGL driver information
+    std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
+    std::cout << "OpenGL Vendor: " << glGetString(GL_VENDOR) << std::endl;
+    std::cout << "OpenGL Renderer: " << glGetString(GL_RENDERER) << std::endl;
+    std::cout << "GLSL Version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 
     return true;
 }
 
 void ImageProcessor::initializeImGui() {
-    // Initialize ImGui
+    // Initialize ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
     // Setup style
-    ImGui::StyleColorsDark();
+    ImGui::StyleColorsLight();
 
-    // Setup Platform/Renderer bindings
+    // Setup Platform/Renderer backends
     ImGui_ImplSDL2_InitForOpenGL(m_window, m_glContext);
     ImGui_ImplOpenGL3_Init("#version 330");
 }
@@ -237,167 +284,195 @@ void ImageProcessor::handleEvents() {
 }
 
 void ImageProcessor::handleWindowEvent(const SDL_Event& event) {
-    // Declare variables outside switch statement
-    float controlPanelHeight = m_controlWindowCollapsed ? 0.0f : (ImGui::GetFrameHeightWithSpacing() * 4);
-    int imageViewportHeight = m_windowHeight - static_cast<int>(controlPanelHeight);
+    const float CONTROL_PANEL_HEIGHT = 50.0f;
+    int imageViewportHeight = m_windowHeight - CONTROL_PANEL_HEIGHT;
 
     switch (event.window.event) {
     case SDL_WINDOWEVENT_RESIZED:
     case SDL_WINDOWEVENT_SIZE_CHANGED:
         m_windowWidth = event.window.data1;
         m_windowHeight = event.window.data2;
-        glViewport(0, 0, m_windowWidth, m_windowHeight);
-
-        // Update viewport sizes
-        imageViewportHeight = m_windowHeight - static_cast<int>(controlPanelHeight);
+        glViewport(0, 0, m_windowWidth, imageViewportHeight);
         m_view.setViewportSize(m_windowWidth, imageViewportHeight);
         break;
 
     case SDL_WINDOWEVENT_MAXIMIZED:
         SDL_GetWindowSize(m_window, &m_windowWidth, &m_windowHeight);
-        glViewport(0, 0, m_windowWidth, m_windowHeight);
-
-        // Update viewport sizes for maximized window
-        imageViewportHeight = m_windowHeight - static_cast<int>(controlPanelHeight);
+        glViewport(0, 0, m_windowWidth, imageViewportHeight);
         m_view.setViewportSize(m_windowWidth, imageViewportHeight);
+        break;
+
+    case SDL_WINDOWEVENT_EXPOSED:
+        glViewport(0, 0, m_windowWidth, imageViewportHeight);
+        break;
+
+    case SDL_WINDOWEVENT_CLOSE:
+        m_running = false;
         break;
     }
 }
 
 void ImageProcessor::handleMouseEvent(const SDL_Event& event) {
-    // Calculate UI boundaries - remove bottom padding
-    float controlPanelHeight = m_controlWindowCollapsed ? 0.0f : (ImGui::GetFrameHeightWithSpacing() * 2);
-    float viewportY = controlPanelHeight;
+    const float CONTROL_PANEL_HEIGHT = 50.0f;
+    float viewportY = CONTROL_PANEL_HEIGHT;
 
-    // Get current mouse position and convert to scene coordinates
+    // Get current mouse position
     int mouseX, mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
-    glm::vec2 scenePos = m_view.mapToScene(glm::vec2(mouseX, mouseY - viewportY));
 
-    // Get keyboard state for both Alt and Ctrl key checks
+    // Get modifier keys state
     const Uint8* keystate = SDL_GetKeyboardState(nullptr);
     bool altPressed = keystate[SDL_SCANCODE_LALT] || keystate[SDL_SCANCODE_RALT];
     bool ctrlPressed = keystate[SDL_SCANCODE_LCTRL] || keystate[SDL_SCANCODE_RCTRL];
 
-    switch (event.type) {
-    case SDL_MOUSEBUTTONDOWN: {
-        if (event.button.y > viewportY && event.button.button == SDL_BUTTON_LEFT && altPressed) {
-            m_isPanning = true;
-            m_lastMouseX = event.button.x;
-            m_lastMouseY = event.button.y;
-        }
-        break;
-    }
+    // Convert to scene coordinates
+    glm::vec2 scenePos = m_view.mapToScene(glm::vec2(mouseX, mouseY));
 
-    case SDL_MOUSEBUTTONUP: {
-        if (event.button.button == SDL_BUTTON_LEFT) {
-            m_isPanning = false;
-        }
-        break;
-    }
+    // Only process events if mouse is in image viewport area
+    if (mouseY >= 0 && mouseY <= m_windowHeight - CONTROL_PANEL_HEIGHT) {
+        switch (event.type) {
+        case SDL_MOUSEBUTTONDOWN: {
+            if (event.button.button == SDL_BUTTON_LEFT) {
+                if (altPressed) {
+                    // Pan operation
+                    m_isPanning = true;
+                    m_lastMouseX = mouseX;
+                    m_lastMouseY = mouseY;
+                }
+                else {
+                    // Start rectangle drawing with exact coordinates
+                    if (m_pointItem) {
+                        m_scene.removeItem(m_pointItem);
+                    }
+                    m_pointItem = std::make_shared<PointItem>(scenePos);
+                    m_scene.addItem(m_pointItem);
 
-    case SDL_MOUSEMOTION: {
-        if (m_isPanning && altPressed) {
-            // Calculate pan delta in screen coordinates
-            float deltaX = static_cast<float>(event.motion.x - m_lastMouseX);
-            float deltaY = static_cast<float>(event.motion.y - m_lastMouseY);
+                    m_isDrawingRect = true;
+                    m_rectStartPos = scenePos;
 
-            // Convert to scene coordinates with speed factor
-            const float panSpeedFactor = 0.05f;
-            float ndcDeltaX = (deltaX / (m_windowWidth * 0.5f)) * panSpeedFactor;
-            float ndcDeltaY = (deltaY / (m_windowHeight * 0.5f)) * panSpeedFactor;
-
-            // Adjust for current zoom level
-            float zoom = m_view.getActualZoom();
-            if (zoom != 0.0f) {
-                ndcDeltaX /= zoom;
-                ndcDeltaY /= zoom;
+                    if (m_rectItem) {
+                        m_scene.removeItem(m_rectItem);
+                    }
+                    m_rectItem = std::make_shared<RectItem>();
+                    m_rectItem->setRect(glm::vec4(scenePos.x, scenePos.y, 0, 0));
+                    m_scene.addItem(m_rectItem);
+                }
             }
-
-            // Apply pan transformation
-            m_view.pan(glm::vec2(ndcDeltaX, -ndcDeltaY));
-
-            // Update last mouse position
-            m_lastMouseX = event.motion.x;
-            m_lastMouseY = event.motion.y;
+            break;
         }
-        break;
-    }
 
-    case SDL_MOUSEWHEEL: {
-        if (ctrlPressed) {
-            // Get current mouse position
-            int mouseX, mouseY;
-            SDL_GetMouseState(&mouseX, &mouseY);
+        case SDL_MOUSEBUTTONUP: {
+            if (event.button.button == SDL_BUTTON_LEFT) {
+                m_isPanning = false;
+                if (m_isDrawingRect && m_rectItem) {
+                    // Finalize rectangle with exact dimensions
+                    float width = scenePos.x - m_rectStartPos.x;
+                    float height = scenePos.y - m_rectStartPos.y;
 
-            // Only handle zoom if mouse is in viewport area
-            if (mouseY >= viewportY &&
-                mouseY <= m_windowHeight &&
-                mouseX >= 0 &&
-                mouseX <= m_windowWidth) {
+                    glm::vec4 rect;
+                    rect.x = width > 0 ? std::round(m_rectStartPos.x) : std::round(scenePos.x);
+                    rect.y = height > 0 ? std::round(m_rectStartPos.y) : std::round(scenePos.y);
+                    rect.z = std::round(std::abs(width));
+                    rect.w = std::round(std::abs(height));
 
-                // Calculate zoom factor based on wheel direction
+                    m_rectItem->setRect(rect);
+
+                    // Remove tiny rectangles
+                    if (rect.z < 1.0f || rect.w < 1.0f) {
+                        m_scene.removeItem(m_rectItem);
+                        m_rectItem = nullptr;
+                    }
+                }
+                m_isDrawingRect = false;
+            }
+            break;
+        }
+
+        case SDL_MOUSEMOTION: {
+            if (m_isPanning && altPressed) {
+                // Keep original panning logic
+                float deltaX = static_cast<float>(mouseX - m_lastMouseX);
+                float deltaY = static_cast<float>(mouseY - m_lastMouseY);
+
+                const float panSpeedFactor = 0.05f;
+                float ndcDeltaX = (deltaX / (m_windowWidth * 0.5f)) * panSpeedFactor;
+                float ndcDeltaY = (deltaY / (m_windowHeight * 0.5f)) * panSpeedFactor;
+
+                float zoom = m_view.getActualZoom();
+                if (zoom != 0.0f) {
+                    ndcDeltaX /= zoom;
+                    ndcDeltaY /= zoom;
+                }
+
+                m_view.pan(glm::vec2(ndcDeltaX, -ndcDeltaY));
+                m_lastMouseX = mouseX;
+                m_lastMouseY = mouseY;
+            }
+            else if (m_isDrawingRect && m_rectItem && m_imageItem) {
+                // Update rectangle with exact coordinates
+                float width = scenePos.x - m_rectStartPos.x;
+                float height = scenePos.y - m_rectStartPos.y;
+
+                glm::vec4 rect;
+                rect.x = width > 0 ? std::round(m_rectStartPos.x) : std::round(scenePos.x);
+                rect.y = height > 0 ? std::round(m_rectStartPos.y) : std::round(scenePos.y);
+                rect.z = std::round(std::abs(width));
+                rect.w = std::round(std::abs(height));
+
+                m_rectItem->setRect(rect);
+            }
+            break;
+        }
+
+        case SDL_MOUSEWHEEL: {
+            if (ImGui::GetIO().WantCaptureMouse) return;
+
+            if (ctrlPressed) {
                 float zoomFactor = (event.wheel.y > 0) ? 1.1f : 0.9f;
-
-                // Store scene coordinates before zoom
-                glm::vec2 scenePosBefore = m_view.mapToScene(glm::vec2(mouseX, mouseY));
-
-                // Apply zoom
+                glm::vec2 beforePos = m_view.mapToScene(glm::vec2(mouseX, mouseY));
                 m_view.zoom(zoomFactor);
-
-                // Get new scene coordinates after zoom
-                glm::vec2 scenePosAfter = m_view.mapToScene(glm::vec2(mouseX, mouseY));
-
-                // Calculate and apply offset to maintain mouse position
-                glm::vec2 offset = scenePosAfter - scenePosBefore;
-                m_view.pan(-offset);
+                glm::vec2 afterPos = m_view.mapToScene(glm::vec2(mouseX, mouseY));
+                m_view.pan(afterPos - beforePos);
             }
+            break;
         }
-        break;
-    }
+        }
     }
 }
 
 void ImageProcessor::run() {
     while (m_running) {
-        // Handle SDL events
         handleEvents();
 
-        // Start ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
-        // Clear the entire window with background color
+        const float CONTROL_PANEL_HEIGHT = 50.0f;
+        int imageViewportHeight = m_windowHeight - CONTROL_PANEL_HEIGHT;
+
+        // Clear window
         glViewport(0, 0, m_windowWidth, m_windowHeight);
-        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+        glClearColor(0.94f, 0.94f, 0.94f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Draw control panel
+        glViewport(0, m_windowHeight - CONTROL_PANEL_HEIGHT,
+            m_windowWidth, CONTROL_PANEL_HEIGHT);
         drawMainWindow();
 
-        // Calculate viewport for image area
-        float controlPanelHeight = m_controlWindowCollapsed ? 0.0f : (ImGui::GetFrameHeightWithSpacing() * 2);
-        int imageViewportHeight = m_windowHeight - static_cast<int>(controlPanelHeight);
-
-        // Set OpenGL viewport for image rendering
+        // Set viewport for image area
         glViewport(0, 0, m_windowWidth, imageViewportHeight);
-
-        // Update view with new dimensions
         m_view.setViewportSize(m_windowWidth, imageViewportHeight);
-
-        // Render the scene
         m_scene.draw(m_view.getViewMatrix());
 
-        // Handle dialogs
+        // Handle dialogs and render ImGui
         if (m_showLoadDialog) handleLoadDialog();
         if (m_showSaveDialog) handleSaveDialog();
 
-        // Render ImGui
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-        // Swap buffers
         SDL_GL_SwapWindow(m_window);
     }
 }
@@ -463,7 +538,9 @@ void ImageProcessor::processSDLEvent(const SDL_Event& event) {
 }
 
 void ImageProcessor::drawMainWindow() {
-    float controlPanelHeight = ImGui::GetFrameHeightWithSpacing() * 2;
+    const float CONTROL_PANEL_HEIGHT = 50.0f;
+    ImGui::SetNextWindowPos(ImVec2(0, m_windowHeight - CONTROL_PANEL_HEIGHT));
+    ImGui::SetNextWindowSize(ImVec2(static_cast<float>(m_windowWidth), CONTROL_PANEL_HEIGHT));
 
     ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize |
         ImGuiWindowFlags_NoMove |
@@ -471,63 +548,52 @@ void ImageProcessor::drawMainWindow() {
         ImGuiWindowFlags_NoBringToFrontOnFocus |
         ImGuiWindowFlags_NoTitleBar;
 
-    // Position window at the very top
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(m_windowWidth, controlPanelHeight));
-
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 4));
+
     if (ImGui::Begin("##TopPanel", nullptr, windowFlags)) {
-        float totalWidth = ImGui::GetContentRegionAvail().x;
-        float buttonHeight = ImGui::GetFrameHeight();
-        float buttonSpacing = ImGui::GetStyle().ItemSpacing.x;
+        const float totalWidth = ImGui::GetContentRegionAvail().x;
+        const float buttonHeight = ImGui::GetFrameHeight();
+        const float buttonSpacing = ImGui::GetStyle().ItemSpacing.x;
+        const float zoomTextWidth = 120.0f;
+        const float availableWidth = totalWidth - zoomTextWidth - buttonSpacing;
+        const float standardButtonWidth = (availableWidth - buttonSpacing * 9) / 9;
+        const float zoomButtonWidth = standardButtonWidth * 0.4f;
+        const float fitButtonWidth = standardButtonWidth * 0.8f;
 
-        // Calculate button widths using full width minus space for zoom text
-        float zoomTextWidth = 120; // Width reserved for zoom text
-        float availableWidth = totalWidth - zoomTextWidth - buttonSpacing;
-        float standardButtonWidth = (availableWidth - buttonSpacing * 7) / 7;
-        float zoomButtonWidth = standardButtonWidth * 0.4f;
-        float fitButtonWidth = standardButtonWidth * 0.8f;
-
-        // First row: Buttons
-        // File Operations
         if (ImGui::Button("Load", ImVec2(standardButtonWidth, buttonHeight))) {
             m_showLoadDialog = true;
         }
         ImGui::SameLine();
 
         if (ImGui::Button("Save", ImVec2(standardButtonWidth, buttonHeight))) {
-            if (!m_imgData.empty()) {
-                m_showSaveDialog = true;
-            }
+            if (!m_imgData.empty()) m_showSaveDialog = true;
         }
         ImGui::SameLine();
 
-        // Zoom Controls Group
-        {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
-            if (ImGui::Button("-", ImVec2(zoomButtonWidth, buttonHeight))) {
-                m_view.zoom(0.9f);
-            }
-            ImGui::PopStyleColor();
-            ImGui::SameLine(0, buttonSpacing);
+        // Zoom controls
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
+        if (ImGui::Button("-", ImVec2(zoomButtonWidth, buttonHeight))) {
+            m_view.zoom(0.9f);
         }
+        ImGui::PopStyleColor();
+        ImGui::SameLine(0, buttonSpacing);
 
         if (ImGui::Button("Fit", ImVec2(fitButtonWidth, buttonHeight))) {
             resetView();
         }
         ImGui::SameLine(0, buttonSpacing);
 
-        {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
-            if (ImGui::Button("+", ImVec2(zoomButtonWidth, buttonHeight))) {
-                m_view.zoom(1.1f);
-            }
-            ImGui::PopStyleColor();
-            ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
+        if (ImGui::Button("+", ImVec2(zoomButtonWidth, buttonHeight))) {
+            m_view.zoom(1.1f);
         }
+        ImGui::PopStyleColor();
+        ImGui::SameLine();
 
+        // Rotation and other controls
         if (ImGui::Button("Rotate L", ImVec2(standardButtonWidth, buttonHeight))) {
             if (!m_imgData.empty()) {
+                pushToHistory();
                 rotateImageCounterClockwise();
             }
         }
@@ -535,8 +601,14 @@ void ImageProcessor::drawMainWindow() {
 
         if (ImGui::Button("Rotate R", ImVec2(standardButtonWidth, buttonHeight))) {
             if (!m_imgData.empty()) {
+                pushToHistory();
                 rotateImageClockwise();
             }
+        }
+        ImGui::SameLine();
+
+        if (ImGui::Button("Undo", ImVec2(standardButtonWidth, buttonHeight))) {
+            if (!m_imgData.empty()) undo();
         }
         ImGui::SameLine();
 
@@ -544,19 +616,24 @@ void ImageProcessor::drawMainWindow() {
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.8f, 0.4f, 1.0f));
         if (ImGui::Button("Process", ImVec2(standardButtonWidth, buttonHeight))) {
             if (!m_imgData.empty()) {
+                pushToHistory();
                 processCurrentImage();
             }
         }
         ImGui::PopStyleColor(2);
-
-        // Zoom level text (aligned to the right)
         ImGui::SameLine();
-        float currentZoom = m_view.getZoom();
-        ImGui::SetCursorPosX(totalWidth - zoomTextWidth);
-        ImGui::Text("Zoom: %.2fx", currentZoom);
 
-        // Second row: Status text
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2); // Small spacing after buttons
+        if (ImGui::Button("Crop", ImVec2(standardButtonWidth, buttonHeight))) {
+            if (m_rectItem) cropToSelection();
+        }
+
+        // Zoom level text
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(totalWidth - zoomTextWidth);
+        ImGui::Text("Zoom: %.2fx", m_view.getZoom());
+
+        // Status text
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
         ImGui::Text("%s", m_statusText);
     }
     ImGui::End();
@@ -725,6 +802,8 @@ void ImageProcessor::handleSaveDialog() {
 void ImageProcessor::processCurrentImage() {
     if (m_imgData.empty() || !m_processImage) return;
 
+    pushToHistory();
+
     try {
         // Convert current image data to double array
         int rows = m_imgData.size();
@@ -839,92 +918,71 @@ void ImageProcessor::updateImageFromProcessed() {
 }
 
 bool ImageProcessor::loadImage(const std::string& path) {
-    std::ifstream inFile(path, std::ios::binary | std::ios::ate);
-    if (!inFile) {
-        snprintf(m_statusText, sizeof(m_statusText), "Error: Cannot open file %s", path.c_str());
-        return false;
-    }
+    m_scene.clear();
+    m_scene.addItem(m_imageItem);
+    m_rectItem = nullptr;
+    m_isDrawingRect = false;
 
-    // Get file size for progress calculation
-    std::streamsize fileSize = inFile.tellg();
-    inFile.seekg(0, std::ios::beg);
+    double** tempMatrix = nullptr;
+    int rows = 0, cols = 0;
 
-    // Clear existing data
-    m_imgData.clear();
+    try {
+        ImageReader::ReadTextToU2D(path, tempMatrix, rows, cols);
 
-    // Get filename for status updates
-    std::string filename = std::filesystem::path(path).filename().string();
-    size_t bytesRead = 0;
-    std::string line;
+        // Clear existing data
+        m_imgData.clear();
+        m_undoHistory.clear();
+        m_imgData.resize(rows);
 
-    // Initialize statistics
-    m_minValue = 65535;  // Max possible value for uint16_t
-    m_maxValue = 0;      // Min possible value for uint16_t
-    double sum = 0.0;
-    size_t totalPixels = 0;
+        // Initialize statistics 
+        m_minValue = 65535;
+        m_maxValue = 0;
+        double sum = 0.0;
 
-    // Read file line by line
-    while (std::getline(inFile, line)) {
-        bytesRead += line.length() + 1;
-        float progress = (float)bytesRead / fileSize * 100.0f;
+        // Convert double matrix to uint16_t vectors
+        for (int i = 0; i < rows; i++) {
+            m_imgData[i].resize(cols);
+            for (int j = 0; j < cols; j++) {
+                uint16_t value = static_cast<uint16_t>(std::min(tempMatrix[i][j], 65535.0));
+                m_imgData[i][j] = value;
 
-        // Update progress in status bar
+                m_minValue = std::min(m_minValue, value);
+                m_maxValue = std::max(m_maxValue, value);
+                sum += value;
+            }
+        }
+
+        // Store original image
+        m_originalImg = m_imgData;
+
+        // Calculate mean
+        m_meanValue = sum / (rows * cols);
+
+        // Update display
+        updateDisplayImage();
+        resetView();
+        m_view.fitInView(glm::vec4(0, 0, cols, rows));
+
+        // Update status
+        std::string filename = std::filesystem::path(path).filename().string();
         snprintf(m_statusText, sizeof(m_statusText),
-            "Loading %s... %.1f%%", filename.c_str(), progress);
+            "Loaded: %s (%dx%d) Range:[%u,%u] Mean:%.1f",
+            filename.c_str(), cols, rows,
+            m_minValue, m_maxValue, m_meanValue);
 
-        // Process line
-        std::vector<uint16_t> row;
-        std::stringstream ss(line);
-        uint32_t value;
-
-        while (ss >> value) {
-            uint16_t pixel = static_cast<uint16_t>(std::min(value, uint32_t(65535)));
-            row.push_back(pixel);
-
-            m_minValue = std::min(m_minValue, pixel);
-            m_maxValue = std::max(m_maxValue, pixel);
-            sum += pixel;
-            totalPixels++;
+        // Cleanup
+        for (int i = 0; i < rows; i++) {
+            free(tempMatrix[i]);
         }
+        free(tempMatrix);
 
-        if (!row.empty()) {
-            m_imgData.push_back(std::move(row));
-        }
+        return true;
     }
-
-    if (m_imgData.empty()) {
-        snprintf(m_statusText, sizeof(m_statusText), "Error: No valid data in file");
+    catch (const std::exception& e) {
+        snprintf(m_statusText, sizeof(m_statusText),
+            "Error loading image: %s", e.what());
         return false;
     }
-
-    // Check row consistency
-    size_t firstRowSize = m_imgData[0].size();
-    for (size_t i = 1; i < m_imgData.size(); ++i) {
-        if (m_imgData[i].size() != firstRowSize) {
-            snprintf(m_statusText, sizeof(m_statusText),
-                "Error: Inconsistent row lengths in image data");
-            m_imgData.clear();
-            return false;
-        }
-    }
-
-    // Calculate mean value
-    m_meanValue = totalPixels > 0 ? sum / totalPixels : 0.0;
-
-    // Store original image
-    m_originalImg = m_imgData;
-
-    // Update display
-    updateDisplayImage();
-
-    // Update status
-    snprintf(m_statusText, sizeof(m_statusText),
-        "Loaded: %s (%zux%zu) Range:[%u,%u] Mean:%.1f",
-        filename.c_str(),
-        m_imgData[0].size(), m_imgData.size(),
-        m_minValue, m_maxValue, m_meanValue);
-
-    return true;
 }
 
 bool ImageProcessor::saveImage(const std::string& path) {
@@ -975,11 +1033,8 @@ void ImageProcessor::updateDisplayImage() {
     // Update the texture item with new image data
     m_imageItem->setImage(textureData, width, height);
 
-    // Set zoom to 1.0 first
-    m_view.setZoom(1.0f);
-
-    // Then reset and center the view
-    resetView();
+    // Center the image in view
+    m_view.fitInView(glm::vec4(0, 0, width, height));
 }
 
 void ImageProcessor::convertDataToTexture() {
@@ -1106,6 +1161,8 @@ void ImageProcessor::destroyOpenGLContext() {
 void ImageProcessor::rotateImageClockwise() {
     if (m_imgData.empty()) return;
 
+    pushToHistory();
+
     size_t oldHeight = m_imgData.size();
     size_t oldWidth = m_imgData[0].size();
 
@@ -1133,6 +1190,8 @@ void ImageProcessor::rotateImageClockwise() {
 void ImageProcessor::rotateImageCounterClockwise() {
     if (m_imgData.empty()) return;
 
+    pushToHistory();
+
     size_t oldHeight = m_imgData.size();
     size_t oldWidth = m_imgData[0].size();
 
@@ -1155,4 +1214,69 @@ void ImageProcessor::rotateImageCounterClockwise() {
     // Update status
     snprintf(m_statusText, sizeof(m_statusText),
         "Image rotated counter-clockwise (%zux%zu)", m_imgData[0].size(), m_imgData.size());
+}
+
+void ImageProcessor::clearSelection() {
+    if (m_rectItem) {
+        m_scene.removeItem(m_rectItem);
+        m_rectItem = nullptr;
+    }
+    m_isDrawingRect = false;
+}
+
+void ImageProcessor::pushToHistory() {
+    // Save current state to history
+    m_undoHistory.push_back(m_imgData);
+}
+
+void ImageProcessor::undo() {
+    if (m_undoHistory.empty()) {
+        snprintf(m_statusText, sizeof(m_statusText), "No more undo history");
+        return;
+    }
+
+    // Clear any existing selection
+    clearSelection();
+
+    // Restore previous state
+    m_imgData = m_undoHistory.back();
+    m_undoHistory.pop_back();
+
+    // Update display with full restored image
+    updateDisplayImage();
+
+    snprintf(m_statusText, sizeof(m_statusText), "Undo successful (%zux%zu)",
+        m_imgData[0].size(), m_imgData.size());
+}
+
+void ImageProcessor::cropToSelection() {
+    if (!m_rectItem || m_imgData.empty()) return;
+
+    pushToHistory();
+
+    // Get exact rect coordinates in scene space
+    glm::vec4 rect = m_rectItem->rect();
+    int startX = std::max(0, static_cast<int>(rect.x));
+    int startY = std::max(0, static_cast<int>(rect.y));
+    int width = static_cast<int>(rect.z);
+    int height = static_cast<int>(rect.w);
+
+    // Ensure within image bounds
+    width = std::min(width, static_cast<int>(m_imgData[0].size() - startX));
+    height = std::min(height, static_cast<int>(m_imgData.size() - startY));
+
+    // Create cropped image
+    std::vector<std::vector<uint16_t>> cropped;
+    cropped.reserve(height);
+
+    // Copy the selected region
+    for (int i = 0; i < height; i++) {
+        cropped.emplace_back(m_imgData[startY + i].begin() + startX,
+            m_imgData[startY + i].begin() + startX + width);
+    }
+
+    // Update image data and display
+    m_imgData = std::move(cropped);
+    clearSelection();
+    updateDisplayImage();
 }
