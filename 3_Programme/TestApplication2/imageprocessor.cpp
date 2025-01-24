@@ -314,11 +314,11 @@ void ImageProcessor::handleWindowEvent(const SDL_Event& event) {
 
 void ImageProcessor::handleMouseEvent(const SDL_Event& event) {
     const float CONTROL_PANEL_HEIGHT = 50.0f;
-    float viewportY = CONTROL_PANEL_HEIGHT;
 
     // Get current mouse position
     int mouseX, mouseY;
     SDL_GetMouseState(&mouseX, &mouseY);
+    updateCoordinateInfo(mouseX, mouseY);
 
     // Get modifier keys state
     const Uint8* keystate = SDL_GetKeyboardState(nullptr);
@@ -328,8 +328,19 @@ void ImageProcessor::handleMouseEvent(const SDL_Event& event) {
     // Convert to scene coordinates
     glm::vec2 scenePos = m_view.mapToScene(glm::vec2(mouseX, mouseY));
 
-    // Only process events if mouse is in image viewport area
-    if (mouseY >= 0 && mouseY <= m_windowHeight - CONTROL_PANEL_HEIGHT) {
+    // Get image bounds if image is loaded
+    bool hasImage = !m_imgData.empty();
+    int imageWidth = hasImage ? m_imgData[0].size() : 0;
+    int imageHeight = hasImage ? m_imgData.size() : 0;
+
+    // Clamp scene position to image bounds
+    if (hasImage) {
+        scenePos.x = std::max(0.0f, std::min(scenePos.x, static_cast<float>(imageWidth)));
+        scenePos.y = std::max(0.0f, std::min(scenePos.y, static_cast<float>(imageHeight)));
+    }
+
+    // Only process events if mouse is in image viewport area and we have an image
+    if (mouseY >= CONTROL_PANEL_HEIGHT && mouseY <= m_windowHeight - CONTROL_PANEL_HEIGHT && hasImage) {
         switch (event.type) {
         case SDL_MOUSEBUTTONDOWN: {
             if (event.button.button == SDL_BUTTON_LEFT) {
@@ -339,8 +350,9 @@ void ImageProcessor::handleMouseEvent(const SDL_Event& event) {
                     m_lastMouseX = mouseX;
                     m_lastMouseY = mouseY;
                 }
-                else {
-                    // Start rectangle drawing with exact coordinates
+                else if (scenePos.x >= 0 && scenePos.x < imageWidth &&
+                    scenePos.y >= 0 && scenePos.y < imageHeight) {
+                    // Start rectangle drawing only if within image bounds
                     if (m_pointItem) {
                         m_scene.removeItem(m_pointItem);
                     }
@@ -365,15 +377,20 @@ void ImageProcessor::handleMouseEvent(const SDL_Event& event) {
             if (event.button.button == SDL_BUTTON_LEFT) {
                 m_isPanning = false;
                 if (m_isDrawingRect && m_rectItem) {
-                    // Finalize rectangle with exact dimensions
-                    float width = scenePos.x - m_rectStartPos.x;
-                    float height = scenePos.y - m_rectStartPos.y;
+                    // Clamp final rectangle to image bounds
+                    float startX = std::max(0.0f, std::min(m_rectStartPos.x, static_cast<float>(imageWidth)));
+                    float startY = std::max(0.0f, std::min(m_rectStartPos.y, static_cast<float>(imageHeight)));
+                    float endX = std::max(0.0f, std::min(scenePos.x, static_cast<float>(imageWidth)));
+                    float endY = std::max(0.0f, std::min(scenePos.y, static_cast<float>(imageHeight)));
+
+                    float width = endX - startX;
+                    float height = endY - startY;
 
                     glm::vec4 rect;
-                    rect.x = width > 0 ? std::round(m_rectStartPos.x) : std::round(scenePos.x);
-                    rect.y = height > 0 ? std::round(m_rectStartPos.y) : std::round(scenePos.y);
-                    rect.z = std::round(std::abs(width));
-                    rect.w = std::round(std::abs(height));
+                    rect.x = width > 0 ? startX : endX;
+                    rect.y = height > 0 ? startY : endY;
+                    rect.z = std::abs(width);
+                    rect.w = std::abs(height);
 
                     m_rectItem->setRect(rect);
 
@@ -390,34 +407,36 @@ void ImageProcessor::handleMouseEvent(const SDL_Event& event) {
 
         case SDL_MOUSEMOTION: {
             if (m_isPanning && altPressed) {
-                // Keep original panning logic
                 float deltaX = static_cast<float>(mouseX - m_lastMouseX);
                 float deltaY = static_cast<float>(mouseY - m_lastMouseY);
 
-                const float panSpeedFactor = 0.05f;
-                float ndcDeltaX = (deltaX / (m_windowWidth * 0.5f)) * panSpeedFactor;
-                float ndcDeltaY = (deltaY / (m_windowHeight * 0.5f)) * panSpeedFactor;
+                float viewScale = std::min(static_cast<float>(m_windowWidth), m_windowHeight - CONTROL_PANEL_HEIGHT);
+                const float panSpeedFactor = 1.0f / viewScale;
 
                 float zoom = m_view.getActualZoom();
                 if (zoom != 0.0f) {
-                    ndcDeltaX /= zoom;
-                    ndcDeltaY /= zoom;
+                    deltaX /= zoom;
+                    deltaY /= zoom;
                 }
 
-                m_view.pan(glm::vec2(ndcDeltaX, -ndcDeltaY));
+                m_view.pan(glm::vec2(deltaX * panSpeedFactor, -deltaY * panSpeedFactor));
+
                 m_lastMouseX = mouseX;
                 m_lastMouseY = mouseY;
             }
-            else if (m_isDrawingRect && m_rectItem && m_imageItem) {
-                // Update rectangle with exact coordinates
-                float width = scenePos.x - m_rectStartPos.x;
-                float height = scenePos.y - m_rectStartPos.y;
+            else if (m_isDrawingRect && m_rectItem) {
+                // Clamp current position to image bounds
+                float currentX = std::max(0.0f, std::min(scenePos.x, static_cast<float>(imageWidth)));
+                float currentY = std::max(0.0f, std::min(scenePos.y, static_cast<float>(imageHeight)));
+
+                float width = currentX - m_rectStartPos.x;
+                float height = currentY - m_rectStartPos.y;
 
                 glm::vec4 rect;
-                rect.x = width > 0 ? std::round(m_rectStartPos.x) : std::round(scenePos.x);
-                rect.y = height > 0 ? std::round(m_rectStartPos.y) : std::round(scenePos.y);
-                rect.z = std::round(std::abs(width));
-                rect.w = std::round(std::abs(height));
+                rect.x = width > 0 ? m_rectStartPos.x : currentX;
+                rect.y = height > 0 ? m_rectStartPos.y : currentY;
+                rect.z = std::abs(width);
+                rect.w = std::abs(height);
 
                 m_rectItem->setRect(rect);
             }
@@ -560,6 +579,7 @@ void ImageProcessor::drawMainWindow() {
         const float zoomButtonWidth = standardButtonWidth * 0.4f;
         const float fitButtonWidth = standardButtonWidth * 0.8f;
 
+        // First row - Buttons
         if (ImGui::Button("Load", ImVec2(standardButtonWidth, buttonHeight))) {
             m_showLoadDialog = true;
         }
@@ -590,7 +610,7 @@ void ImageProcessor::drawMainWindow() {
         ImGui::PopStyleColor();
         ImGui::SameLine();
 
-        // Rotation and other controls
+        // Other buttons
         if (ImGui::Button("Rotate L", ImVec2(standardButtonWidth, buttonHeight))) {
             if (!m_imgData.empty()) {
                 pushToHistory();
@@ -627,14 +647,47 @@ void ImageProcessor::drawMainWindow() {
             if (m_rectItem) cropToSelection();
         }
 
-        // Zoom level text
+        // Zoom level (next to Crop button)
         ImGui::SameLine();
         ImGui::SetCursorPosX(totalWidth - zoomTextWidth);
         ImGui::Text("Zoom: %.2fx", m_view.getZoom());
 
-        // Status text
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
+        // Second row - Status bar
+        ImGui::Separator();
+        float windowWidth = ImGui::GetWindowWidth();
+
+        // Left: Status text
+        ImGui::SetCursorPosX(10);
         ImGui::Text("%s", m_statusText);
+
+        // Draw first vertical divider
+        ImGui::SameLine();
+        float middleX = windowWidth * 0.5f;
+        float lineHeight = ImGui::GetTextLineHeight();
+        ImVec2 lineStart(middleX - 100, ImGui::GetCursorPosY());
+        ImVec2 lineEnd(middleX - 100, lineStart.y + lineHeight);
+        ImGui::GetWindowDrawList()->AddLine(lineStart, lineEnd, ImGui::GetColorU32(ImGuiCol_Separator));
+
+        // Center section: Image dimensions or "No Image Loaded"
+        std::string sizeText = m_imgData.empty() ?
+            "No Image Loaded" :
+            std::to_string(m_imgData[0].size()) + " x " + std::to_string(m_imgData.size());
+        float textWidth = ImGui::CalcTextSize(sizeText.c_str()).x;
+        ImGui::SetCursorPosX(middleX - textWidth * 0.5f);
+        ImGui::SameLine();
+        ImGui::Text("%s", sizeText.c_str());
+
+        // Draw second vertical divider
+        ImGui::SameLine();
+        lineStart = ImVec2(middleX + 100, ImGui::GetCursorPosY());
+        lineEnd = ImVec2(middleX + 100, lineStart.y + lineHeight);
+        ImGui::GetWindowDrawList()->AddLine(lineStart, lineEnd, ImGui::GetColorU32(ImGuiCol_Separator));
+
+        // Right section: Coordinates
+        ImGui::SameLine();
+        float coordWidth = ImGui::CalcTextSize(m_coordInfo.c_str()).x;
+        ImGui::SetCursorPosX(windowWidth - coordWidth - 10);
+        ImGui::Text("%s", m_coordInfo.c_str());
     }
     ImGui::End();
     ImGui::PopStyleVar();
@@ -805,24 +858,26 @@ void ImageProcessor::processCurrentImage() {
     pushToHistory();
 
     try {
-        // Convert current image data to double array
-        int rows = m_imgData.size();
-        int cols = m_imgData[0].size();
+        // Store original dimensions
+        int originalRows = m_imgData.size();
+        int originalCols = m_imgData[0].size();
+
+        // Convert to processing input
         double** inputMatrix = nullptr;
-        malloc2D(inputMatrix, rows, cols);
+        malloc2D(inputMatrix, originalRows, originalCols);
         if (!inputMatrix) {
-            snprintf(m_statusText, sizeof(m_statusText), "Error: Failed to allocate memory for processing");
+            snprintf(m_statusText, sizeof(m_statusText), "Error: Failed to allocate memory");
             return;
         }
 
-        // Copy data to input matrix
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
+        // Copy data for processing
+        for (int i = 0; i < originalRows; i++) {
+            for (int j = 0; j < originalCols; j++) {
                 inputMatrix[i][j] = static_cast<double>(m_imgData[i][j]);
             }
         }
 
-        // Safely configure process image settings
+        // Configure processor
         if (m_processImage) {
             m_processImage->SetEnergyMode(CGImageDisplayParameters.LaneData.EnergyMode);
             m_processImage->SetDualRowMode(CGImageDisplayParameters.LaneData.DualRowMode);
@@ -832,88 +887,96 @@ void ImageProcessor::processCurrentImage() {
             m_processImage->SetAirSampleStart(CGImageCalculationVariables.AirSampleStart);
             m_processImage->SetAirSampleEnd(CGImageCalculationVariables.AirSampleEnd);
 
-            // Process the image
-            m_processImage->Process(inputMatrix, rows, cols);
+            m_processImage->Process(inputMatrix, originalRows, originalCols);
         }
 
-        // Get the processed data
-        if (m_processImage->GetMergedData(m_processedData, m_processedRows, m_processedCols)) {
-            // After interlacing, separate into left and right halves and merge with weighted average
-            int halfWidth = m_processedCols / 2;
+        // Handle processed data
+        int interlacedRows = 0, interlacedCols = 0;
+        if (m_processImage->GetMergedData(m_processedData, interlacedRows, interlacedCols)) {
+            // Record interlaced size
+            const int interlacedWidth = interlacedCols;
+            const int interlacedHeight = interlacedRows;
 
-            // Allocate memory for the two halves
-            double** leftHalf = nullptr;
-            double** rightHalf = nullptr;
-            malloc2D(leftHalf, m_processedRows, halfWidth);
-            malloc2D(rightHalf, m_processedRows, halfWidth);
-
-            // Separate into left and right halves
-            for (int i = 0; i < m_processedRows; i++) {
-                for (int j = 0; j < halfWidth; j++) {
-                    leftHalf[i][j] = m_processedData[i][j];
-                    rightHalf[i][j] = m_processedData[i][j + halfWidth];
-                }
-            }
-
-            // Create final merged result
+            // Create half-width merged result
+            int halfWidth = interlacedCols / 2;
             double** mergedResult = nullptr;
-            malloc2D(mergedResult, m_processedRows, halfWidth);
+            malloc2D(mergedResult, interlacedRows, halfWidth);
 
-            // Perform weighted average merge (e.g., 0.6 for left, 0.4 for right)
+            // Weighted average merge
             const double leftWeight = 0.6;
             const double rightWeight = 0.4;
-            for (int i = 0; i < m_processedRows; i++) {
+            for (int i = 0; i < interlacedRows; i++) {
                 for (int j = 0; j < halfWidth; j++) {
-                    mergedResult[i][j] = (leftHalf[i][j] * leftWeight) +
-                        (rightHalf[i][j] * rightWeight);
+                    mergedResult[i][j] = (m_processedData[i][j] * leftWeight) +
+                        (m_processedData[i][j + halfWidth] * rightWeight);
                 }
             }
 
-            // Update processed data with merged result
+            // Update processed data
             free2D(m_processedData, m_processedRows);
             m_processedData = mergedResult;
+            m_processedRows = interlacedRows;
             m_processedCols = halfWidth;
 
-            // Cleanup temporary arrays
-            free2D(leftHalf, m_processedRows);
-            free2D(rightHalf, m_processedRows);
-
-            // Update the display
+            // Update display
             updateImageFromProcessed();
+
+            // Calculate window-fitted dimensions
+            glm::vec2 viewSize = m_view.getViewportSize();
+            float aspectRatio = static_cast<float>(halfWidth) / interlacedRows;
+            float fittedWidth, fittedHeight;
+
+            if (viewSize.x / viewSize.y > aspectRatio) {
+                // Height limited
+                fittedHeight = viewSize.y;
+                fittedWidth = viewSize.y * aspectRatio;
+            }
+            else {
+                // Width limited
+                fittedWidth = viewSize.x;
+                fittedHeight = viewSize.x / aspectRatio;
+            }
+
+            // Update status showing all transformations
             snprintf(m_statusText, sizeof(m_statusText),
-                "Image processed successfully (%dx%d)", m_processedCols, m_processedRows);
+                "Original[%dx%d] -> Interlaced[%dx%d] -> Merged[%dx%d] -> Window[%.0fx%.0f]",
+                originalCols, originalRows,
+                interlacedWidth, interlacedHeight,
+                halfWidth, interlacedRows,
+                fittedWidth, fittedHeight);
         }
         else {
             snprintf(m_statusText, sizeof(m_statusText), "Error: Failed to get processed data");
         }
 
-        // Cleanup input matrix
-        free2D(inputMatrix, rows);
+        free2D(inputMatrix, originalRows);
     }
     catch (const std::exception& e) {
-        snprintf(m_statusText, sizeof(m_statusText),
-            "Error processing image: %s", e.what());
+        snprintf(m_statusText, sizeof(m_statusText), "Error: %s", e.what());
     }
 }
-
 
 void ImageProcessor::updateImageFromProcessed() {
     if (!m_processedData || m_processedRows == 0 || m_processedCols == 0) return;
 
-    // Convert processed data back to image format
+    m_originalWidth = m_imgData[0].size();
+    m_originalHeight = m_imgData.size();
+
     m_imgData.clear();
     m_imgData.resize(m_processedRows);
-
     for (int i = 0; i < m_processedRows; i++) {
         m_imgData[i].resize(m_processedCols);
         for (int j = 0; j < m_processedCols; j++) {
-            // Clamp values to valid range for uint16_t
             double val = std::max(0.0, std::min(65535.0, m_processedData[i][j]));
             m_imgData[i][j] = static_cast<uint16_t>(val);
         }
     }
 
-    // Update the display
+    snprintf(m_statusText, sizeof(m_statusText),
+        "Image processed: Original[%dx%d] Current[%dx%d]",
+        m_originalWidth, m_originalHeight,
+        m_processedCols, m_processedRows);
+
     updateDisplayImage();
 }
 
@@ -955,6 +1018,10 @@ bool ImageProcessor::loadImage(const std::string& path) {
         // Store original image
         m_originalImg = m_imgData;
 
+        // Store original dimensions
+        m_originalWidth = cols;
+        m_originalHeight = rows;
+
         // Calculate mean
         m_meanValue = sum / (rows * cols);
 
@@ -965,10 +1032,11 @@ bool ImageProcessor::loadImage(const std::string& path) {
 
         // Update status
         std::string filename = std::filesystem::path(path).filename().string();
+
         snprintf(m_statusText, sizeof(m_statusText),
-            "Loaded: %s (%dx%d) Range:[%u,%u] Mean:%.1f",
-            filename.c_str(), cols, rows,
-            m_minValue, m_maxValue, m_meanValue);
+            "Image loaded: Original[%dx%d] Fitted[%dx%d]",
+            m_originalWidth, m_originalHeight,
+            cols, rows);
 
         // Cleanup
         for (int i = 0; i < rows; i++) {
@@ -1023,18 +1091,20 @@ void ImageProcessor::updateDisplayImage() {
     int width = m_imgData[0].size();
     int height = m_imgData.size();
 
-    // Convert 2D image data to 1D vector
     std::vector<uint16_t> textureData;
     textureData.reserve(width * height);
     for (const auto& row : m_imgData) {
         textureData.insert(textureData.end(), row.begin(), row.end());
     }
 
-    // Update the texture item with new image data
     m_imageItem->setImage(textureData, width, height);
-
-    // Center the image in view
     m_view.fitInView(glm::vec4(0, 0, width, height));
+
+    // Update status with both original and fitted dimensions
+    snprintf(m_statusText, sizeof(m_statusText),
+        "Image Size: Original[%dx%d] Fitted[%dx%d]",
+        m_originalWidth, m_originalHeight,
+        width, height);
 }
 
 void ImageProcessor::convertDataToTexture() {
@@ -1163,28 +1233,32 @@ void ImageProcessor::rotateImageClockwise() {
 
     pushToHistory();
 
-    size_t oldHeight = m_imgData.size();
-    size_t oldWidth = m_imgData[0].size();
+    size_t beforeWidth = m_imgData[0].size();
+    size_t beforeHeight = m_imgData.size();
 
     // Create a new vector with swapped dimensions
-    std::vector<std::vector<uint16_t>> rotated(oldWidth, std::vector<uint16_t>(oldHeight));
+    std::vector<std::vector<uint16_t>> rotated(beforeWidth, std::vector<uint16_t>(beforeHeight));
 
     // Perform 90-degree clockwise rotation
-    for (size_t i = 0; i < oldHeight; ++i) {
-        for (size_t j = 0; j < oldWidth; ++j) {
-            rotated[j][oldHeight - 1 - i] = m_imgData[i][j];
+    for (size_t i = 0; i < beforeHeight; ++i) {
+        for (size_t j = 0; j < beforeWidth; ++j) {
+            rotated[j][beforeHeight - 1 - i] = m_imgData[i][j];
         }
     }
 
     // Update image data
     m_imgData = std::move(rotated);
 
-    // Update display
-    updateDisplayImage();
+    size_t afterWidth = m_imgData[0].size();
+    size_t afterHeight = m_imgData.size();
 
-    // Update status
+    // Update status with before and after dimensions
     snprintf(m_statusText, sizeof(m_statusText),
-        "Image rotated clockwise (%zux%zu)", m_imgData[0].size(), m_imgData.size());
+        "Image rotated: Before[%dx%d] After[%dx%d]",
+        (int)beforeWidth, (int)beforeHeight,
+        (int)afterWidth, (int)afterHeight);
+
+    updateDisplayImage();
 }
 
 void ImageProcessor::rotateImageCounterClockwise() {
@@ -1192,28 +1266,32 @@ void ImageProcessor::rotateImageCounterClockwise() {
 
     pushToHistory();
 
-    size_t oldHeight = m_imgData.size();
-    size_t oldWidth = m_imgData[0].size();
+    size_t beforeWidth = m_imgData[0].size();
+    size_t beforeHeight = m_imgData.size();
 
     // Create a new vector with swapped dimensions
-    std::vector<std::vector<uint16_t>> rotated(oldWidth, std::vector<uint16_t>(oldHeight));
+    std::vector<std::vector<uint16_t>> rotated(beforeWidth, std::vector<uint16_t>(beforeHeight));
 
     // Perform 90-degree counter-clockwise rotation
-    for (size_t i = 0; i < oldHeight; ++i) {
-        for (size_t j = 0; j < oldWidth; ++j) {
-            rotated[oldWidth - 1 - j][i] = m_imgData[i][j];
+    for (size_t i = 0; i < beforeHeight; ++i) {
+        for (size_t j = 0; j < beforeWidth; ++j) {
+            rotated[beforeWidth - 1 - j][i] = m_imgData[i][j];
         }
     }
 
     // Update image data
     m_imgData = std::move(rotated);
 
-    // Update display
-    updateDisplayImage();
+    size_t afterWidth = m_imgData[0].size();
+    size_t afterHeight = m_imgData.size();
 
-    // Update status
+    // Update status with before and after dimensions
     snprintf(m_statusText, sizeof(m_statusText),
-        "Image rotated counter-clockwise (%zux%zu)", m_imgData[0].size(), m_imgData.size());
+        "Image rotated: Before[%dx%d] After[%dx%d]",
+        (int)beforeWidth, (int)beforeHeight,
+        (int)afterWidth, (int)afterHeight);
+
+    updateDisplayImage();
 }
 
 void ImageProcessor::clearSelection() {
@@ -1225,8 +1303,18 @@ void ImageProcessor::clearSelection() {
 }
 
 void ImageProcessor::pushToHistory() {
-    // Save current state to history
-    m_undoHistory.push_back(m_imgData);
+    // Create deep copy of processed data
+    double** processedCopy = nullptr;
+    if (m_processedData) {
+        malloc2D(processedCopy, m_processedRows, m_processedCols);
+        for (int i = 0; i < m_processedRows; i++) {
+            for (int j = 0; j < m_processedCols; j++) {
+                processedCopy[i][j] = m_processedData[i][j];
+            }
+        }
+    }
+
+    m_undoHistory.push_back({ m_imgData, processedCopy, m_processedRows, m_processedCols });
 }
 
 void ImageProcessor::undo() {
@@ -1235,48 +1323,53 @@ void ImageProcessor::undo() {
         return;
     }
 
-    // Clear any existing selection
-    clearSelection();
+    auto& lastState = m_undoHistory.back();
+    m_imgData = std::get<0>(lastState);
 
-    // Restore previous state
-    m_imgData = m_undoHistory.back();
+    free2D(m_processedData, m_processedRows);
+    m_processedData = std::get<1>(lastState);  // Transfer ownership
+    m_processedRows = std::get<2>(lastState);
+    m_processedCols = std::get<3>(lastState);
+
     m_undoHistory.pop_back();
-
-    // Update display with full restored image
     updateDisplayImage();
-
-    snprintf(m_statusText, sizeof(m_statusText), "Undo successful (%zux%zu)",
-        m_imgData[0].size(), m_imgData.size());
+    clearSelection();
 }
 
 void ImageProcessor::cropToSelection() {
     if (!m_rectItem || m_imgData.empty()) return;
-
     pushToHistory();
 
-    // Get exact rect coordinates in scene space
     glm::vec4 rect = m_rectItem->rect();
-    int startX = std::max(0, static_cast<int>(rect.x));
-    int startY = std::max(0, static_cast<int>(rect.y));
-    int width = static_cast<int>(rect.z);
-    int height = static_cast<int>(rect.w);
+    int startX = std::clamp(static_cast<int>(rect.x), 0, static_cast<int>(m_imgData[0].size() - 1));
+    int startY = std::clamp(static_cast<int>(rect.y), 0, static_cast<int>(m_imgData.size() - 1));
+    int endX = std::clamp(static_cast<int>(rect.x + rect.z), 0, static_cast<int>(m_imgData[0].size()));
+    int endY = std::clamp(static_cast<int>(rect.y + rect.w), 0, static_cast<int>(m_imgData.size()));
 
-    // Ensure within image bounds
-    width = std::min(width, static_cast<int>(m_imgData[0].size() - startX));
-    height = std::min(height, static_cast<int>(m_imgData.size() - startY));
+    int width = endX - startX;
+    int height = endY - startY;
+    if (width <= 0 || height <= 0) return;
 
-    // Create cropped image
-    std::vector<std::vector<uint16_t>> cropped;
-    cropped.reserve(height);
-
-    // Copy the selected region
+    std::vector<std::vector<uint16_t>> cropped(height);
     for (int i = 0; i < height; i++) {
-        cropped.emplace_back(m_imgData[startY + i].begin() + startX,
-            m_imgData[startY + i].begin() + startX + width);
+        cropped[i].resize(width);
+        for (int j = 0; j < width; j++) {
+            cropped[i][j] = m_imgData[startY + i][startX + j];
+        }
     }
 
-    // Update image data and display
     m_imgData = std::move(cropped);
-    clearSelection();
     updateDisplayImage();
+    clearSelection();
+}
+
+void ImageProcessor::updateCoordinateInfo(int mouseX, int mouseY) {
+    glm::vec2 scenePos = m_view.mapToScene(glm::vec2(mouseX, mouseY));
+    bool inImage = m_view.isPointInImage(scenePos);
+
+    char buffer[128];
+    snprintf(buffer, sizeof(buffer), "Window: (%d, %d) | Image: (%.1f, %.1f)%s",
+        mouseX, mouseY, scenePos.x, scenePos.y,
+        inImage ? " (In Image)" : " (Outside)");
+    m_coordInfo = buffer;
 }

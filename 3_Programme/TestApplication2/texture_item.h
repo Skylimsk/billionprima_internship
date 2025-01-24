@@ -24,6 +24,14 @@ public:
         m_windowMax = max;
     }
 
+    std::vector<uint16_t> getDisplayData() const {
+        return m_displayData;
+    }
+
+    glm::vec2 getImageSize() const {
+        return glm::vec2(m_width, m_height);
+    }
+
 private:
     GLuint m_texture;    // OpenGL texture ID
     GLuint m_vao;        // Vertex Array Object
@@ -42,6 +50,8 @@ private:
     void updateTexture();   // Update texture data
     void cleanup();        // Clean up OpenGL resources
     void updateGeometry(); // Update vertex geometry
+
+    std::vector<uint16_t> m_displayData;
 };
 
 #endif // TEXTURE_ITEM_H

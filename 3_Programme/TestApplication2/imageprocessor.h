@@ -21,6 +21,7 @@
 #include <vector>
 #include <memory>
 #include <filesystem>
+#include <algorithm>
 
 // Project headers - Updated graphics includes
 #include "graphics_scene.h"
@@ -74,6 +75,8 @@ private:
     // Image data
     std::vector<std::vector<uint16_t>> m_imgData;
     std::vector<std::vector<uint16_t>> m_originalImg;
+    int m_originalWidth = 0;
+    int m_originalHeight = 0;
 
     // Signals
     boost::signals2::signal<void(const std::string&)> imageLoadedSignal;
@@ -127,7 +130,6 @@ private:
     float m_panY;
 
     // Undo history
-    std::vector<std::vector<std::vector<uint16_t>>> m_undoHistory;
     void pushToHistory();
     void undo();
 
@@ -159,6 +161,13 @@ private:
     void processCurrentImage();
     void updateImageFromProcessed();
 
+    std::vector<std::tuple<
+        std::vector<std::vector<uint16_t>>,  // m_imgData
+        double**,                            // m_processedData
+        int,                                 // m_processedRows
+        int                                  // m_processedCols
+        >> m_undoHistory;
+
     // Helper template function for 2D array deallocation
     template<typename T>
     void free2D(T**& array, int rows) {
@@ -174,6 +183,9 @@ private:
     }
 
     std::shared_ptr<PointItem> m_pointItem;
+
+    void updateCoordinateInfo(int mouseX, int mouseY);
+    std::string m_coordInfo;
 };
 
 #endif // IMAGEPROCESSOR_H

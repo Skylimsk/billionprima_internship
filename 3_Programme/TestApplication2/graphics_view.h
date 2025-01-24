@@ -5,9 +5,15 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 #include <imgui/imgui.h>
+
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
+#include <glm/gtx/quaternion.hpp>
+
 #include "graphics_scene.h"
 #include "rect_item.h"
+#include "texture_item.h"
 
 class GraphicsView {
 public:
@@ -46,6 +52,27 @@ public:
     float getActualZoom() const;
 
     void resetView();
+
+    const glm::vec2& getViewportSize() const { return m_viewportSize; }
+
+    bool isPointInImage(const glm::vec2& scenePos) const;
+    glm::vec2 getImageSize() const;
+
+    glm::vec2 getViewScale() const {
+        glm::vec3 scale;
+        glm::quat rotation;
+        glm::vec3 translation;
+        glm::vec3 skew;
+        glm::vec4 perspective;
+        glm::decompose(m_viewMatrix, scale, rotation, translation, skew, perspective);
+        return glm::vec2(scale.x, scale.y);
+    }
+
+    glm::vec2 getViewTranslation() const {
+        return glm::vec2(m_viewMatrix[3][0], m_viewMatrix[3][1]);
+    }
+
+    glm::vec2 viewToImageCoordinates(const glm::vec2& viewPos, const glm::vec2& imageSize) const;
 
 private:
     void updateViewMatrix();

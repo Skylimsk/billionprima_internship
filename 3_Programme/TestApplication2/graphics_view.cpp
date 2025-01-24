@@ -31,28 +31,16 @@ void GraphicsView::setScene(Scene* scene) {
 }
 
 void GraphicsView::zoom(float factor) {
+    // Update zoom level with the new factor
     m_zoom *= factor;
-
-    // Get mouse position for zoom centering
-    int mouseX, mouseY;
-    SDL_GetMouseState(&mouseX, &mouseY);
-    glm::vec2 mousePos(mouseX, mouseY);
-
-    // Convert mouse position to scene coordinates before zoom
-    glm::vec2 scenePosBefore = mapToScene(mousePos);
-
-    // Create zoom transformation matrix
-    glm::mat4 zoomMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(factor, factor, 1.0f));
-    m_viewMatrix = zoomMatrix * m_viewMatrix;
-
-    // Get scene coordinates after zoom
-    glm::vec2 scenePosAfter = mapToScene(mousePos);
-
-    // Adjust view matrix to keep mouse position fixed
-    glm::vec2 delta = scenePosAfter - scenePosBefore;
-    m_viewMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(-delta.x, -delta.y, 0.0f)) * m_viewMatrix;
-
-    updateViewMatrix();
+    // Get the center of the viewport
+    glm::vec2 viewCenter(0.0f, 0.0f);
+    // Create transformation matrices
+    glm::mat4 toOrigin = glm::translate(glm::mat4(1.0f), glm::vec3(-viewCenter.x, -viewCenter.y, 0.0f));
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(factor, factor, 1.0f));
+    glm::mat4 fromOrigin = glm::translate(glm::mat4(1.0f), glm::vec3(viewCenter.x, viewCenter.y, 0.0f));
+    // Combine transformations
+    m_viewMatrix = fromOrigin * scale * toOrigin * m_viewMatrix;
 }
 
 void GraphicsView::handleMousePress(const SDL_Event& event) {
@@ -147,8 +135,13 @@ void GraphicsView::handleMouseWheel(const SDL_Event& event) {
 }
 
 void GraphicsView::pan(const glm::vec2& delta) {
-    m_viewMatrix[3][0] += delta.x;
-    m_viewMatrix[3][1] += delta.y;
+    // Scale the pan delta based on viewport size
+    float scaleX = 2.0f / m_viewportSize.x;
+    float scaleY = 2.0f / m_viewportSize.y;
+
+    m_viewMatrix[3][0] += delta.x * scaleX;
+    m_viewMatrix[3][1] += delta.y * scaleY;
+
     updateViewMatrix();
 }
 
@@ -233,4 +226,34 @@ glm::vec2 GraphicsView::mapFromScene(const glm::vec2& scenePos) const {
     );
 
     return winPos;
+}
+
+bool GraphicsView::isPointInImage(const glm::vec2& scenePos) const {
+    if (!m_scene) return false;
+    const auto& items = m_scene->items();
+    for (const auto& item : items) {
+        if (auto textureItem = std::dynamic_pointer_cast<TextureItem>(item)) {
+            return scenePos.x >= 0 && scenePos.x < textureItem->width() &&
+                scenePos.y >= 0 && scenePos.y < textureItem->height();
+        }
+    }
+    return false;
+}
+
+glm::vec2 GraphicsView::getImageSize() const {
+    if (!m_scene) return glm::vec2(0);
+    const auto& items = m_scene->items();
+    for (const auto& item : items) {
+        if (auto textureItem = std::dynamic_pointer_cast<TextureItem>(item)) {
+            return glm::vec2(textureItem->width(), textureItem->height());
+        }
+    }
+    return glm::vec2(0);
+}
+
+glm::vec2 GraphicsView::viewToImageCoordinates(const glm::vec2& viewPos, const glm::vec2& imageSize) const {
+    glm::vec2 viewportSize = getViewportSize();
+    float scaleX = imageSize.x / viewportSize.x;
+    float scaleY = imageSize.y / viewportSize.y;
+    return glm::vec2(viewPos.x * scaleX, viewPos.y * scaleY);
 }

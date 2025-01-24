@@ -132,6 +132,7 @@ void TextureItem::initializeGL() {
 void TextureItem::setImage(const std::vector<uint16_t>& data, int width, int height) {
     m_width = width;
     m_height = height;
+    m_displayData = data;
 
     // Store original data range
     m_dataMin = *std::min_element(data.begin(), data.end());
