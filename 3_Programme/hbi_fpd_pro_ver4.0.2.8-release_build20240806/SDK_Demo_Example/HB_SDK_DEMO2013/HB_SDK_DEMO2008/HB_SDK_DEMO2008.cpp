@@ -1,4 +1,3 @@
-
 // HB_SDK_DEMO2008.cpp : Defines the class behaviors for the application.
 //
 
@@ -10,98 +9,112 @@
 #define new DEBUG_NEW
 #endif
 
-
-// CHB_SDK_DEMO2008App
-
+// -----------------------------
+// CHB_SDK_DEMO2008App Message Map
+// -----------------------------
+// Maps Windows messages to their respective handlers.
 BEGIN_MESSAGE_MAP(CHB_SDK_DEMO2008App, CWinAppEx)
-	ON_COMMAND(ID_HELP, &CWinApp::OnHelp)
+	ON_COMMAND(ID_HELP, &CWinApp::OnHelp)  // Handles the Help command.
 END_MESSAGE_MAP()
 
-
-// CHB_SDK_DEMO2008App construction
-
+// -----------------------------
+// CHB_SDK_DEMO2008App Construction
+// -----------------------------
+// Constructor: Perform any necessary setup.
 CHB_SDK_DEMO2008App::CHB_SDK_DEMO2008App()
 {
-	// TODO: add construction code here,
-	// Place all significant initialization in InitInstance
+	// TODO: Add application-specific construction code here.
+	// Any major initialization should be done in InitInstance().
 }
 
-
-// The one and only CHB_SDK_DEMO2008App object
-
+// The global application instance.
 CHB_SDK_DEMO2008App theApp;
 
-
-// CHB_SDK_DEMO2008App initialization
-
+// -----------------------------
+// CHB_SDK_DEMO2008App Initialization
+// -----------------------------
+// This function is called when the application starts.
 BOOL CHB_SDK_DEMO2008App::InitInstance()
 {
-	// InitCommonControlsEx() is required on Windows XP if an application
-	// manifest specifies use of ComCtl32.dll version 6 or later to enable
-	// visual styles.  Otherwise, any window creation will fail.
+	// Required for proper visual styles on Windows XP and later.
 	INITCOMMONCONTROLSEX InitCtrls;
 	InitCtrls.dwSize = sizeof(InitCtrls);
-	// Set this to include all the common control classes you want to use
-	// in your application.
+	// Enable common controls for Windows UI elements.
 	InitCtrls.dwICC = ICC_WIN95_CLASSES;
 	InitCommonControlsEx(&InitCtrls);
 
+	// Call base class initialization.
 	CWinAppEx::InitInstance();
 
+	// Initialize Windows Sockets for networking.
 	if (!AfxSocketInit())
 	{
-		AfxMessageBox(IDP_SOCKETS_INIT_FAILED);
-		return FALSE;
+		AfxMessageBox(IDP_SOCKETS_INIT_FAILED);  // Show error message if socket initialization fails.
+		return FALSE;  // Terminate application.
 	}
 
-	AfxEnableControlContainer();
+	AfxEnableControlContainer();  // Enable support for embedded controls.
 
-	// Standard initialization
-	// If you are not using these features and wish to reduce the size
-	// of your final executable, you should remove from the following
-	// the specific initialization routines you do not need
-	// Change the registry key under which our settings are stored
-	// TODO: You should modify this string to be something appropriate
-	// such as the name of your company or organization
+	// -----------------------------
+	// Application Registry Key Setup
+	// -----------------------------
+	// This key is used to store application settings in the Windows registry.
+	// Modify the string to match your company or organization name.
 	SetRegistryKey(_T("Local AppWizard-Generated Applications"));
 
-	///////*
-	//////* 控制台输出
-	//////*/ 
-	//////AllocConsole();                             // 开辟控制台
-	//////SetConsoleTitle(_T("DETECTOR_TOOL"));    // 设置控制台窗口标题
-	//////freopen("CONOUT$", "w", stdout);            // 重定向输出
+	// -----------------------------
+	// Console Output (Optional Debugging Tool)
+	// -----------------------------
+	// The following code can be used to open a console window for debugging.
+	// Uncomment if console output is required.
 
+	/*
+	AllocConsole();  // Open a console window.
+	SetConsoleTitle(_T("DETECTOR_TOOL"));  // Set console window title.
+	freopen("CONOUT$", "w", stdout);  // Redirect standard output to console.
+	*/
+
+	// -----------------------------
+	// Create and Display the Main Dialog
+	// -----------------------------
 	CHB_SDK_DEMO2008Dlg dlg;
 	m_pMainWnd = &dlg;
-	INT_PTR nResponse = dlg.DoModal();
+	INT_PTR nResponse = dlg.DoModal();  // Display the modal dialog.
+
 	if (nResponse == IDOK)
 	{
-		// TODO: Place code here to handle when the dialog is
-		//  dismissed with OK
+		// TODO: Handle OK button click (when dialog is closed with "OK").
 	}
 	else if (nResponse == IDCANCEL)
 	{
-		// TODO: Place code here to handle when the dialog is
-		//  dismissed with Cancel
+		// TODO: Handle Cancel button click (when dialog is closed with "Cancel").
 	}
 
-	// Since the dialog has been closed, return FALSE so that we exit the
-	//  application, rather than start the application's message pump.
+	// Since the dialog has been closed, return FALSE to exit the application
+	// instead of starting the application's message pump.
 	return FALSE;
 }
 
+// -----------------------------
+// CHB_SDK_DEMO2008App Exit Cleanup
+// -----------------------------
+// Called when the application exits.
 int CHB_SDK_DEMO2008App::ExitInstance()
 {
-	// TODO: Add your specialized code here and/or call the base class
-	/////*
-	////* 关闭控制台
-	////*/
-	////HWND hwndFound = FindWindow(NULL, _T("DETECTOR_TOOL"));
-	////if (hwndFound != NULL) {
-	////	FreeConsole();
-	////	hwndFound = NULL;
-	////}
+	// TODO: Add cleanup code here if needed.
 
+	// -----------------------------
+	// Close Console (If Used)
+	// -----------------------------
+	// If a console was opened for debugging, close it before exiting.
+	/*
+	HWND hwndFound = FindWindow(NULL, _T("DETECTOR_TOOL"));
+	if (hwndFound != NULL) {
+		FreeConsole();
+		hwndFound = NULL;
+	}
+	*/
+
+	// Call base class cleanup function.
 	return CWinAppEx::ExitInstance();
 }

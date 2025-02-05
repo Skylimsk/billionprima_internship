@@ -1,33 +1,36 @@
+// HB_SDK_DEMO2008.h : Main header file for the PROJECT_NAME application
+// Defines the CHB_SDK_DEMO2008App class, which serves as the main application class.
 
-// HB_SDK_DEMO2008.h : main header file for the PROJECT_NAME application
-//
-
-#pragma once
+#pragma once  // Ensures this header file is included only once during compilation.
 
 #ifndef __AFXWIN_H__
-	#error "include 'stdafx.h' before including this file for PCH"
+#error "Include 'stdafx.h' before including this file for precompiled headers (PCH)."
 #endif
 
-#include "resource.h"		// main symbols
+#include "resource.h"  // Includes application resource definitions (icons, menus, dialogs, etc.).
 
 
-// CHB_SDK_DEMO2008App:
-// See HB_SDK_DEMO2008.cpp for the implementation of this class
+// -----------------------------
+// CHB_SDK_DEMO2008App Class
+// -----------------------------
+// The main application class, derived from CWinAppEx (MFC extended application class).
+// This class manages the application's initialization, execution, and cleanup.
 //
-
 class CHB_SDK_DEMO2008App : public CWinAppEx
 {
 public:
-	CHB_SDK_DEMO2008App();
+	CHB_SDK_DEMO2008App();  // Constructor.
 
-// Overrides
-	public:
-	virtual BOOL InitInstance();
+	// Overrides
+public:
+	virtual BOOL InitInstance();  // Called when the application starts. Initializes the instance.
 
-// Implementation
+	// Implementation
+	DECLARE_MESSAGE_MAP()  // Declares the message map for handling Windows messages.
 
-	DECLARE_MESSAGE_MAP()
-	virtual int ExitInstance();
+		virtual int ExitInstance();  // Called when the application exits. Handles cleanup tasks.
 };
 
+// Global application object, representing the running instance of the application.
 extern CHB_SDK_DEMO2008App theApp;
+

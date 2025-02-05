@@ -1,24 +1,24 @@
 ﻿#pragma once
 
 
-// CDlgBinningType 对话框
+// CDlgBinningType Dialog Box
 
 class CDlgBinningType : public CDialogEx
 {
 	DECLARE_DYNAMIC(CDlgBinningType)
 
 public:
-	CDlgBinningType(CWnd* pParent = nullptr);   // 标准构造函数
+	CDlgBinningType(CWnd* pParent = nullptr);   // Standard Constructor
 	virtual ~CDlgBinningType();
 
-// 对话框数据
+// Dialog Box Data 
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_DIALOG_BINNING_TYPE };
 #endif
 	HICON m_hIcon;
 
 protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV Support
 
 	DECLARE_MESSAGE_MAP()
 public:

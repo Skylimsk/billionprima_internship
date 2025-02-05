@@ -7,14 +7,14 @@
 #include "afxdialogex.h"
 
 
-// CDlgBinningType 对话框
+// CDlgBinningType Dialog Box
 
 IMPLEMENT_DYNAMIC(CDlgBinningType, CDialogEx)
 
 CDlgBinningType::CDlgBinningType(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_DIALOG_BINNING_TYPE, pParent)
 {
-	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);//修改对话框的图标
+	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);//For editing the icon on Dialog Box
 
 	m_uBinningType = 1;
 }
@@ -34,7 +34,7 @@ BEGIN_MESSAGE_MAP(CDlgBinningType, CDialogEx)
 END_MESSAGE_MAP()
 
 
-// CDlgBinningType 消息处理程序
+// CDlgBinningType Message Handler
 
 
 BOOL CDlgBinningType::OnInitDialog()
