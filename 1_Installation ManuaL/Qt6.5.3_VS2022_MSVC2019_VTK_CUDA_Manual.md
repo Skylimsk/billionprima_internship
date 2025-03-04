@@ -77,6 +77,25 @@ For VTK with CUDA acceleration:
 5. Complete the installation
 6. Verify installation by running `nvcc --version` in Command Prompt
 
+Note: The CUDA installer should automatically add the CUDA bin directory to your PATH environment variable. If `nvcc --version` doesn't work after installation, manually add the CUDA bin directory to your PATH:
+   - Open System Properties > Advanced > Environment Variables
+   - Under "System variables", find and edit "Path"
+   - Add `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\vX.X\bin` (replace X.X with your version)
+   - Click "OK" and restart any open Command Prompt windows
+
+### 1.5 Install cuDNN (Optional)
+
+cuDNN (CUDA Deep Neural Network library) is not required for basic CUDA functionality but is useful for deep learning applications. If your project requires deep learning capabilities:
+
+1. Register for NVIDIA Developer Program (if not already registered): https://developer.nvidia.com/cudnn
+2. Download cuDNN compatible with your installed CUDA version
+3. Extract the downloaded ZIP file
+4. Copy the following files to your CUDA installation directory:
+   - Copy `cuda\bin\*.dll` to `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\vX.X\bin\`
+   - Copy `cuda\include\*.h` to `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\vX.X\include\`
+   - Copy `cuda\lib\x64\*.lib` to `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\vX.X\lib\x64\`
+5. No additional PATH environment variables are needed as the cuDNN files are integrated into your existing CUDA directory structure
+
 ## Part 2: Qt 6.5.3 Installation
 
 ### 2.1 Installation via Qt Online Installer
@@ -86,53 +105,26 @@ For VTK with CUDA acceleration:
 3. Select "Custom installation"
 4. Choose installation folder (e.g., D:\Qt)
 5. In component selection:
-   - Expand "Qt 6.5.3"
+   - By default, only the latest versions will be shown
+   - To access older versions like 6.5.3:
+     
+     a. Click the "Archive" filter button at the top of the component selection screen
+     
+     b. Use the search box to filter for "6.5.3"
+     
+     c. Expand the Qt 6.5.3 section that appears
    - Check "MSVC 2019 64-bit"
    - Also check "Qt Debug Information Files"
    - Optionally check "Sources" if needed
 6. Complete the installation
 7. Note: Qt installs both debug and release libraries by default
 
-### 2.2 Installation from Archive (If 6.5.3 is not available in the installer)
-
-If Qt 6.5.3 is not available in the Qt Online Installer:
-
-1. Go to the Qt Archive download page: https://download.qt.io/archive/qt/
-2. Navigate to the 6.5.3 directory: https://download.qt.io/archive/qt/6.5/6.5.3/
-3. Download the appropriate offline installer or ZIP package:
-   - For offline installer: qt-opensource-windows-x86-6.5.3.exe (or similar)
-   - For ZIP package: qt-everywhere-src-6.5.3.zip and/or the precompiled binaries for MSVC 2019
-
-#### 2.2.1 Using the Offline Installer
-
-1. Run the downloaded offline installer
-2. Follow the same steps as in the online installer
-
-#### 2.2.2 Using the ZIP Package
-
-1. Create a directory where you want to install Qt (e.g., D:\Qt)
-2. Extract the ZIP file to a temporary location
-3. For precompiled binaries ZIP:
-   - Create a directory: D:\Qt\6.5.3
-   - Extract the contents to this directory
-   - Ensure the directory structure includes \msvc2019_64\
-4. For source ZIP (requires compilation):
-   - Extract to a source directory (e.g., D:\Qt-Sources\6.5.3)
-   - Open a Developer Command Prompt for VS 2022
-   - Navigate to the extracted directory
-   - Run configuration:
-     ```
-     configure -prefix D:\Qt\6.5.3 -platform win32-msvc -nomake examples -nomake tests -confirm-license -opensource -debug-and-release -opengl desktop -skip webengine
-     ```
-   - Build and install:
-     ```
-     nmake
-     nmake install
-     ```
-   - This process will take several hours
-5. Verify installation:
-   - Check for the presence of bin, lib, and include directories in D:\Qt\6.5.3\msvc2019_64\
-   - The bin directory should contain Qt6Core.dll and other DLLs
+For installing additional components later:
+1. Run the Qt Maintenance Tool (MaintenanceTool.exe) from your Qt installation directory
+2. Select "Add or remove components" 
+3. Use the "Archive" filter as described above to access older versions like 6.5.3
+4. Select the components you wish to add
+5. Complete the installation
 
 ## Part 3: VTK Source Preparation
 
@@ -241,7 +233,23 @@ After initial configuration, set the following options (use the search box to fi
   - Type: PATH
   - Value: Full path to CUDA installation directory
 
-### 5.7 Python Wrapping (Optional)
+### 5.7 cuDNN Options (Optional, if you installed cuDNN)
+
+If you want to use cuDNN with VTK and CUDA:
+
+- VTK_USE_CUDNN: Set to "ON" (manually add if not found)
+  - Type: BOOL
+  - Value: ON
+- CUDNN_INCLUDE_DIR: Path to cuDNN include directory
+  - Type: PATH
+  - Value: Same as your CUDA include directory if you followed the installation steps (e.g., C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include)
+- CUDNN_LIBRARY: Path to cuDNN library
+  - Type: FILEPATH
+  - Value: Path to cudnn.lib (e.g., C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\lib\x64\cudnn.lib)
+
+**Note:** For the standard VTK visualization pipeline, cuDNN is not necessary. These options are only needed if you're planning to work with deep learning alongside VTK.
+
+### 5.8 Python Wrapping (Optional)
 
 - VTK_WRAP_PYTHON: Set to "ON" if you need Python bindings or Web module
   - Required if VTK_GROUP_ENABLE_Web is set to "YES"
@@ -256,7 +264,7 @@ After initial configuration, set the following options (use the search box to fi
   - Type: FILEPATH
   - Value: Full path to python.exe (e.g., D:\Python39\python.exe)
 
-### 5.8 Configuring After Adding Manual Entries
+### 5.9 Configuring After Adding Manual Entries
 
 After adding all required entries manually:
 
@@ -265,7 +273,7 @@ After adding all required entries manually:
 3. Set any new options that appear
 4. Repeat the Configure-Generate cycle until no red entries remain
 
-### 5.9 CUDA Configuration for Uninstalled Debug & Release Builds
+### 5.10 CUDA Configuration for Uninstalled Debug & Release Builds
 
 If you have built VTK in Debug and Release configurations but haven't installed them yet, and want to add CUDA support:
 
@@ -289,9 +297,9 @@ If you have built VTK in Debug and Release configurations but haven't installed 
    cmake --install . --config Release
    ```
 
-### 5.10 Finding All CUDA Filepaths and Directories
+### 5.11 Finding All CUDA and cuDNN Filepaths and Directories
 
-To find the correct CUDA file paths for CMake configuration:
+To find the correct CUDA and cuDNN file paths for CMake configuration:
 
 1. **Automatically Detecting CUDA Installation**:
    - Open Command Prompt and run:
@@ -311,12 +319,19 @@ To find the correct CUDA file paths for CMake configuration:
    - `CUDA_TOOLKIT_ROOT_DIR`: Root directory of CUDA installation
      - Example: `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6`
 
-4. **Using Windows Explorer to Find Paths**:
+4. **cuDNN Paths** (if installed):
+   - `CUDNN_INCLUDE_DIR`: Should be same as CUDA include directory
+     - Example: `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\include`
+   - `CUDNN_LIBRARY`: Path to cudnn.lib
+     - Example: `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6\lib\x64\cudnn.lib`
+
+5. **Using Windows Explorer to Find Paths**:
    - Navigate to `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA`
    - Look for the highest version directory (e.g., v12.6)
    - Navigate to the `bin` subfolder to find `nvcc.exe`
    - The full path to this file will be your `CMAKE_CUDA_COMPILER` value
    - The parent directory (without `\bin`) will be your `CUDA_TOOLKIT_ROOT_DIR`
+   - Verify cuDNN installation by checking for `cudnn.h` in the include directory and `cudnn.lib` in the lib\x64 directory
 
 ## Part 6: Generate and Build VTK
 
@@ -371,7 +386,7 @@ cmake --install . --config Release
 4. Name your project (e.g., "VTKQtTest") and choose a location
 5. Click "Create"
 
-### 9.2 Configure Project Properties for VTK, Qt, and CUDA
+### 9.2 Configure Project Properties for VTK, Qt, CUDA, and cuDNN
 
 1. Right-click on your project in Solution Explorer and select "Properties"
 2. Select "All Configurations" in the Configuration dropdown
@@ -383,6 +398,7 @@ cmake --install . --config Release
    - D:\Qt\6.5.3\msvc2019_64\include\QtWidgets
    - D:\Qt\6.5.3\msvc2019_64\include\QtGui
    - C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.x\include (adjust version as needed)
+   - The cuDNN headers should already be in the CUDA include directory if installed correctly
 
 5. Navigate to "Linker" > "General" > "Additional Library Directories"
 6. Add:
@@ -396,7 +412,7 @@ cmake --install . --config Release
      - C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.x\lib\x64 (adjust version as needed)
 
 7. Navigate to "Linker" > "Input" > "Additional Dependencies"
-8. Add the required VTK, Qt, and CUDA libraries:
+8. Add the required VTK, Qt, CUDA, and cuDNN libraries:
    - For VTK basic modules:
      - vtkCommonCore-9.x.lib (adjust version)
      - vtkRenderingOpenGL2-9.x.lib
@@ -406,6 +422,8 @@ cmake --install . --config Release
    - For VTK CUDA modules (if VTK was built with CUDA):
      - vtkRenderingCUDA-9.x.lib
      - vtkCommonCUDA-9.x.lib (if available)
+   - For VTK cuDNN modules (if VTK was built with cuDNN):
+     - vtkImagingCUDNN-9.x.lib (if available)
    - For Qt:
      - Qt6Core.lib
      - Qt6Widgets.lib
@@ -413,6 +431,8 @@ cmake --install . --config Release
    - For CUDA:
      - cudart.lib
      - cuda.lib
+   - For cuDNN (if needed):
+     - cudnn.lib
 
 9. Navigate to "C/C++" > "Preprocessor" > "Preprocessor Definitions"
 10. Add:
@@ -421,6 +441,7 @@ cmake --install . --config Release
     - QT_CORE_LIB
     - NOMINMAX (to avoid min/max macro conflicts)
     - VTK_USE_CUDA (if your VTK was built with CUDA support)
+    - VTK_USE_CUDNN (if your VTK was built with cuDNN support)
 
 11. If you receive CUDA-related errors during compilation, you might need to add:
     - Navigate to "C/C++" > "Command Line"
@@ -813,13 +834,41 @@ Either run the mklink command from Part 1.3 or:
 - If using Qt Visual Studio Tools, ensure the .h files containing Q_OBJECT macro are set to be processed by Qt (right-click > Qt Properties)
 - If using CMake, make sure CMAKE_AUTOMOC is ON
 
-### 11.6 Other Issues
+### 11.6 CUDA and cuDNN Specific Issues
+
+#### cuDNN Not Found
+
+If you encounter errors related to cuDNN not being found:
+
+1. Verify that cuDNN files were correctly copied:
+   - `cudnn.h` should be in your CUDA include directory
+   - `cudnn.lib` should be in your CUDA lib\x64 directory
+   - `cudnn.dll` should be in your CUDA bin directory
+
+2. If files are correctly placed but still not found:
+   - Manually set CUDNN paths in CMake:
+     - `CUDNN_INCLUDE_DIR` to your CUDA include directory
+     - `CUDNN_LIBRARY` to the full path of cudnn.lib
+
+3. For runtime errors (cudnn.dll not found):
+   - Ensure CUDA bin directory is in your PATH
+   - Or copy cudnn.dll to your application's executable directory
+
+#### CUDA Version Mismatch
+
+If you encounter errors about CUDA version mismatch:
+
+1. Ensure cuDNN version is compatible with your CUDA version
+2. Check NVIDIA documentation for compatibility matrix
+3. Consider upgrading/downgrading CUDA or cuDNN to compatible versions
+
+### 11.7 Other Issues
 
 - Clear CMake cache and reconfigure if you make significant changes
 - Make sure paths don't contain spaces or special characters
 - Check VTK and Qt version compatibility
 
-### 11.7 Troubleshooting CUDA Detection Issues
+### 11.8 Troubleshooting CUDA Detection Issues
 
 If you encounter the error:
 ```
