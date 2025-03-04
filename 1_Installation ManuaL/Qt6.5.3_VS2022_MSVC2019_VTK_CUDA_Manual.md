@@ -333,6 +333,44 @@ To find the correct CUDA and cuDNN file paths for CMake configuration:
    - The parent directory (without `\bin`) will be your `CUDA_TOOLKIT_ROOT_DIR`
    - Verify cuDNN installation by checking for `cudnn.h` in the include directory and `cudnn.lib` in the lib\x64 directory
 
+### Troubleshooting CUDA Installation Issues
+
+If `nvcc --version` shows no output or "command not found" after installation:
+
+1. **Verify CUDA Installation Files**:
+   - Navigate to `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA` in File Explorer
+   - Confirm a version folder exists (e.g., v12.x)
+   - Check that `bin\nvcc.exe` exists in that folder
+
+2. **Add CUDA to PATH Manually**:
+   - Open System Properties (right-click on "This PC" > Properties)
+   - Click "Advanced system settings"
+   - Click "Environment Variables"
+   - Under "System variables", find and edit "Path"
+   - Add `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.x\bin` (adjust version as needed)
+   - Click "OK" on all dialogs
+   - Restart any Command Prompt windows or the computer
+
+3. **Check for Installation Errors**:
+   - Open Windows Event Viewer (search for "Event Viewer" in Start menu)
+   - Navigate to Windows Logs > Application
+   - Look for any error events from the CUDA installer
+
+4. **Verify Visual Studio Integration**:
+   - The CUDA installer should have registered with Visual Studio
+   - If using CMake, you may need to set CUDA paths manually as described in section 5.6
+
+5. **Check NVIDIA Driver Compatibility**:
+   - Ensure your NVIDIA graphics driver is compatible with the installed CUDA version
+   - You can update drivers through the NVIDIA Control Panel or NVIDIA website
+
+6. **Reinstall CUDA**:
+   - If problems persist, uninstall CUDA Toolkit:
+     a. Open Windows Control Panel > Programs and Features
+     b. Uninstall all NVIDIA CUDA entries
+   - Download a fresh copy of the installer
+   - During installation, select "Clean installation" if available
+
 ## Part 6: Generate and Build VTK
 
 1. After setting all options, click "Configure" again
