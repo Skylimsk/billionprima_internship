@@ -11,6 +11,7 @@
 #include <QDebug>
 #include <QTimer>
 #include <QEvent>
+#include <QTextEdit>
 
 // VTK includes - minimal set
 #include <vtkSmartPointer.h>
@@ -26,6 +27,9 @@
 #include <vtkInteractorStyleTrackballCamera.h>
 #include <vtkAutoInit.h>
 #include <vtkProperty.h>
+#include <vtkCommand.h>
+#include <vtkCallbackCommand.h>
+#include <vtkVersion.h>
 
 // Force VTK factory registration
 VTK_MODULE_INIT(vtkRenderingOpenGL2);
@@ -37,6 +41,7 @@ vtkSmartPointer<vtkRenderWindowInteractor> g_renderWindowInteractor;
 vtkSmartPointer<vtkRenderer> g_renderer;
 vtkSmartPointer<vtkActor> g_actor;
 bool g_vtkInitialized = false;
+QTextEdit* g_debugTextEdit = nullptr;
 
 enum ShapeType {
     SHAPE_SPHERE,
@@ -45,12 +50,108 @@ enum ShapeType {
     SHAPE_CUBE
 };
 
+// Function to log debug information
+void logDebugInfo(const QString& text) {
+    qDebug() << text;
+    if (g_debugTextEdit) {
+        g_debugTextEdit->append(text);
+    }
+}
+
+// Callback function to print render information
+void renderCallback(vtkObject* caller, unsigned long eventId, void* clientData, void* callData) {
+    vtkRenderWindow* renderWindow = vtkRenderWindow::SafeDownCast(caller);
+    if (renderWindow) {
+        logDebugInfo("--- Render Information ---");
+
+        // Print VTK version
+        logDebugInfo(QString("VTK Version: %1.%2.%3")
+            .arg(VTK_MAJOR_VERSION)
+            .arg(VTK_MINOR_VERSION)
+            .arg(VTK_BUILD_VERSION));
+
+        // Get capabilities (this is the most reliable way to get renderer info)
+        const char* capabilities = renderWindow->ReportCapabilities();
+        if (capabilities) {
+            QString capStr = QString(capabilities);
+
+            // Print renderer name if available
+            if (capStr.contains("OpenGL vendor string:")) {
+                int startPos = capStr.indexOf("OpenGL vendor string:") + 22;
+                int endPos = capStr.indexOf('\n', startPos);
+                if (endPos > startPos) {
+                    QString vendorName = capStr.mid(startPos, endPos - startPos).trimmed();
+                    logDebugInfo("OpenGL Vendor: " + vendorName);
+                }
+            }
+
+            // Print renderer string if available
+            if (capStr.contains("OpenGL renderer string:")) {
+                int startPos = capStr.indexOf("OpenGL renderer string:") + 24;
+                int endPos = capStr.indexOf('\n', startPos);
+                if (endPos > startPos) {
+                    QString rendererName = capStr.mid(startPos, endPos - startPos).trimmed();
+                    logDebugInfo("OpenGL Renderer: " + rendererName);
+
+                    // Check for software rendering
+                    bool isSoftware =
+                        rendererName.contains("software", Qt::CaseInsensitive) ||
+                        rendererName.contains("llvmpipe", Qt::CaseInsensitive) ||
+                        rendererName.contains("mesa", Qt::CaseInsensitive);
+
+                    // Check for hardware vendor names
+                    bool isHardware =
+                        rendererName.contains("NVIDIA", Qt::CaseInsensitive) ||
+                        rendererName.contains("AMD", Qt::CaseInsensitive) ||
+                        rendererName.contains("ATI", Qt::CaseInsensitive) ||
+                        rendererName.contains("Intel", Qt::CaseInsensitive) ||
+                        rendererName.contains("Radeon", Qt::CaseInsensitive) ||
+                        rendererName.contains("GeForce", Qt::CaseInsensitive);
+
+                    // Make a determination
+                    if (isSoftware) {
+                        logDebugInfo("Rendering Method: SOFTWARE (CPU)");
+                    }
+                    else if (isHardware) {
+                        logDebugInfo("Rendering Method: HARDWARE (GPU)");
+                    }
+                    else {
+                        // If we can't determine from the renderer string,
+                        // check the full capabilities string
+                        if (capStr.contains("software", Qt::CaseInsensitive) &&
+                            !capStr.contains("NVIDIA", Qt::CaseInsensitive) &&
+                            !capStr.contains("AMD", Qt::CaseInsensitive) &&
+                            !capStr.contains("Intel", Qt::CaseInsensitive)) {
+                            logDebugInfo("Rendering Method: Likely SOFTWARE (CPU)");
+                        }
+                        else {
+                            logDebugInfo("Rendering Method: Possibly HARDWARE (GPU)");
+                        }
+                    }
+                }
+            }
+
+            // Print OpenGL version if available
+            if (capStr.contains("OpenGL version string:")) {
+                int startPos = capStr.indexOf("OpenGL version string:") + 23;
+                int endPos = capStr.indexOf('\n', startPos);
+                if (endPos > startPos) {
+                    QString versionStr = capStr.mid(startPos, endPos - startPos).trimmed();
+                    logDebugInfo("OpenGL Version: " + versionStr);
+                }
+            }
+        }
+
+        logDebugInfo("-------------------------");
+    }
+}
+
 void createShape(ShapeType shapeType, double resolution, double radius, QColor color) {
-    qDebug() << "Creating shape type:" << shapeType;
+    logDebugInfo(QString("Creating shape type: %1").arg(shapeType));
 
     // If VTK hasn't been initialized, do nothing (shouldn't happen with our new design)
     if (!g_vtkInitialized) {
-        qDebug() << "VTK not initialized yet";
+        logDebugInfo("VTK not initialized yet");
         return;
     }
 
@@ -118,7 +219,7 @@ void createShape(ShapeType shapeType, double resolution, double radius, QColor c
 void initializeVtkWindow() {
     if (g_vtkInitialized) return;
 
-    qDebug() << "Initializing VTK window...";
+    logDebugInfo("Initializing VTK window...");
 
     // Create a renderer
     g_renderer = vtkSmartPointer<vtkRenderer>::New();
@@ -129,6 +230,11 @@ void initializeVtkWindow() {
     g_renderWindow->SetSize(600, 400);
     g_renderWindow->AddRenderer(g_renderer);
     g_renderWindow->SetWindowName("VTK Shape Visualization");
+
+    // Add a callback for end render events to print debug info
+    vtkSmartPointer<vtkCallbackCommand> callback = vtkSmartPointer<vtkCallbackCommand>::New();
+    callback->SetCallback(::renderCallback);
+    g_renderWindow->AddObserver(vtkCommand::EndEvent, callback);
 
     // Create a render window interactor
     g_renderWindowInteractor = vtkSmartPointer<vtkRenderWindowInteractor>::New();
@@ -145,6 +251,12 @@ void initializeVtkWindow() {
     g_renderWindowInteractor->Initialize();
     g_renderWindow->Render();
 
+    // Print VTK version information
+    logDebugInfo(QString("VTK Version: %1.%2.%3")
+        .arg(VTK_MAJOR_VERSION)
+        .arg(VTK_MINOR_VERSION)
+        .arg(VTK_BUILD_VERSION));
+
     // Mark VTK as initialized
     g_vtkInitialized = true;
 
@@ -152,6 +264,9 @@ void initializeVtkWindow() {
     g_renderWindowInteractor->CreateRepeatingTimer(10);
     g_renderWindowInteractor->Start();
     g_renderWindowInteractor->EnableRenderOff();
+
+    // Force a render to get capabilities
+    g_renderWindow->Render();
 }
 
 int main(int argc, char** argv)
@@ -162,7 +277,7 @@ int main(int argc, char** argv)
     // Create main Qt window
     QMainWindow mainWindow;
     mainWindow.setWindowTitle("Qt with VTK Test");
-    mainWindow.resize(400, 300);
+    mainWindow.resize(800, 600);
 
     // Create central widget and layout
     QWidget* centralWidget = new QWidget(&mainWindow);
@@ -220,6 +335,21 @@ int main(int argc, char** argv)
     // Add the group box to main layout
     mainLayout->addWidget(shapeGroupBox);
 
+    // Create a text edit for displaying debug information
+    QGroupBox* debugGroupBox = new QGroupBox("Rendering Debug Information");
+    QVBoxLayout* debugLayout = new QVBoxLayout(debugGroupBox);
+    g_debugTextEdit = new QTextEdit();
+    g_debugTextEdit->setReadOnly(true);
+    g_debugTextEdit->setMinimumHeight(200);
+    debugLayout->addWidget(g_debugTextEdit);
+    mainLayout->addWidget(debugGroupBox);
+
+    // Add buttons to check renderer info and print full capabilities
+    QPushButton* checkRenderButton = new QPushButton("Check Renderer Information");
+    QPushButton* printCapabilitiesButton = new QPushButton("Print Full Renderer Capabilities");
+    mainLayout->addWidget(checkRenderButton);
+    mainLayout->addWidget(printCapabilitiesButton);
+
     // Function to update the shape
     auto updateShape = [=, &currentColor]() {
         if (!g_vtkInitialized) {
@@ -231,12 +361,45 @@ int main(int argc, char** argv)
         double resolution = resolutionSpinBox->value();
         double radius = radiusSpinBox->value();
 
-        qDebug() << "Updating shape to:" << shapeType;
+        logDebugInfo(QString("Updating shape to: %1").arg(shapeType));
         createShape(shapeType, resolution, radius, currentColor);
         };
 
+    // Connect the buttons
+    QObject::connect(checkRenderButton, &QPushButton::clicked, []() {
+        if (g_vtkInitialized && g_renderWindow) {
+            // Force a render to trigger the callback
+            g_renderWindow->Render();
+        }
+        else {
+            logDebugInfo("VTK not initialized - cannot check renderer");
+        }
+        });
+
+    QObject::connect(printCapabilitiesButton, &QPushButton::clicked, []() {
+        if (g_vtkInitialized && g_renderWindow) {
+            const char* capabilities = g_renderWindow->ReportCapabilities();
+            if (capabilities) {
+                logDebugInfo("--- FULL RENDERER CAPABILITIES ---");
+                QString capStr = QString(capabilities);
+                QStringList lines = capStr.split("\n");
+                for (const QString& line : lines) {
+                    if (!line.trimmed().isEmpty()) {
+                        logDebugInfo(line.trimmed());
+                    }
+                }
+                logDebugInfo("---------------------------------");
+            }
+            else {
+                logDebugInfo("Could not get renderer capabilities");
+            }
+        }
+        else {
+            logDebugInfo("VTK not initialized - cannot print capabilities");
+        }
+        });
+
     // Initialize VTK and show initial shape when the main window appears
-    // Use the QShowEvent instead of a non-existent windowShown signal
     mainWindow.installEventFilter(new QObject(&mainWindow));
     QObject::connect(&mainWindow, &QMainWindow::destroyed, [](QObject*) {}); // Dummy connect to prevent warning
 
@@ -273,6 +436,6 @@ int main(int argc, char** argv)
 
     // Show Qt window and start Qt event loop
     mainWindow.show();
-    qDebug() << "Qt main window shown, starting Qt event loop";
+    logDebugInfo("Qt main window shown, starting Qt event loop");
     return app.exec();
 }
