@@ -1,0 +1,37 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\billionprima_internship\\3_Programme\\VTKQtTest\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{747B2DA9-13E6-4483-8AFC-968F9B8E316D}|VTKQtTest.vcxproj|D:\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\billionprima_internship\\3_Programme\\VTKQtTest\\main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{747B2DA9-13E6-4483-8AFC-968F9B8E316D}|VTKQtTest.vcxproj|solutionrelative:main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "main.cpp",
+              "DocumentMoniker": "D:\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\billionprima_internship\\3_Programme\\VTKQtTest\\main.cpp",
+              "RelativeDocumentMoniker": "main.cpp",
+              "ToolTip": "D:\\OneDrive - Billion Prima Sdn.Bhd\\billionprima_internship\\billionprima_internship\\3_Programme\\VTKQtTest\\main.cpp",
+              "RelativeToolTip": "main.cpp",
+              "ViewState": "AgIAAO4AAAAAAAAAAAAiwBUBAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-03-04T13:31:10.078Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
